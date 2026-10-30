@@ -94,7 +94,7 @@ describe("魔法5種・秘匿6行動の統合", () => {
       else expect(s.players[1].fp).toBe(1);
     }
   });
-  it("秘伝錬成：未解放レシピは翌公開のみ、CD2", () => {
+  it("秘伝錬成：未解放レシピは翌日の夜まで、CD2", () => {
     let s = game("alchemy");
     s.phase = "magic";
     s = dispatch(s, { type: "magic", player: 0 });
@@ -116,7 +116,7 @@ describe("魔法5種・秘匿6行動の統合", () => {
     expect(c.rounds[0].choices[1]).not.toBe("defend");
     expect(c.rounds[0].choices[0]).toBe("defend");
   });
-  it("夜錬金は0APで1個だけ、確定後の変更不可", () => {
+  it("夜錬金は0APで単品も作成可能、確定後の変更不可", () => {
     let s = game();
     s.phase = "night";
     s.players.forEach((p) => (p.night = { kind: "rest" }));
@@ -165,7 +165,7 @@ describe("魔法5種・秘匿6行動の統合", () => {
       dailyAchieved(s, s.players[0], { id: 15, targets: [], achieved: false }),
     ).toBe(true);
   });
-  it("翌日の強制APは最大2、本人が採集か錬金を選ぶ", () => {
+  it("翌日の強制APは最大2、本人が採集か研究を手番ごとに選ぶ", () => {
     let s = game();
     s.phase = "dawn";
     s.players[0].commands = [{ from: 1 }, { from: 2 }, { from: 3 }];
@@ -173,12 +173,14 @@ describe("魔法5種・秘匿6行動の統合", () => {
     expect(s.players[0].commands).toHaveLength(2);
     expect(() => dispatch(s, { type: "gather", player: 0 })).toThrow("命令");
     s = dispatch(s, { type: "forced", player: 0, kind: "gather" });
+    s = dispatch(s, { type: "endTurn", player: 0 });
     addItem(s, s.players[0], "crystal");
+    addItem(s, s.players[0], "obsidian");
     s = dispatch(s, {
       type: "forced",
       player: 0,
-      kind: "brew",
-      recipe: "vigor",
+      kind: "research",
+      stat: "attack",
     });
     expect(s.players[0].commands).toHaveLength(0);
     expect(s.players[0].ap).toBe(0);
@@ -186,6 +188,7 @@ describe("魔法5種・秘匿6行動の統合", () => {
   });
   it("人間の降参は素材2個を渡し、決闘・FP・勝利HOを発生させない", () => {
     let s = game();
+    s.publicTurn.index = 1;
     s = dispatch(s, { type: "duel", player: 1, target: 0 });
     expect(s.challenge).toBeDefined();
     const ids = s.players[0].inventory.slice(0, 2).map((i) => i.id);

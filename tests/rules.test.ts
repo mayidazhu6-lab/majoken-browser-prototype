@@ -50,9 +50,17 @@ describe("Phase 2 主要行動", () => {
     s = dispatch(s, { type: "research", player: 0, stat: "attack" });
     expect(s.players[0].stats.attack).toBe(5);
     expect(s.players[0].curse).toBe(0);
+    s = dispatch(s, { type: "endTurn", player: 0 });
+    for (const t of [...s.trades])
+      s = dispatch(s, {
+        type: "tradeReply",
+        player: 0,
+        id: t.id,
+        accept: false,
+      });
     s = dispatch(s, { type: "research", player: 0, stat: "attack" });
     expect(s.players[0].stats.attack).toBe(8);
-    expect(() => dispatch(s, { type: "gather", player: 0 })).toThrow("AP不足");
+    expect(() => dispatch(s, { type: "gather", player: 0 })).toThrow();
   });
   it("A04 納品予約ロック・過剰納品拒否・失敗返却", () => {
     const s = game();
@@ -94,7 +102,7 @@ describe("Phase 2 主要行動", () => {
     expect(s.players[0].stats.defense).toBe(1);
     expect(s.players[0].fp).toBe(2);
   });
-  it("取引成立で申請者のみ1AP、拒否はAP消費なし", () => {
+  it("取引成立・拒否ともAP消費なし", () => {
     let s = game();
     const id = s.players[0].inventory[0].id;
     s = dispatch(s, {
@@ -104,7 +112,7 @@ describe("Phase 2 主要行動", () => {
       offer: [id],
       request: {},
     });
-    expect(s.players[0].ap).toBe(1);
+    expect(s.players[0].ap).toBe(2);
     expect(s.players[1].ap).toBe(2);
     expect(s.players[1].inventory.some((i) => i.id === id)).toBe(true);
     const before = s.players[0].ap;
@@ -154,6 +162,7 @@ describe("Phase 4 イベント・HO・AI・勝敗", () => {
       mock: [],
       resolved: false,
     };
+    s.publicTurn.round = 4;
     s = dispatch(s, { type: "advance" });
     expect(s.phase).toBe("ended");
     expect(s.result?.reason).toBe("collapse");

@@ -1,6 +1,6 @@
 import type { Magic, Stat } from "./types";
 export const CONFIG = {
-  rulesVersion: "browser-0.1+decisions-1",
+  rulesVersion: "browser-0.2+decisions-2",
   days: 8,
   ap: 2,
   collapse: 3,
@@ -80,7 +80,7 @@ export const MAGICS: Record<
   alchemy: {
     name: "秘伝錬成",
     cd: 2,
-    description: "未解放の特殊レシピ1種を翌公開のみ使用。第1〜7日。",
+    description: "未解放の特殊レシピ1種を翌日の夜錬金まで使用。第1〜7日。",
   },
 };
 export const RESEARCH: Record<Stat, string[]> = {

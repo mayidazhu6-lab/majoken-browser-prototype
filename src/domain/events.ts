@@ -243,10 +243,16 @@ export function reserve(
     if (now.materials === e.materials) s.event.route = "materials";
     else if (now.stats === e.stats) s.event.route = "stats";
   }
-  log(s, "reserve", `${p.name}が納品を予約`, {
-    actor: p.id,
-    data: { items: items.map((i) => i.kind), stats },
-  });
+  const progress = eventProgress(s);
+  log(
+    s,
+    "reserve",
+    `${p.name}が納品を予約：素材+${items.filter((i) => isMaterial(i.kind)).length}・薬+${items.filter((i) => !isMaterial(i.kind)).length}・能力+${ns}（合計 素材${progress.materials}・薬${progress.potions}・能力${progress.stats}）`,
+    {
+      actor: p.id,
+      data: { items: items.map((i) => i.kind), stats },
+    },
+  );
 }
 export function withdraw(s: GameState, p: Player) {
   p.inventory.forEach((i) => {

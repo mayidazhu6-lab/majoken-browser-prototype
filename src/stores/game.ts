@@ -3,7 +3,7 @@ import { shallowRef, ref } from "vue";
 import type { Action, GameState, Setup } from "../domain/types";
 import { createGame, dispatch } from "../domain/reducer";
 import { deserialize, serialize } from "../domain/persistence";
-const KEY = "majoken-save-v1";
+const KEY = "majoken-save-v2";
 export const useGameStore = defineStore("game", () => {
   const state = shallowRef<GameState>();
   const error = ref("");
@@ -11,10 +11,7 @@ export const useGameStore = defineStore("game", () => {
   function act(a: Action) {
     try {
       if (!state.value) return;
-      const previous = state.value.phase;
       state.value = dispatch(state.value, JSON.parse(JSON.stringify(a)));
-      if (previous === "dawn" && state.value.phase === "public")
-        state.value = dispatch(state.value, { type: "aiPublic" });
       error.value = "";
       try {
         localStorage.setItem(KEY, serialize(state.value));
@@ -27,9 +24,7 @@ export const useGameStore = defineStore("game", () => {
   }
   function start(setup: Setup) {
     try {
-      state.value = dispatch(createGame(JSON.parse(JSON.stringify(setup))), {
-        type: "aiPublic",
-      });
+      state.value = createGame(JSON.parse(JSON.stringify(setup)));
       error.value = "";
       localStorage.setItem(KEY, serialize(state.value));
     } catch (e) {
@@ -49,7 +44,12 @@ export const useGameStore = defineStore("game", () => {
   function load(json?: string) {
     try {
       const raw = json ?? localStorage.getItem(KEY);
-      if (!raw) throw Error("保存データがありません");
+      if (!raw)
+        throw Error(
+          localStorage.getItem("majoken-save-v1")
+            ? "保存データのバージョンが一致しません。v0.1の保存データは保持されていますが、v0.2では再開できません。"
+            : "保存データがありません",
+        );
       state.value = deserialize(raw);
       error.value = "";
       notice.value = "保存データを再開しました";

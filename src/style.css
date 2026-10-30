@@ -1021,3 +1021,36 @@ footer > span:first-child {
     gap: 12px;
   }
 }
+
+.daily-ho-notice {
+  border: 2px solid var(--mint);
+  background: #24352f;
+}
+.daily-ho-notice h2 {
+  color: var(--mint);
+}
+.turn-status {
+  border-left: 4px solid var(--mint);
+}
+.results-table,
+.combat-rounds {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.combat-rounds table {
+  min-width: 720px;
+}
+.log-entry:not(.private) {
+  border-left: 2px solid #557968;
+  padding-left: 8px;
+}
+
+.public-history .log-scroll {
+  max-height: 260px;
+  padding-left: 24px;
+}
+.public-history li {
+  padding: 6px 0;
+  font-size: 12px;
+  line-height: 1.7;
+}

@@ -1,13 +1,7 @@
 import type { Action, GameState, Setup, Stat } from "./types";
-import { createGame, dispatch } from "./reducer";
+import { createGame, dispatch, currentPlayer } from "./reducer";
 import { EVENTS, eventProgress, donationItems } from "./events";
-import {
-  available,
-  canRecipe,
-  isMaterial,
-  materialIds,
-  RECIPES,
-} from "./items";
+import { canRecipe, materialIds, RECIPES } from "./items";
 import { RESEARCH, STATS } from "./config";
 export function simulationAction(s: GameState): Action {
   const p = s.players[0];
@@ -36,9 +30,12 @@ export function simulationAction(s: GameState): Action {
     };
   }
   if (s.phase === "public") {
-    if (p.commands.length) return { type: "forced", player: 0, kind: "gather" };
     const t = s.trades.find((t) => t.to === 0);
     if (t) return { type: "tradeReply", player: 0, id: t.id, accept: true };
+    if (s.publicTurn.round === 4) return { type: "advance" };
+    if (currentPlayer(s) !== 0) return { type: "aiPublic" };
+    if (p.commands.length && !s.publicTurn.acted && s.publicTurn.round <= 2)
+      return { type: "forced", player: 0, kind: "gather" };
     const e = EVENTS[s.event.id - 1];
     const pr = eventProgress(s);
     const ids = donationItems(s, p);
@@ -60,27 +57,35 @@ export function simulationAction(s: GameState): Action {
       }
     if (ids.length || Object.keys(stats).length)
       return { type: "reserve", player: 0, items: ids, stats };
-    if (
-      s.players.some(
-        (p) => p.ai && p.ap > 0 && !s.trades.some((t) => t.from === p.id),
-      )
-    )
-      return { type: "aiPublic" };
-    if (p.ap) {
+    if (p.ap && !s.publicTurn.acted && s.publicTurn.round <= 2) {
       const research = STATS.find((k) => materialIds(p, RESEARCH[k]));
-      const r = RECIPES.find(
-        (r) => canRecipe(p, r.id, s.day) && materialIds(p, r.materials),
-      );
-      if (e.potions && r && !pr.success)
-        return { type: "brew", player: 0, recipe: r.id };
+
       if (research && (e.actions?.includes("research") || s.day > 3))
         return { type: "research", player: 0, stat: research };
       return { type: "gather", player: 0 };
     }
-    return { type: "advance" };
+    return { type: "endTurn", player: 0 };
   }
-  if (s.phase === "night" && !p.night)
-    return { type: "night", player: 0, choice: { kind: "rest" } };
+  if (s.phase === "night" && !p.night) {
+    const copy = structuredClone(p);
+    const recipes: string[] = [];
+    for (const r of RECIPES.filter((r) => r.tier === "normal")) {
+      let ids: number[] | null;
+      while (
+        canRecipe(copy, r.id, s.day) &&
+        (ids = materialIds(copy, r.materials))
+      ) {
+        const consumed = ids;
+        copy.inventory = copy.inventory.filter((i) => !consumed.includes(i.id));
+        recipes.push(r.id);
+      }
+    }
+    return {
+      type: "night",
+      player: 0,
+      choice: recipes.length ? { kind: "brew", recipes } : { kind: "rest" },
+    };
+  }
   return { type: "advance" };
 }
 export function simulate(seed: string) {

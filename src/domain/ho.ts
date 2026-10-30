@@ -74,10 +74,7 @@ export function dailyAchieved(s: GameState, p: Player, g: Goal = p.dailyGoal) {
     case 10:
       return trade.some((l) => (l.amount ?? 0) > 0 && l.data?.received === 0);
     case 11:
-      return (
-        has("contribution") &&
-        ["gather", "research", "brew"].some((t) => has(t))
-      );
+      return has("contribution") && ["gather", "research"].some((t) => has(t));
     case 12:
       return has("fp", (l) => (l.amount ?? 0) > 0 && l.kind !== "ho");
     case 13:

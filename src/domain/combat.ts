@@ -93,8 +93,9 @@ export function calculateRound(
       const j = 1 - i;
       if (choices[i] !== "attack") continue;
       const diff = values[i] - values[j];
-      if (diff > 0) hits[j] = damage(diff);
-      else if (choices[j] === "defend") hits[i] = damage(-diff);
+      if (choices[j] === "defend") {
+        if (diff < 0) hits[i] = damage(-diff);
+      } else if (diff > 0) hits[j] = damage(diff);
     }
   const next = choices.map((c, i) =>
     c === "charge" ? stats[i].insight + rolls[i] + buffs[i].charge : 0,
@@ -157,6 +158,7 @@ export function resolveRound(
         )
       : 0,
   ) as [number, number];
+  const chargeBonus = [...c.charge] as [number, number];
   const r = calculateRound(
     [ps[0].stats, ps[1].stats],
     choices,
@@ -172,6 +174,23 @@ export function resolveRound(
   c.charge = r.charge;
   c.previous = original;
   c.rounds.push({
+    insight: [ps[0].stats.insight, ps[1].stats.insight],
+    nextCharge: [...r.charge],
+    base: choices.map(
+      (v, i) => ps[i].stats[v === "attack" ? "attack" : "defense"],
+    ) as [number, number],
+    chargeBonus: choices.map((v, i) =>
+      v === "charge" ? 0 : chargeBonus[i],
+    ) as [number, number],
+    buffs,
+    guard: choices.map((v, i) => (v === "attack" ? 0 : guards[i])) as [
+      number,
+      number,
+    ],
+    counter: [
+      choices[0] === "defend" && r.damage[1] > 0,
+      choices[1] === "defend" && r.damage[0] > 0,
+    ],
     choices,
     original,
     rolls,
@@ -180,6 +199,20 @@ export function resolveRound(
     hp: [...c.hp],
     potions: potions as [string | null, string | null],
   });
+  log(
+    s,
+    "combatRound",
+    `R${c.rounds.length}：${choices.map((v) => (v === "attack" ? "攻撃" : v === "defend" ? "防御" : "ためる")).join(" / ")} · 判定 ${r.values.join("/")} · 被ダメージ ${r.damage.join("/")} · 残HP ${c.hp.join("/")}`,
+    {
+      actor: c.participants[0],
+      target: c.participants[1],
+      audience: c.kind === "secret" ? [...c.participants] : "public",
+      data: {
+        combat: c.id,
+        round: structuredClone(c.rounds[c.rounds.length - 1]),
+      },
+    },
+  );
   if (c.hp.some((h) => h <= 0) || c.rounds.length >= CONFIG.maxRounds) {
     c.done = true;
     c.winner =

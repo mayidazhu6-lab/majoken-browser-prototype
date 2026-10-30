@@ -38,7 +38,7 @@ import {
   withdraw,
   drawEvent,
 } from "./events";
-import { dailyAchieved, dealGoals, longAchieved } from "./ho";
+import { dailyAchieved, dealGoals, longAchieved, goalDescription } from "./ho";
 import {
   chooseStance,
   chooseCombatPotion,
@@ -63,7 +63,7 @@ export function createGame(setup: Setup): GameState {
   )
     throw Error("名前・seed・能力合計10（各2〜6）を確認してください");
   const s: GameState = {
-    version: 1,
+    version: 2,
     rulesVersion: CONFIG.rulesVersion,
     setup: structuredClone(setup),
     seed: setup.seed,
@@ -93,7 +93,15 @@ export function createGame(setup: Setup): GameState {
     combatHistory: [],
     duelQueue: [],
     trades: [],
-    aiPublicDay: 0,
+    publicTurn: {
+      order: [0, 1, 2, 3],
+      index: 0,
+      round: 1,
+      acted: false,
+      aiTradeAttempted: false,
+      aiMockAttempted: false,
+      tradeAttempts: {},
+    },
   };
   const names = [setup.name, "リラ", "ネム", "シオン"];
   for (let i = 0; i < 4; i++) {
@@ -146,6 +154,15 @@ function publicAction(s: GameState, p: Player, cost = 1) {
     s.phase === "public" && !s.combat && !s.challenge,
     "公開行動フェーズではありません",
   );
+  assert(
+    s.publicTurn.round <= 3 && s.publicTurn.order[s.publicTurn.index] === p.id,
+    "自分の手番ではありません",
+  );
+  assert(!s.trades.length, "取引への返答を完了してください");
+  assert(
+    cost === 0 || (s.publicTurn.round <= 2 && !s.publicTurn.acted),
+    "この手番の通常行動は終了しています",
+  );
   assert(p.ap >= cost, "AP不足です");
   assert(
     cost === 0 || p.commands.length === 0,
@@ -153,10 +170,13 @@ function publicAction(s: GameState, p: Player, cost = 1) {
   );
   assert(!p.pendingRecipe, "特殊レシピを選んでください");
 }
-function ap(p: Player, cost = 1) {
+function ap(s: GameState, p: Player, cost = 1) {
   const curse = p.curse;
   p.ap -= cost;
-  if (cost) p.curse = 0;
+  if (cost) {
+    p.curse = 0;
+    if (s.phase === "public") s.publicTurn.acted = true;
+  }
   return curse;
 }
 function used(s: GameState, p: Player, id: number | undefined, effect: string) {
@@ -172,19 +192,18 @@ function used(s: GameState, p: Player, id: number | undefined, effect: string) {
   });
   return r.power;
 }
-function brew(s: GameState, p: Player, id: string, night = false) {
+function brew(s: GameState, p: Player, id: string) {
   assert(canRecipe(p, id, s.day), "未解放のレシピです");
   const r = recipe(id)!;
   const ids = materialIds(p, r.materials);
   assert(ids, "素材不足または予約中です");
   consume(p, ids);
-  if (!night) ap(p);
   addItem(s, p, id);
-  log(s, "brew", night ? `${r.name}を作成` : `${p.name}が薬を錬金`, {
+  log(s, "brew", `${r.name}を作成`, {
     actor: p.id,
     kind: id,
     amount: 1,
-    audience: night ? [p.id] : "public",
+    audience: [p.id],
   });
   log(s, "acquirePotion", `${r.name}を獲得`, {
     actor: p.id,
@@ -266,9 +285,7 @@ function replyTrade(s: GameState, p: Player, id: number, accept: boolean) {
   const valid =
     t.offer.every((id) =>
       a.inventory.some((i) => i.id === id && i.lock === `trade:${t.id}`),
-    ) &&
-    enough &&
-    a.ap >= 1;
+    ) && enough;
   s.trades = s.trades.filter((t) => t.id !== id);
   a.inventory.forEach((i) => {
     if (i.lock === `trade:${t.id}`) delete i.lock;
@@ -281,20 +298,32 @@ function replyTrade(s: GameState, p: Player, id: number, accept: boolean) {
     });
     return;
   }
-  ap(a);
+  const offered = t.offer.map(
+    (id) => a.inventory.find((i) => i.id === id)!.kind,
+  );
+  const receivedKinds = requested.map(
+    (id) => p.inventory.find((i) => i.id === id)!.kind,
+  );
+  const describeItems = (kinds: string[]) =>
+    kinds.map((k) => LABELS[k] ?? recipe(k)?.name ?? k).join("・") || "なし";
   transfer(s, a, p, t.offer, "trade");
   transfer(s, p, a, requested!, "trade");
   for (const [x, y, sent, received] of [
     [a, p, t.offer.length, requested!.length],
     [p, a, requested!.length, t.offer.length],
   ] as const)
-    log(s, "trade", `${x.name}と${y.name}の取引成立`, {
-      actor: x.id,
-      target: y.id,
-      amount: sent,
-      data: { received },
-      audience: [a.id, p.id],
-    });
+    log(
+      s,
+      "trade",
+      `${x.name}と${y.name}の取引成立。${a.name}から${p.name}：${describeItems(offered)}。${p.name}から${a.name}：${describeItems(receivedKinds)}`,
+      {
+        actor: x.id,
+        target: y.id,
+        amount: sent,
+        data: { received, offered, receivedKinds },
+        audience: [a.id, p.id],
+      },
+    );
 }
 function finishCombat(s: GameState) {
   const c = s.combat!;
@@ -537,13 +566,18 @@ function nightChoice(s: GameState, p: Player, n: Night) {
       "対象を選択してください",
     );
   if (n.kind === "raid") assert(p.lastRaid !== s.day - 1, "襲撃は連夜不可");
-  if (n.kind === "brew")
-    assert(
-      n.recipe &&
-        canRecipe(p, n.recipe, s.day) &&
-        materialIds(p, recipe(n.recipe)!.materials),
-      "錬金できません",
-    );
+  if (n.kind === "brew") {
+    const plan = n.recipes ?? (n.recipe ? [n.recipe] : []);
+    assert(plan.length > 0, "作成予定の薬を追加してください");
+    const copy = structuredClone(p);
+    for (const id of plan) {
+      assert(canRecipe(copy, id, s.day), "未解放のレシピです");
+      const ids = materialIds(copy, recipe(id)!.materials);
+      assert(ids, "素材不足または予約中です");
+      consume(copy, ids);
+    }
+    n = { kind: "brew", recipes: [...plan] };
+  }
   if (n.potion !== undefined) {
     const r = recipe(
       p.inventory.find((i) => i.id === n.potion && !i.lock)?.kind ?? "",
@@ -572,7 +606,7 @@ function prepareNight(s: GameState) {
   for (const p of s.players) {
     if (!p.night) nightChoice(s, p, { kind: "rest" });
     const n = p.night!;
-    if (n.kind === "brew") brew(s, p, n.recipe!, true);
+    if (n.kind === "brew") for (const id of n.recipes!) brew(s, p, id);
     if (n.kind === "guard") {
       const buff = used(s, p, n.potion, "guard");
       if (buff)
@@ -697,11 +731,16 @@ function evaluateHO(s: GameState) {
         p.longGoal.achieved);
   });
   s.players.forEach((p, i) => {
-    log(s, "dailyHO", `日次HO：${daily[i] ? "達成" : "未達成"}`, {
-      actor: p.id,
-      amount: daily[i] ? 1 : 0,
-      audience: [p.id],
-    });
+    log(
+      s,
+      "dailyHO",
+      `日次HO「${goalDescription(p.dailyGoal, false).name}」：${daily[i] ? "達成 / 報酬 FP+1" : "未達成"}。条件：${goalDescription(p.dailyGoal, false).condition}`,
+      {
+        actor: p.id,
+        amount: daily[i] ? 1 : 0,
+        audience: [p.id],
+      },
+    );
     if (daily[i]) fp(s, p, 1, "ho");
   });
   if (s.day === 8) end(s, "completed");
@@ -746,6 +785,8 @@ function end(s: GameState, reason: "completed" | "collapse") {
   );
 }
 function nextDay(s: GameState) {
+  for (const p of s.players)
+    if (p.temporaryRecipe?.day === s.day) p.temporaryRecipe = undefined;
   s.day++;
   s.phase = "public";
   s.barriers = [];
@@ -761,42 +802,50 @@ function nextDay(s: GameState) {
       p.nextMagic = undefined;
     }
     p.commands = p.commands.slice(0, 2);
-    if (p.ai)
-      while (p.commands.length) {
-        const r = RECIPES.find(
-          (r) => canRecipe(p, r.id, s.day) && materialIds(p, r.materials),
-        );
-        forced(s, p, r ? "brew" : "gather", r?.id);
-      }
   }
+  s.publicTurn = {
+    order: Array.from({ length: 4 }, (_, i) => (s.day - 1 + i) % 4),
+    index: 0,
+    round: 1,
+    acted: false,
+    aiTradeAttempted: false,
+    aiMockAttempted: false,
+    tradeAttempts: {},
+  };
   dealGoals(s);
   startEvent(s);
 }
-function forced(s: GameState, p: Player, kind: "gather" | "brew", id?: string) {
+function forced(
+  s: GameState,
+  p: Player,
+  kind: "gather" | "research",
+  stat?: Stat,
+) {
   assert(
-    s.phase === "public" &&
-      !s.combat &&
-      !s.challenge &&
-      p.ap > 0 &&
-      p.commands.length,
-    "命令を実行できません",
+    kind === "gather" || kind === "research",
+    "命令は採集か研究を選択してください",
   );
-  const cmd = p.commands[0];
-  if (kind === "brew") {
-    assert(id, "錬金レシピを指定してください");
-    brew(s, p, id);
-  } else {
-    const curse = ap(p);
-    const n = Math.max(0, 2 + p.rest - curse);
-    for (let i = 0; i < n; i++) addItem(s, p, pick(s, MATERIALS, "強制採集"));
-    log(s, "gather", "命令の採集を実行", { actor: p.id, amount: n });
-  }
-  p.commands.shift();
-  log(s, "commandExecuted", "命令のAPを実行", {
-    actor: cmd.from,
-    target: p.id,
-    audience: [cmd.from, p.id],
-  });
+  assert(p.commands.length, "命令がありません");
+  const cmd = p.commands.shift()!;
+  const remaining = p.commands;
+  p.commands = [];
+  apply(
+    s,
+    kind === "research"
+      ? { type: "research", player: p.id, stat: stat! }
+      : { type: "gather", player: p.id },
+  );
+  p.commands = remaining;
+  log(
+    s,
+    "commandExecuted",
+    `命令の${kind === "gather" ? "採集" : "研究"}を実行（1AP）`,
+    {
+      actor: cmd.from,
+      target: p.id,
+      audience: [cmd.from, p.id],
+    },
+  );
 }
 function advance(s: GameState) {
   assert(!s.combat && !s.challenge, "戦闘・挑戦への返答を完了してください");
@@ -806,14 +855,15 @@ function advance(s: GameState) {
   );
   switch (s.phase) {
     case "public":
+      assert(
+        s.publicTurn.round === 4 && !s.trades.length,
+        "全員の手番・最終納品確認を完了してください",
+      );
       cancelTrades(s);
-      for (const p of s.players)
-        while (p.commands.length && p.ap) forced(s, p, "gather");
       resolveEvent(s);
       for (const p of s.players) {
         p.rest = 0;
         p.curse = 0;
-        if (p.temporaryRecipe?.day === s.day) p.temporaryRecipe = undefined;
       }
       if (s.failed >= 3) end(s, "collapse");
       else {
@@ -933,6 +983,7 @@ function enterNight(s: GameState) {
           daily[p.dailyGoal.id],
           p.longGoal.achieved ? undefined : long[p.longGoal.id],
           "rest",
+          ...(r ? ["brew"] : []),
           "curse",
           ...(power > 1.15 ? ["raid"] : []),
         ].filter(Boolean),
@@ -969,6 +1020,19 @@ function enterNight(s: GameState) {
       { type: "night" }
     >;
     kind = selected.choice.kind;
+    if (kind === "brew") {
+      const copy = structuredClone(p);
+      const plan: string[] = [];
+      for (const rec of RECIPES) {
+        if (!canRecipe(copy, rec.id, s.day)) continue;
+        let ids;
+        while ((ids = materialIds(copy, rec.materials))) {
+          consume(copy, ids);
+          plan.push(rec.id);
+        }
+      }
+      selected.choice = { kind: "brew", recipes: plan };
+    }
     nightChoice(s, p, selected.choice);
     log(s, "aiReason", `AI ${p.name}：自身のHOとCDから${LABELS[kind]}`, {
       actor: p.id,
@@ -993,13 +1057,16 @@ function apply(s: GameState, a: Action) {
   if (s.combat && !["round", "loadout", "reward"].includes(a.type))
     throw Error("戦闘中です");
   switch (a.type) {
+    case "endTurn":
+      endTurn(s, p);
+      break;
     case "forced":
-      forced(s, p, a.kind, a.recipe);
+      forced(s, p, a.kind, a.stat);
       break;
     case "gather": {
       publicAction(s, p);
       const bonus = used(s, p, a.potion, "gather");
-      const curse = ap(p);
+      const curse = ap(s, p);
       const n = Math.max(0, 2 + p.rest + bonus - curse);
       const items = [];
       for (let i = 0; i < n; i++)
@@ -1021,7 +1088,7 @@ function apply(s: GameState, a: Action) {
       assert(ids, "研究素材不足または予約中");
       const bonus = used(s, p, a.potion, "research");
       consume(p, ids);
-      const curse = ap(p);
+      const curse = ap(s, p);
       const growth = Math.max(0, 1 + p.rest + bonus - curse);
       p.stats[a.stat] += growth;
       log(s, "research", `${p.name}が${LABELS[a.stat]}を研究 +${growth}`, {
@@ -1032,9 +1099,7 @@ function apply(s: GameState, a: Action) {
       break;
     }
     case "brew":
-      publicAction(s, p);
-      brew(s, p, a.recipe);
-      break;
+      throw Error("公開錬金は廃止されました。夜の錬金を選択してください");
     case "reserve":
       publicAction(s, p, 0);
       reserve(s, p, a.items, a.stats);
@@ -1054,13 +1119,25 @@ function apply(s: GameState, a: Action) {
         "購買部は素材3→1",
       );
       consume(p, a.items);
-      ap(p);
+      ap(s, p);
       addItem(s, p, a.receive);
-      log(s, "shop", "購買部の交換が成立", { actor: p.id, audience: [p.id] });
+      log(s, "shop", `${p.name}が購買部で素材3個を1個に交換（1AP）`, {
+        actor: p.id,
+      });
+      log(s, "shopItems", `受領：${LABELS[a.receive]}`, {
+        actor: p.id,
+        audience: [p.id],
+      });
       break;
     }
     case "trade": {
-      publicAction(s, p);
+      publicAction(s, p, 0);
+      assert(s.publicTurn.round <= 2, "最終納品確認では取引申請できません");
+      const key = `${s.publicTurn.round}:${p.id}:${a.target}`;
+      assert(
+        (s.publicTurn.tradeAttempts[key] ?? 0) < 2,
+        "同じ相手への申請は1巡2回までです",
+      );
       assert(a.target !== p.id && s.players[a.target], "取引対象が不正");
       assert(!s.trades.some((t) => t.from === p.id), "送信中の取引があります");
       assert(
@@ -1080,6 +1157,8 @@ function apply(s: GameState, a: Action) {
           a.offer.every((id) => available(p).some((i) => i.id === id)),
         "提供品不足",
       );
+      s.publicTurn.tradeAttempts[key] =
+        (s.publicTurn.tradeAttempts[key] ?? 0) + 1;
       const id = s.nextTrade++;
       const t = {
         id,
@@ -1108,28 +1187,43 @@ function apply(s: GameState, a: Action) {
       break;
     }
     case "tradeReply":
-      publicAction(s, p, 0);
+      assert(
+        s.phase === "public" && !s.combat && !s.challenge,
+        "取引へ返答できません",
+      );
       replyTrade(s, p, a.id, a.accept);
       break;
     case "tradeCancel": {
-      publicAction(s, p, 0);
+      assert(
+        s.phase === "public" && !s.combat && !s.challenge,
+        "取引を撤回できません",
+      );
       const t = s.trades.find((t) => t.id === a.id && t.from === p.id);
       assert(t, "撤回できる取引なし");
       s.trades = s.trades.filter((t) => t.id !== a.id);
       p.inventory.forEach((i) => {
         if (i.lock === `trade:${a.id}`) delete i.lock;
       });
+      log(s, "tradeCancelled", "取引申請を撤回しました", {
+        actor: p.id,
+        target: t.to,
+        audience: [p.id, t.to],
+      });
       break;
     }
     case "duel":
       publicAction(s, p, a.mock ? 0 : 2);
+      assert(
+        a.mock ? s.publicTurn.round <= 2 : s.publicTurn.round === 1,
+        "決闘は通常行動の巡目で実行してください",
+      );
       assert(a.target !== p.id && s.players[a.target], "対戦対象が不正");
       if (a.mock)
         assert(
           EVENTS[s.event.id - 1].mock && !s.event.mock.length,
           "模擬戦は対象イベント1回のみ",
         );
-      else ap(p, 2);
+      else ap(s, p, 2);
       cancelTrades(s);
       if (!s.players[a.target].ai) {
         s.challenge = { from: p.id, to: a.target, mock: !!a.mock };
@@ -1193,6 +1287,7 @@ function apply(s: GameState, a: Action) {
       nightChoice(s, p, a.choice);
       break;
     case "usePotion": {
+      if (s.phase === "public") publicAction(s, p, 0);
       assert(s.phase === "public" || s.phase === "magic", "薬の使用フェーズ外");
       const i = p.inventory.find((i) => i.id === a.item && !i.lock);
       assert(i, "薬がありません");
@@ -1279,132 +1374,219 @@ function autoReserve(s: GameState, p: Player) {
   if (ids.length || Object.values(stats).some((n) => n))
     reserve(s, p, ids, stats);
 }
+export function currentPlayer(s: GameState) {
+  return s.publicTurn.round <= 3
+    ? s.publicTurn.order[s.publicTurn.index]
+    : undefined;
+}
+function endTurn(s: GameState, p: Player) {
+  publicAction(s, p, 0);
+  assert(
+    s.publicTurn.round === 3 || s.publicTurn.acted || !p.commands.length,
+    "先に命令のAPを実行してください",
+  );
+  log(
+    s,
+    "turnEnd",
+    `${p.name}：${s.publicTurn.round === 3 ? "最終納品確認" : `${s.publicTurn.round}巡目・${s.publicTurn.acted ? "手番終了" : p.ap === 0 ? "通常行動スキップ（APなし）" : "パス"}`}`,
+    { actor: p.id, data: { round: s.publicTurn.round, remainingAP: p.ap } },
+  );
+  const t = s.publicTurn;
+  t.index++;
+  if (t.index === 4) {
+    t.index = 0;
+    t.round++;
+  }
+  t.acted = false;
+  t.aiTradeAttempted = false;
+  t.aiMockAttempted = false;
+}
 function runPublicAI(s: GameState) {
-  assert(s.phase === "public" && !s.combat && !s.challenge, "公開フェーズ外");
-  s.aiPublicDay = s.day;
-  for (const p of s.players.filter((p) => p.ai)) {
-    if (s.trades.some((t) => t.from === p.id)) continue;
-    let turns = 0;
-    while (p.ap > 0 && turns++ < 3 && !s.combat) {
+  // Each iteration advances a finite turn or stops at a human decision.
+  for (let steps = 0; steps < 20; steps++) {
+    if (
+      s.phase !== "public" ||
+      s.combat ||
+      s.challenge ||
+      s.trades.length ||
+      s.players.some((p) => p.pendingRecipe)
+    )
+      return;
+    const id = currentPlayer(s);
+    if (id === undefined) return;
+    const p = s.players[id],
+      t = s.publicTurn;
+    if (t.round <= 2 && p.ap === 0 && !t.acted) {
+      endTurn(s, p);
+      continue;
+    }
+    if (!p.ai) return;
+    autoReserve(s, p);
+    if (t.round === 3) {
+      endTurn(s, p);
+      continue;
+    }
+    if (t.acted) {
+      endTurn(s, p);
+      continue;
+    }
+    if (p.commands.length) {
+      const stat = STATS.find((k) => materialIds(p, RESEARCH[k]));
+      forced(s, p, stat ? "research" : "gather", stat);
+      t.acted = true;
       autoReserve(s, p);
-      const v = aiView(s, p.id);
-      const research = STATS.find((k) => materialIds(p, RESEARCH[k]));
-      const r = RECIPES.find(
-        (r) => canRecipe(p, r.id, s.day) && materialIds(p, r.materials),
+      continue;
+    }
+    if (
+      EVENTS[s.event.id - 1].mock &&
+      !s.event.mock.length &&
+      !t.aiMockAttempted
+    ) {
+      t.aiMockAttempted = true;
+      startCombat(
+        s,
+        p.id,
+        s.players.find((q) => q.ai && q.id !== p.id)!.id,
+        "mock",
       );
-      let action: Action = { type: "gather", player: p.id };
-      let reason = "素材確保";
-      if (v.eventDefinition.mock && !s.event.mock.length) {
-        const partner = v.others.find((q) => q.id !== 0)!.id;
-        startCombat(s, p.id, partner, "mock");
-        autoCombats(s);
+      autoCombats(s);
+      if (s.combat) return;
+    }
+    const tradeGoal =
+      (AI_POLICY.goalTradeDaily as readonly number[]).includes(
+        p.dailyGoal.id,
+      ) ||
+      (AI_POLICY.goalTradeLong as readonly number[]).includes(p.longGoal.id);
+    if (!t.aiTradeAttempted && tradeGoal) {
+      t.aiTradeAttempted = true;
+      const item = available(p).find((i) =>
+        p.longGoal.id === 8 ? !isMaterial(i.kind) : true,
+      );
+      if (item) {
+        apply(s, {
+          type: "trade",
+          player: p.id,
+          target:
+            p.longGoal.targets[0] ?? s.players.find((q) => q.id !== p.id)!.id,
+          offer: [item.id],
+          request: {},
+        });
+        if (s.trades.length) return;
       }
-      const cooperation =
-        s.failed >= 2 ? CONFIG.aiCrisisCooperation : CONFIG.aiCooperation;
-      const hoDuel =
-        (AI_POLICY.goalDuelDaily as readonly number[]).includes(
-          p.dailyGoal.id,
-        ) ||
-        (AI_POLICY.goalDuelLong as readonly number[]).includes(p.longGoal.id);
-      if (v.eventDefinition.potions && r && !eventProgress(s).success) {
-        action = { type: "brew", player: p.id, recipe: r.id };
-        reason = "イベント薬納品";
-      } else if (
-        v.eventDefinition.actions?.includes("research") &&
-        research &&
-        !eventProgress(s).success
-      ) {
-        action = { type: "research", player: p.id, stat: research };
-        reason = "イベント研究回数";
-      } else if (
-        hoDuel &&
-        p.ap === 2 &&
-        s.failed < 2 &&
-        !v.eventDefinition.actions
-      ) {
-        action = {
+    }
+    const stat = STATS.find((k) => materialIds(p, RESEARCH[k]));
+    const duelGoal =
+      (AI_POLICY.goalDuelDaily as readonly number[]).includes(p.dailyGoal.id) ||
+      (AI_POLICY.goalDuelLong as readonly number[]).includes(p.longGoal.id);
+    const e = EVENTS[s.event.id - 1];
+    const candidates: { action: Action; weight: number; reason: string }[] = [
+      {
+        action: { type: "gather", player: p.id },
+        weight: 1,
+        reason: "素材確保",
+      },
+    ];
+    const cooperation =
+      s.failed >= 2 ? CONFIG.aiCrisisCooperation : CONFIG.aiCooperation;
+    if (stat)
+      candidates.push({
+        action: { type: "research", player: p.id, stat },
+        weight:
+          e.actions?.includes("research") && !eventProgress(s).success
+            ? cooperation
+            : AI_POLICY.growthWeight,
+        reason: "公開能力の育成",
+      });
+    if (
+      duelGoal &&
+      t.round === 1 &&
+      p.ap === 2 &&
+      s.failed < 2 &&
+      !e.actions &&
+      !e.potions
+    )
+      candidates.push({
+        action: {
           type: "duel",
           player: p.id,
-          target: p.longGoal.targets[0] ?? v.others.find((q) => q.id !== 0)!.id,
-        };
-        reason = "自身のHO：決闘";
-      } else if (
-        (AI_POLICY.goalTradeDaily as readonly number[]).includes(
-          p.dailyGoal.id,
-        ) ||
-        (AI_POLICY.goalTradeLong as readonly number[]).includes(p.longGoal.id)
-      ) {
-        const item = available(p).find((i) =>
-          p.longGoal.id === 8 ? !isMaterial(i.kind) : true,
-        );
-        const target = p.longGoal.targets[0] ?? v.others[0].id;
-        if (item) {
-          action = {
-            type: "trade",
-            player: p.id,
-            target,
-            offer: [item.id],
-            request: {},
-          };
-          reason = "自身のHO：譲渡取引";
-        } else if (research) {
-          action = { type: "research", player: p.id, stat: research };
-          reason = "能力育成";
-        }
-      } else if (research) {
-        action = { type: "research", player: p.id, stat: research };
-        reason = "能力育成";
-      } else if (r && [3, 5].includes(p.dailyGoal.id)) {
-        action = { type: "brew", player: p.id, recipe: r.id };
-        reason = "自身の日次HO：薬";
-      }
-      const candidates: { action: Action; weight: number; reason: string }[] = [
-        {
-          action,
-          weight: reason.startsWith("イベント")
-            ? cooperation
-            : reason.includes("HO")
-              ? AI_POLICY.goalWeight
-              : AI_POLICY.growthWeight,
-          reason,
+          target:
+            p.longGoal.targets[0] ??
+            s.players.find((q) => q.ai && q.id !== p.id)!.id,
         },
-      ];
-      if (action.type !== "gather")
-        candidates.push({
-          action: { type: "gather", player: p.id },
-          weight: AI_POLICY.explorationWeight,
-          reason: "素材確保（探索）",
-        });
-      const selected = weightedAction(s, candidates);
-      action = selected.action;
-      reason = selected.reason;
-      log(s, "aiReason", `${p.name}：${reason}（協力重み ${cooperation}）`, {
-        actor: p.id,
-        audience: "dev",
+        weight: 5,
+        reason: "自身のHO",
       });
-      apply(s, action);
-      if (s.challenge) return;
-      if (s.combat) {
-        autoCombats(s);
-        if (s.combat) return;
-        break;
-      }
-      if (s.trades.some((t) => t.from === p.id)) break;
-      autoReserve(s, p);
-    }
+    const selected = weightedAction(s, candidates);
+    apply(s, selected.action);
+    if (s.combat || s.challenge) return;
     autoReserve(s, p);
+    endTurn(s, p);
   }
+  throw Error("公開手番の進行上限を超えました");
 }
 export function dispatch(state: GameState, action: Action): GameState {
   const s = structuredClone(state);
+  const actor = "player" in action ? s.players[action.player] : undefined;
+  const beforeProgress =
+    s.phase === "public" ? structuredClone(eventProgress(s)) : undefined;
   apply(s, structuredClone(action));
+  if (
+    beforeProgress &&
+    s.phase === "public" &&
+    JSON.stringify(beforeProgress) !== JSON.stringify(eventProgress(s))
+  )
+    log(
+      s,
+      "eventProgress",
+      `イベント進捗更新：素材${eventProgress(s).materials}・薬${eventProgress(s).potions}・能力${eventProgress(s).stats}・行動${eventProgress(s).actions}`,
+      { actor: actor?.id },
+    );
+  runPublicAI(s);
   s.revision++;
   s.actions.push(structuredClone(action));
   assertInvariants(s);
   return s;
 }
 export function assertInvariants(s: GameState) {
+  assert(
+    s.version === 2 && s.rulesVersion === CONFIG.rulesVersion,
+    "状態のバージョンが一致しません",
+  );
   assert(s.players.length === 4, "4席であること");
+  const t = s.publicTurn;
+  assert(
+    t &&
+      t.order.length === 4 &&
+      new Set(t.order).size === 4 &&
+      t.order.every((id) => Number.isInteger(id) && id >= 0 && id < 4),
+    "手番順が不正です",
+  );
+  assert(
+    Number.isInteger(t.index) &&
+      t.index >= 0 &&
+      t.index < 4 &&
+      Number.isInteger(t.round) &&
+      t.round >= 1 &&
+      t.round <= 4,
+    "巡目・手番が不正です",
+  );
+  assert(
+    [t.acted, t.aiTradeAttempted, t.aiMockAttempted].every(
+      (v) => typeof v === "boolean",
+    ),
+    "手番状態が不正です",
+  );
+  assert(
+    s.trades.length <= 1 &&
+      s.trades.every((trade) => trade.from === currentPlayer(s)),
+    "未決取引と手番が一致しません",
+  );
+  assert(
+    Object.values(t.tradeAttempts).every(
+      (n) => Number.isInteger(n) && n >= 0 && n <= 2,
+    ),
+    "取引申請回数が不正です",
+  );
   assert(s.day >= 1 && s.day <= 8, "日数が不正");
   const ids = s.players
     .flatMap((p) => p.inventory.map((i) => i.id))

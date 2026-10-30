@@ -6,7 +6,7 @@ async function state(
   page: import("@playwright/test").Page,
 ): Promise<GameState> {
   return page.evaluate(
-    () => JSON.parse(localStorage.getItem("majoken-save-v1")!).state,
+    () => JSON.parse(localStorage.getItem("majoken-save-v2")!).state,
   );
 }
 test("キャラクター作成・秘匿表示・保存再開・JSON出力", async ({ page }) => {
@@ -52,11 +52,6 @@ test("画面の操作だけで8日間を完走", async ({ page }) => {
       case "forced":
         await page
           .getByRole("button", { name: "命令の採集を実行", exact: true })
-          .click();
-        break;
-      case "aiPublic":
-        await page
-          .getByRole("button", { name: "AIの行動を進める", exact: true })
           .click();
         break;
       case "challengeReply":
@@ -120,18 +115,6 @@ test("画面の操作だけで8日間を完走", async ({ page }) => {
           .getByRole("button")
           .click();
         break;
-      case "brew":
-        await page.getByRole("button", { name: "錬金", exact: true }).click();
-        await page
-          .locator(".action-card")
-          .filter({
-            has: page.getByRole("heading", {
-              name: new RegExp(requireName(a.recipe)),
-            }),
-          })
-          .getByRole("button")
-          .click();
-        break;
       case "tradeReply":
         await page
           .getByRole("button", { name: "受諾", exact: true })
@@ -146,12 +129,21 @@ test("画面の操作だけで8日間を完走", async ({ page }) => {
       case "night":
         await page
           .locator(".night-options")
-          .getByRole("button", { name: "休息", exact: true })
+          .getByRole("button", { name: LABELS[a.choice.kind], exact: true })
           .click();
+        if (a.choice.kind === "brew") {
+          for (const id of a.choice.recipes!) {
+            await page.getByLabel("レシピ", { exact: true }).selectOption(id);
+            await page
+              .getByRole("button", { name: "作成予定に追加", exact: true })
+              .click();
+          }
+        }
         await page
           .getByRole("button", { name: "秘匿行動を確定", exact: true })
           .click();
         break;
+      case "endTurn":
       case "advance":
         await page.locator(".progression button.primary").click();
         break;

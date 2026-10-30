@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { simulate } from "../src/domain/simulation";
+import { CONFIG } from "../src/domain/config";
 const seeds = process.argv.slice(2);
 if (!seeds.length) seeds.push("witches-2026", "moon-42", "lab-77");
 const results = seeds.map((seed) => {
@@ -62,6 +63,7 @@ writeFileSync(
   "docs/reports/simulation.json",
   JSON.stringify(
     {
+      rulesVersion: CONFIG.rulesVersion,
       policy: "cooperative human bot + three normal AI (unmodified rules)",
       summary,
       results,

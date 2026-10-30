@@ -28,6 +28,7 @@ export interface Night {
   kind: NightKind;
   target?: number;
   recipe?: string;
+  recipes?: string[];
   potion?: number;
 }
 export interface Player {
@@ -111,6 +112,16 @@ export interface CurrentEvent {
   route?: "materials" | "stats";
 }
 export interface Round {
+  insight: [number, number];
+  nextCharge: [number, number];
+  base: [number, number];
+  chargeBonus: [number, number];
+  buffs: [
+    { attack: number; defense: number; charge: number },
+    { attack: number; defense: number; charge: number },
+  ];
+  guard: [number, number];
+  counter: [boolean, boolean];
   choices: [Stance, Stance];
   original: [Stance, Stance];
   rolls: [number, number];
@@ -160,7 +171,7 @@ export interface Setup {
   stats: Stats;
 }
 export interface GameState {
-  version: 1;
+  version: 2;
   rulesVersion: string;
   setup: Setup;
   seed: string;
@@ -188,10 +199,18 @@ export interface GameState {
   duelQueue: [number, number][];
   trades: Trade[];
   result?: Result;
-  aiPublicDay: number;
+  publicTurn: {
+    order: number[];
+    index: number;
+    round: number;
+    acted: boolean;
+    aiTradeAttempted: boolean;
+    aiMockAttempted: boolean;
+    tradeAttempts: Record<string, number>;
+  };
 }
 export type Action =
-  | { type: "forced"; player: number; kind: "gather" | "brew"; recipe?: string }
+  | { type: "forced"; player: number; kind: "gather" | "research"; stat?: Stat }
   | { type: "gather"; player: number; potion?: number }
   | { type: "research"; player: number; stat: Stat; potion?: number }
   | { type: "brew"; player: number; recipe: string }
@@ -217,5 +236,6 @@ export type Action =
   | { type: "night"; player: number; choice: Night }
   | { type: "usePotion"; player: number; item: number; magic?: Magic }
   | { type: "unlock"; player: number; recipe: string }
+  | { type: "endTurn"; player: number }
   | { type: "aiPublic" }
   | { type: "advance" };
