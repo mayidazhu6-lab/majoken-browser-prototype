@@ -6,3 +6,21 @@ dist/
 coverage/
 playwright-report/
 test-results/
+
+# Credentials and machine-specific settings
+.aws/
+.ssh/
+.npmrc
+.netrc
+.git-credentials
+credentials*.json
+secrets*.json
+*.pem
+*.key
+
+# Local game saves (simulation reports in docs/reports remain tracked)
+majoken-day*.json
+majoken-save*.json
+saves/
+save-data/
+local-data/
