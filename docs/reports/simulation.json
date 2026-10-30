@@ -1,0 +1,1393 @@
+{
+  "policy": "cooperative human bot + three normal AI (unmodified rules)",
+  "summary": {
+    "seeds": 3,
+    "completionRate": 1,
+    "collapseRate": 0,
+    "longHOAchievementRate": 0.3333333333333333,
+    "dailyHOAchievementRate": 0.4166666666666667
+  },
+  "results": [
+    {
+      "seed": "witches-2026",
+      "day": 8,
+      "reason": "completed",
+      "completed": true,
+      "collapse": false,
+      "graduates": [
+        0
+      ],
+      "chiefs": [
+        0
+      ],
+      "players": [
+        {
+          "name": "試験魔女",
+          "stats": {
+            "attack": 1,
+            "defense": 1,
+            "insight": 1
+          },
+          "fp": 9,
+          "longHO": 20,
+          "longAchieved": true,
+          "dailyAchieved": 2
+        },
+        {
+          "name": "リラ",
+          "stats": {
+            "attack": 1,
+            "defense": 1,
+            "insight": 4
+          },
+          "fp": 6,
+          "longHO": 10,
+          "longAchieved": false,
+          "dailyAchieved": 2
+        },
+        {
+          "name": "ネム",
+          "stats": {
+            "attack": 6,
+            "defense": 3,
+            "insight": 6
+          },
+          "fp": 7,
+          "longHO": 19,
+          "longAchieved": false,
+          "dailyAchieved": 2
+        },
+        {
+          "name": "シオン",
+          "stats": {
+            "attack": 6,
+            "defense": 4,
+            "insight": 6
+          },
+          "fp": 6,
+          "longHO": 8,
+          "longAchieved": false,
+          "dailyAchieved": 4
+        }
+      ],
+      "combats": [
+        {
+          "kind": "secret",
+          "winner": 0,
+          "rounds": 5,
+          "hp": [
+            8,
+            11
+          ],
+          "participants": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 0,
+          "rounds": 5,
+          "hp": [
+            6,
+            16
+          ],
+          "participants": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            10,
+            6
+          ],
+          "participants": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": null,
+          "rounds": 5,
+          "hp": [
+            10,
+            10
+          ],
+          "participants": [
+            3,
+            1
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 0,
+          "rounds": 5,
+          "hp": [
+            7,
+            8
+          ],
+          "participants": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 3,
+          "rounds": 4,
+          "hp": [
+            17,
+            0
+          ],
+          "participants": [
+            3,
+            0
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            11,
+            6
+          ],
+          "participants": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "mock",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            0,
+            6
+          ],
+          "participants": [
+            1,
+            2
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 2,
+          "rounds": 4,
+          "hp": [
+            18,
+            0
+          ],
+          "participants": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 3,
+          "rounds": 5,
+          "hp": [
+            10,
+            8
+          ],
+          "participants": [
+            3,
+            1
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 1,
+          "rounds": 5,
+          "hp": [
+            18,
+            7
+          ],
+          "participants": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            16,
+            2
+          ],
+          "participants": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            12,
+            2
+          ],
+          "participants": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 3,
+          "rounds": 5,
+          "hp": [
+            10,
+            9
+          ],
+          "participants": [
+            3,
+            1
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 3,
+          "rounds": 5,
+          "hp": [
+            15,
+            2
+          ],
+          "participants": [
+            3,
+            0
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 1,
+          "rounds": 5,
+          "hp": [
+            15,
+            8
+          ],
+          "participants": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            11,
+            7
+          ],
+          "participants": [
+            2,
+            0
+          ]
+        }
+      ],
+      "fpHistory": [
+        {
+          "day": 1,
+          "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 1,
+          "player": 2,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 1,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 2,
+          "player": 0,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 2,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 2,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 3,
+          "player": 2,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 3,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 3,
+          "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 3,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 4,
+          "player": 2,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 4,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 0,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 4,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 5,
+          "player": 2,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 5,
+          "player": 3,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 5,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 5,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 6,
+          "player": 2,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 6,
+          "player": 3,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 6,
+          "player": 0,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 6,
+          "player": 0,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 6,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 6,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 8,
+          "player": 1,
+          "delta": 2,
+          "source": "event"
+        }
+      ],
+      "growth": [
+        {
+          "day": 1,
+          "player": 3,
+          "stat": "insight",
+          "amount": 1
+        },
+        {
+          "day": 3,
+          "player": 1,
+          "stat": "attack",
+          "amount": 1
+        },
+        {
+          "day": 4,
+          "player": 3,
+          "stat": "defense",
+          "amount": 1
+        },
+        {
+          "day": 6,
+          "player": 1,
+          "stat": "attack",
+          "amount": 1
+        },
+        {
+          "day": 7,
+          "player": 2,
+          "stat": "insight",
+          "amount": 2
+        },
+        {
+          "day": 7,
+          "player": 3,
+          "stat": "defense",
+          "amount": 1
+        },
+        {
+          "day": 8,
+          "player": 3,
+          "stat": "insight",
+          "amount": 1
+        }
+      ],
+      "actions": 184
+    },
+    {
+      "seed": "moon-42",
+      "day": 8,
+      "reason": "completed",
+      "completed": true,
+      "collapse": false,
+      "graduates": [
+        3
+      ],
+      "chiefs": [
+        3
+      ],
+      "players": [
+        {
+          "name": "試験魔女",
+          "stats": {
+            "attack": 1,
+            "defense": 4,
+            "insight": 9
+          },
+          "fp": 8,
+          "longHO": 12,
+          "longAchieved": false,
+          "dailyAchieved": 0
+        },
+        {
+          "name": "リラ",
+          "stats": {
+            "attack": 4,
+            "defense": 4,
+            "insight": 10
+          },
+          "fp": 13,
+          "longHO": 6,
+          "longAchieved": false,
+          "dailyAchieved": 4
+        },
+        {
+          "name": "ネム",
+          "stats": {
+            "attack": 1,
+            "defense": 1,
+            "insight": 3
+          },
+          "fp": 9,
+          "longHO": 16,
+          "longAchieved": false,
+          "dailyAchieved": 7
+        },
+        {
+          "name": "シオン",
+          "stats": {
+            "attack": 5,
+            "defense": 7,
+            "insight": 3
+          },
+          "fp": 4,
+          "longHO": 11,
+          "longAchieved": true,
+          "dailyAchieved": 2
+        }
+      ],
+      "combats": [
+        {
+          "kind": "public",
+          "winner": 1,
+          "rounds": 5,
+          "hp": [
+            12,
+            11
+          ],
+          "participants": [
+            1,
+            2
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 3,
+          "rounds": 5,
+          "hp": [
+            12,
+            11
+          ],
+          "participants": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 3,
+          "rounds": 5,
+          "hp": [
+            14,
+            12
+          ],
+          "participants": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "mock",
+          "winner": 1,
+          "rounds": 5,
+          "hp": [
+            12,
+            10
+          ],
+          "participants": [
+            1,
+            2
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": null,
+          "rounds": 5,
+          "hp": [
+            11,
+            11
+          ],
+          "participants": [
+            2,
+            1
+          ]
+        },
+        {
+          "kind": "mock",
+          "winner": 1,
+          "rounds": 5,
+          "hp": [
+            12,
+            10
+          ],
+          "participants": [
+            1,
+            2
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            9,
+            17
+          ],
+          "participants": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 1,
+          "rounds": 5,
+          "hp": [
+            9,
+            14
+          ],
+          "participants": [
+            2,
+            1
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 1,
+          "rounds": 5,
+          "hp": [
+            1,
+            15
+          ],
+          "participants": [
+            2,
+            1
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 3,
+          "rounds": 5,
+          "hp": [
+            14,
+            0
+          ],
+          "participants": [
+            3,
+            2
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 1,
+          "rounds": 5,
+          "hp": [
+            9,
+            13
+          ],
+          "participants": [
+            2,
+            1
+          ]
+        }
+      ],
+      "fpHistory": [
+        {
+          "day": 1,
+          "player": 1,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 1,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 1,
+          "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 1,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 1,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 2,
+          "player": 3,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 2,
+          "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 2,
+          "player": 2,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 2,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 2,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 3,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 3,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 4,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 2,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 3,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 5,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 5,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 6,
+          "player": 1,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 6,
+          "player": 0,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 6,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 6,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 7,
+          "player": 1,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 7,
+          "player": 0,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 1,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 7,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 7,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 8,
+          "player": 1,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 8,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 8,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        }
+      ],
+      "growth": [
+        {
+          "day": 4,
+          "player": 1,
+          "stat": "insight",
+          "amount": 2
+        },
+        {
+          "day": 4,
+          "player": 3,
+          "stat": "defense",
+          "amount": 1
+        },
+        {
+          "day": 4,
+          "player": 0,
+          "stat": "insight",
+          "amount": 2
+        },
+        {
+          "day": 5,
+          "player": 3,
+          "stat": "defense",
+          "amount": 2
+        },
+        {
+          "day": 5,
+          "player": 0,
+          "stat": "insight",
+          "amount": 2
+        },
+        {
+          "day": 6,
+          "player": 1,
+          "stat": "insight",
+          "amount": 2
+        },
+        {
+          "day": 6,
+          "player": 3,
+          "stat": "attack",
+          "amount": 1
+        },
+        {
+          "day": 6,
+          "player": 0,
+          "stat": "defense",
+          "amount": 2
+        },
+        {
+          "day": 8,
+          "player": 0,
+          "stat": "insight",
+          "amount": 2
+        }
+      ],
+      "actions": 99
+    },
+    {
+      "seed": "lab-77",
+      "day": 8,
+      "reason": "completed",
+      "completed": true,
+      "collapse": false,
+      "graduates": [
+        2,
+        3
+      ],
+      "chiefs": [
+        2
+      ],
+      "players": [
+        {
+          "name": "試験魔女",
+          "stats": {
+            "attack": 7,
+            "defense": 2,
+            "insight": 3
+          },
+          "fp": 11,
+          "longHO": 12,
+          "longAchieved": false,
+          "dailyAchieved": 3
+        },
+        {
+          "name": "リラ",
+          "stats": {
+            "attack": 2,
+            "defense": 4,
+            "insight": 3
+          },
+          "fp": 9,
+          "longHO": 9,
+          "longAchieved": false,
+          "dailyAchieved": 4
+        },
+        {
+          "name": "ネム",
+          "stats": {
+            "attack": 9,
+            "defense": 2,
+            "insight": 5
+          },
+          "fp": 11,
+          "longHO": 17,
+          "longAchieved": true,
+          "dailyAchieved": 5
+        },
+        {
+          "name": "シオン",
+          "stats": {
+            "attack": 7,
+            "defense": 4,
+            "insight": 4
+          },
+          "fp": 6,
+          "longHO": 21,
+          "longAchieved": true,
+          "dailyAchieved": 5
+        }
+      ],
+      "combats": [
+        {
+          "kind": "mock",
+          "winner": 1,
+          "rounds": 5,
+          "hp": [
+            10,
+            0
+          ],
+          "participants": [
+            1,
+            2
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            5,
+            1
+          ],
+          "participants": [
+            2,
+            1
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            8,
+            6
+          ],
+          "participants": [
+            2,
+            1
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 3,
+          "rounds": 5,
+          "hp": [
+            9,
+            5
+          ],
+          "participants": [
+            3,
+            0
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            8,
+            5
+          ],
+          "participants": [
+            2,
+            1
+          ]
+        },
+        {
+          "kind": "public",
+          "winner": 3,
+          "rounds": 5,
+          "hp": [
+            11,
+            14
+          ],
+          "participants": [
+            1,
+            3
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            12,
+            0
+          ],
+          "participants": [
+            2,
+            1
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            15,
+            3
+          ],
+          "participants": [
+            2,
+            1
+          ]
+        }
+      ],
+      "fpHistory": [
+        {
+          "day": 1,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 1,
+          "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 1,
+          "player": 2,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 1,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 2,
+          "player": 2,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 2,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 2,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 2,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 3,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 3,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 3,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 4,
+          "player": 2,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 4,
+          "player": 0,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 1,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 2,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 0,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 4,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 4,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 5,
+          "player": 3,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 5,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 5,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 5,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 6,
+          "player": 0,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 0,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 7,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 7,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 7,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 8,
+          "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 8,
+          "player": 2,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 8,
+          "player": 0,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 8,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        }
+      ],
+      "growth": [
+        {
+          "day": 1,
+          "player": 1,
+          "stat": "attack",
+          "amount": 1
+        },
+        {
+          "day": 3,
+          "player": 2,
+          "stat": "attack",
+          "amount": 2
+        },
+        {
+          "day": 3,
+          "player": 3,
+          "stat": "defense",
+          "amount": 2
+        },
+        {
+          "day": 4,
+          "player": 0,
+          "stat": "attack",
+          "amount": 1
+        },
+        {
+          "day": 5,
+          "player": 0,
+          "stat": "attack",
+          "amount": 2
+        },
+        {
+          "day": 5,
+          "player": 0,
+          "stat": "attack",
+          "amount": 2
+        },
+        {
+          "day": 6,
+          "player": 1,
+          "stat": "defense",
+          "amount": 1
+        },
+        {
+          "day": 6,
+          "player": 2,
+          "stat": "attack",
+          "amount": 2
+        },
+        {
+          "day": 6,
+          "player": 3,
+          "stat": "attack",
+          "amount": 2
+        },
+        {
+          "day": 6,
+          "player": 0,
+          "stat": "attack",
+          "amount": 2
+        },
+        {
+          "day": 7,
+          "player": 0,
+          "stat": "attack",
+          "amount": 2
+        },
+        {
+          "day": 8,
+          "player": 0,
+          "stat": "attack",
+          "amount": 2
+        }
+      ],
+      "actions": 113
+    }
+  ]
+}
