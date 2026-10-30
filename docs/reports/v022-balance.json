@@ -1,0 +1,161 @@
+{
+  "rulesVersion": "browser-0.2.2+decisions-5",
+  "draws": 60000,
+  "distributions": [
+    {
+      "kind": "obsidian",
+      "count": 9977,
+      "rate": 0.16628333333333334,
+      "relativeDeviation": -0.0023
+    },
+    {
+      "kind": "crystal",
+      "count": 9953,
+      "rate": 0.16588333333333333,
+      "relativeDeviation": -0.0047
+    },
+    {
+      "kind": "herb",
+      "count": 10184,
+      "rate": 0.16973333333333335,
+      "relativeDeviation": 0.0184
+    },
+    {
+      "kind": "sand",
+      "count": 9933,
+      "rate": 0.16555,
+      "relativeDeviation": -0.0067
+    },
+    {
+      "kind": "water",
+      "count": 9929,
+      "rate": 0.16548333333333334,
+      "relativeDeviation": -0.0071
+    },
+    {
+      "kind": "dew",
+      "count": 10024,
+      "rate": 0.16706666666666667,
+      "relativeDeviation": 0.0024
+    }
+  ],
+  "materialUses": [
+    {
+      "kind": "obsidian",
+      "research": [
+        "attack"
+      ],
+      "recipes": [
+        "study",
+        "wisdom",
+        "strike",
+        "talent"
+      ]
+    },
+    {
+      "kind": "crystal",
+      "research": [
+        "attack"
+      ],
+      "recipes": [
+        "vigor",
+        "harvest",
+        "wisdom",
+        "aegis",
+        "strike",
+        "iron",
+        "talent"
+      ]
+    },
+    {
+      "kind": "herb",
+      "research": [
+        "defense"
+      ],
+      "recipes": [
+        "watch",
+        "purify",
+        "aegis",
+        "iron",
+        "talent"
+      ]
+    },
+    {
+      "kind": "sand",
+      "research": [
+        "defense"
+      ],
+      "recipes": [
+        "sight",
+        "harvest",
+        "omniscience",
+        "focus",
+        "talent"
+      ]
+    },
+    {
+      "kind": "water",
+      "research": [
+        "insight"
+      ],
+      "recipes": [
+        "cleanse",
+        "purify",
+        "omniscience",
+        "focus",
+        "talent"
+      ]
+    },
+    {
+      "kind": "dew",
+      "research": [
+        "insight"
+      ],
+      "recipes": []
+    }
+  ],
+  "duels": [
+    {
+      "scenario": "同等能力AI同士",
+      "attempts": 100,
+      "wins": 43,
+      "losses": 43,
+      "draws": 14,
+      "challengerFPPerAP": 0.43,
+      "defenderFP": 43
+    },
+    {
+      "scenario": "育成済み対未育成AI",
+      "attempts": 100,
+      "wins": 0,
+      "losses": 0,
+      "draws": 100,
+      "challengerFPPerAP": 0,
+      "defenderFP": 0
+    },
+    {
+      "scenario": "攻撃特化対未育成AI",
+      "attempts": 100,
+      "wins": 0,
+      "losses": 0,
+      "draws": 100,
+      "challengerFPPerAP": 0,
+      "defenderFP": 0
+    },
+    {
+      "scenario": "同じ弱い相手へ2巡連続挑戦",
+      "attempts": 200,
+      "wins": 0,
+      "losses": 0,
+      "draws": 200,
+      "challengerFPPerAP": 0,
+      "defenderFP": 0
+    }
+  ],
+  "notes": [
+    "採集と同一のpick(s, MATERIALS)を使用。出現率は変更しない。",
+    "公開能力だけのchooseStance、薬・固有魔法なし、各戦闘HP20へリセット。勝敗のみ測定し、日次HO等の追加FPは含まない。",
+    "AIは従来どおり挑戦を受け、降参しない。挑戦先の最適化・学習は行わない。",
+    "勝者1FP/挑戦1APが上限だが、0APの被挑戦者にも勝者1FP。イベントは成功貢献で0AP納品から1〜2FP、研究は直接FPなしで成長・HOへ寄与。"
+  ]
+}

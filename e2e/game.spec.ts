@@ -1,3 +1,4 @@
+import { selectItems } from "./helpers";
 import { test, expect } from "@playwright/test";
 import { simulationAction } from "../src/domain/simulation";
 import { LABELS, STATS } from "../src/domain/config";
@@ -66,9 +67,11 @@ test("画面の操作だけで8日間を完走", async ({ page }) => {
           .click();
         await page.getByRole("button", { name: /手を確定/ }).click();
         break;
+      case "eventAck":
+      case "publicOutcomeAck":
       case "combatAck":
         await page
-          .getByRole("dialog", { name: "秘匿決闘の結果" })
+          .getByRole("dialog")
           .getByRole("button", { name: "OK", exact: true })
           .click();
         break;
@@ -85,11 +88,7 @@ test("画面の操作だけで8日間を完走", async ({ page }) => {
         break;
       case "reserve":
         await page.getByRole("button", { name: "納品", exact: true }).click();
-        for (const id of a.items)
-          await page
-            .locator(".item-picker button")
-            .filter({ hasText: new RegExp(`#${id}$`) })
-            .click();
+        await selectItems(page, s, a.items);
         for (const k of STATS)
           if (a.stats[k])
             await page

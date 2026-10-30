@@ -1,3 +1,4 @@
+import { selectItems } from "./helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { createGame, currentPlayer, dispatch } from "../src/domain/reducer";
 import { simulationAction } from "../src/domain/simulation";
@@ -24,7 +25,7 @@ async function load(page: Page, s: GameState) {
 }
 function findResults() {
   const found: Record<string, GameState> = {};
-  for (const seed of ["moon-42", "result-0"]) {
+  for (const seed of ["witches-2026", "result-20", "result-21"]) {
     let s = createGame({ ...setup, seed });
     for (let n = 0; s.phase !== "ended" && n < 500; n++) {
       const c = s.combat;
@@ -157,13 +158,17 @@ test("納品UIは第1巡の合算上限と取消回復を表示し、2個予約�
   await expect(panel.locator(".reservation-limit")).toContainText(
     "第1巡：1人1個",
   );
-  const picker = panel.locator(".item-picker button");
-  await picker.nth(0).click();
-  await picker.nth(1).click();
+  const picker = panel.locator(".grouped-items input");
+  await selectItems(
+    panel,
+    s,
+    s.players[0].inventory.slice(0, 2).map((i) => i.id),
+  );
   await expect(
     panel.getByRole("button", { name: "仮納品する", exact: true }),
   ).toBeDisabled();
-  await picker.nth(1).click();
+  for (const input of await picker.all()) await input.fill("0");
+  await selectItems(panel, s, [s.players[0].inventory[0].id]);
   await panel.getByRole("button", { name: "仮納品する", exact: true }).click();
   await expect(panel.locator(".reservation-limit")).toContainText(
     "予約済み1、残り0",
@@ -174,7 +179,7 @@ test("納品UIは第1巡の合算上限と取消回復を表示し、2個予約�
   await expect(panel.locator(".reservation-limit")).toContainText(
     "予約済み0、残り1",
   );
-  await picker.nth(0).click();
+  await selectItems(panel, s, [s.players[0].inventory[0].id]);
   await panel.getByRole("button", { name: "仮納品する", exact: true }).click();
   expect((await state(page)).players[0].ap).toBe(2);
   s = await state(page);

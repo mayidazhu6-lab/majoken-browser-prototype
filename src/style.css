@@ -1141,3 +1141,30 @@ footer > span:first-child {
   margin-top: 12px;
   border-top: 1px solid #514459;
 }
+
+/* Forced actions remain separate and wrap on narrow screens. */
+.forced-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+.forced-panel h2,
+.forced-panel p {
+  flex-basis: 100%;
+}
+.forced-panel select {
+  flex: 1 1 140px;
+  min-width: 0;
+  max-width: 100%;
+}
+.forced-panel button {
+  flex: 1 1 180px;
+  white-space: normal;
+}
+.operation-reason {
+  color: var(--muted, #bdb5cc);
+  padding: 0.65rem;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+}

@@ -158,7 +158,7 @@ function publicAction(s: GameState, p: Player, cost = 1) {
     "公開行動フェーズではありません",
   );
   assert(
-    s.publicTurn.round <= 3 && s.publicTurn.order[s.publicTurn.index] === p.id,
+    s.publicTurn.round <= 2 && s.publicTurn.order[s.publicTurn.index] === p.id,
     "自分の手番ではありません",
   );
   assert(!s.trades.length, "取引への返答を完了してください");
@@ -386,11 +386,17 @@ function finishCombat(s: GameState) {
     }
   }
   if (
-    c.kind === "secret" &&
-    c.participants.some((id) => !s.players[id].ai) &&
+    (c.kind === "public" ||
+      (c.kind === "secret" &&
+        c.participants.some((id) => !s.players[id].ai))) &&
     !c.resultAcknowledged
   )
     return;
+  if (c.kind === "public") {
+    s.phase = c.returnPhase;
+    s.combat = undefined;
+    return;
+  }
   if (c.winner === null) {
     s.combat = undefined;
     return;
@@ -400,12 +406,10 @@ function finishCombat(s: GameState) {
     applyReward(
       s,
       w,
-      c.kind === "public"
-        ? "item"
-        : (s.day < 8 && [10].includes(w.longGoal.id)) ||
-            (s.day < 8 && w.dailyGoal.id === 22)
-          ? "command"
-          : "item",
+      (s.day < 8 && [10].includes(w.longGoal.id)) ||
+        (s.day < 8 && w.dailyGoal.id === 22)
+        ? "command"
+        : "item",
     );
   else s.phase = "rewards";
 }
@@ -425,29 +429,8 @@ function applyReward(
     "報酬選択できません",
   );
   const loser = s.players[c.participants.find((id) => id !== w.id)!];
-  if (c.kind === "public") {
-    const opts = STATS.filter(
-      (k) =>
-        loser.stats[k] -
-          s.event.reservations
-            .filter((r) => r.player === loser.id)
-            .reduce((n, r) => n + (r.stats[k] ?? 0), 0) >
-        1,
-    );
-    const selected = stat ?? opts[0];
-    if (selected) {
-      assert(opts.includes(selected), "移転できない能力です");
-      const beforeValue = w.stats[selected];
-      loser.stats[selected]--;
-      w.stats[selected]++;
-      log(s, "statTransfer", `${LABELS[selected]}を1移転`, {
-        actor: w.id,
-        target: loser.id,
-        kind: selected,
-      });
-      levelNotice(s, w, selected, beforeValue);
-    }
-  } else if (kind === "command") {
+  assert(c.kind === "secret", "公開決闘に能力・アイテム報酬はありません");
+  if (kind === "command") {
     assert(s.day < 8, "8日目は命令不可");
     loser.commands.push({ from: w.id });
     log(s, "command", "翌日の1AP命令を確定", {
@@ -495,6 +478,7 @@ function combatRound(
     c.previous[other],
     [c.hp[other], c.hp[side]],
     c.brought[other].map((i) => i.kind),
+    CONFIG.maxRounds - c.rounds.length,
   );
   const choices: [typeof a.stance, typeof a.stance] =
     side === 0 ? [a.stance, choice] : [choice, a.stance];
@@ -516,6 +500,7 @@ function autoCombats(s: GameState) {
     const c = s.combat;
     if (c.done) {
       finishCombat(s);
+      if (s.combat?.done) return;
       continue;
     }
     if (!c.rounds.length)
@@ -533,6 +518,7 @@ function autoCombats(s: GameState) {
         c.previous[i],
         [c.hp[i], c.hp[1 - i]],
         c.brought[i].map((item) => item.kind),
+        CONFIG.maxRounds - c.rounds.length,
       ),
     ) as ["attack" | "defend" | "charge", "attack" | "defend" | "charge"];
     resolveRound(s, choices, [
@@ -593,7 +579,6 @@ function nightChoice(s: GameState, p: Player, n: Night) {
       n.target !== undefined && s.players[n.target] && n.target !== p.id,
       "対象を選択してください",
     );
-  if (n.kind === "raid") assert(p.lastRaid !== s.day - 1, "襲撃は連夜不可");
   if (n.kind === "brew") {
     const plan = n.recipes ?? (n.recipe ? [n.recipe] : []);
     assert(plan.length > 0, "作成予定の薬を追加してください");
@@ -779,24 +764,17 @@ function end(s: GameState, reason: "completed" | "collapse") {
     reason === "completed"
       ? s.players.filter((p) => p.longGoal.achieved).map((p) => p.id)
       : [];
-  const max = Math.max(
-    -1,
-    ...graduates.map(
-      (id) => s.players[id].dailyHistory.filter((h) => h.achieved).length,
-    ),
-  );
-  const contenders = graduates.filter(
-    (id) => s.players[id].dailyHistory.filter((h) => h.achieved).length === max,
-  );
-  const topFP = Math.max(-1, ...contenders.map((id) => s.players[id].fp));
-  const chiefs = contenders.filter((id) => s.players[id].fp === topFP);
+  const topFP = Math.max(-Infinity, ...graduates.map((id) => s.players[id].fp));
+  const chiefs = graduates.filter((id) => s.players[id].fp === topFP);
   s.result = {
     reason,
     graduates,
     chiefs,
     ranking: s.players.map((p) => ({
       player: p.id,
-      rank: 1 + s.players.filter((q) => q.fp > p.fp).length,
+      rank: graduates.includes(p.id)
+        ? 1 + graduates.filter((id) => s.players[id].fp > p.fp).length
+        : null,
       fp: p.fp,
       daily: p.dailyHistory.filter((h) => h.achieved).length,
       graduated: graduates.includes(p.id),
@@ -885,7 +863,7 @@ function advance(s: GameState) {
     case "public":
       assert(
         s.publicTurn.round === 4 && !s.trades.length,
-        "全員の手番・最終納品確認を完了してください",
+        "全員の公開2巡を完了してください",
       );
       cancelTrades(s);
       resolveEvent(s);
@@ -1018,11 +996,7 @@ function enterNight(s: GameState) {
       ),
     ] as Night["kind"][];
     const candidates = kinds
-      .filter(
-        (kind) =>
-          (kind !== "raid" || p.lastRaid !== s.day - 1) &&
-          (kind !== "brew" || r),
-      )
+      .filter((kind) => kind !== "brew" || r)
       .map((kind) => ({
         action: {
           type: "night",
@@ -1069,6 +1043,27 @@ function enterNight(s: GameState) {
   }
 }
 function apply(s: GameState, a: Action) {
+  if (s.event.resolved && !s.event.acknowledged && a.type !== "eventAck")
+    throw Error("共通イベントの結果を確認してください");
+  if (s.publicOutcome && a.type !== "publicOutcomeAck")
+    throw Error("降参の結果を確認してください");
+  if (a.type === "eventAck") {
+    assert(
+      a.player === 0 && s.event.resolved && !s.event.acknowledged,
+      "イベント結果の確認待ちではありません",
+    );
+    s.event.acknowledged = true;
+    log(s, "eventAck", "共通イベントの結果を確認", { actor: a.player });
+    return;
+  }
+  if (a.type === "publicOutcomeAck") {
+    assert(
+      a.player === 0 && s.publicOutcome,
+      "降参結果の確認待ちではありません",
+    );
+    s.publicOutcome = undefined;
+    return;
+  }
   if (a.type === "advance") {
     advance(s);
     return;
@@ -1162,7 +1157,7 @@ function apply(s: GameState, a: Action) {
     }
     case "trade": {
       publicAction(s, p, 0);
-      assert(s.publicTurn.round <= 2, "最終納品確認では取引申請できません");
+      assert(s.publicTurn.round <= 2, "公開2巡の終了後は取引申請できません");
       const key = `${s.publicTurn.round}:${p.id}:${a.target}`;
       assert(
         (s.publicTurn.tradeAttempts[key] ?? 0) < 2,
@@ -1242,18 +1237,15 @@ function apply(s: GameState, a: Action) {
       break;
     }
     case "duel":
-      publicAction(s, p, a.mock ? 0 : 2);
-      assert(
-        a.mock ? s.publicTurn.round <= 2 : s.publicTurn.round === 1,
-        "決闘は通常行動の巡目で実行してください",
-      );
+      publicAction(s, p, a.mock ? 0 : 1);
+      assert(s.publicTurn.round <= 2, "決闘は通常行動の巡目で実行してください");
       assert(a.target !== p.id && s.players[a.target], "対戦対象が不正");
       if (a.mock)
         assert(
           EVENTS[s.event.id - 1].mock && !s.event.mock.length,
           "模擬戦は対象イベント1回のみ",
         );
-      else ap(s, p, 2);
+      else ap(s, p, 1);
       cancelTrades(s);
       if (!s.players[a.target].ai) {
         s.challenge = { from: p.id, to: a.target, mock: !!a.mock };
@@ -1282,6 +1274,11 @@ function apply(s: GameState, a: Action) {
         );
         transfer(s, p, s.players[ch.from], ids, "surrender");
         s.challenge = undefined;
+        s.publicOutcome = {
+          from: ch.from,
+          to: ch.to,
+          items: items.map((i) => i!.kind),
+        };
         log(s, "surrender", "降参品を渡して挑戦を終了", {
           actor: p.id,
           target: ch.from,
@@ -1300,8 +1297,8 @@ function apply(s: GameState, a: Action) {
       const c = s.combat;
       assert(
         c?.done &&
-          c.kind === "secret" &&
-          c.participants.includes(p.id) &&
+          (c.kind === "public" ||
+            (c.kind === "secret" && c.participants.includes(p.id))) &&
           !p.ai &&
           !c.resultAcknowledged,
         "結果確認できません",
@@ -1309,9 +1306,9 @@ function apply(s: GameState, a: Action) {
       c.resultAcknowledged = true;
       const history = s.combatHistory.find((h) => h.id === c.id);
       if (history) history.resultAcknowledged = true;
-      log(s, "combatAck", "秘匿決闘の結果を確認", {
+      log(s, "combatAck", "決闘の結果を確認", {
         actor: p.id,
-        audience: [...c.participants],
+        audience: c.kind === "public" ? "public" : [...c.participants],
         data: { combat: c.id },
       });
       finishCombat(s);
@@ -1429,20 +1426,20 @@ function autoReserve(s: GameState, p: Player) {
     reserve(s, p, ids, stats);
 }
 export function currentPlayer(s: GameState) {
-  return s.publicTurn.round <= 3
+  return s.publicTurn.round <= 2
     ? s.publicTurn.order[s.publicTurn.index]
     : undefined;
 }
 function endTurn(s: GameState, p: Player) {
   publicAction(s, p, 0);
   assert(
-    s.publicTurn.round === 3 || s.publicTurn.acted || !p.commands.length,
+    s.publicTurn.acted || !p.commands.length,
     "先に命令のAPを実行してください",
   );
   log(
     s,
     "turnEnd",
-    `${p.name}：${s.publicTurn.round === 3 ? "最終納品確認" : `${s.publicTurn.round}巡目・${s.publicTurn.acted ? "手番終了" : p.ap === 0 ? "通常行動スキップ（APなし）" : "パス"}`}`,
+    `${p.name}：${s.publicTurn.round}巡目・${s.publicTurn.acted ? "手番終了" : p.ap === 0 ? "通常行動スキップ（APなし）" : "パス"}`,
     { actor: p.id, data: { round: s.publicTurn.round, remainingAP: p.ap } },
   );
   const t = s.publicTurn;
@@ -1450,6 +1447,7 @@ function endTurn(s: GameState, p: Player) {
   if (t.index === 4) {
     t.index = 0;
     t.round++;
+    if (t.round === 3) t.round = 4;
   }
   t.acted = false;
   t.aiTradeAttempted = false;
@@ -1463,11 +1461,15 @@ function runPublicAI(s: GameState) {
       s.combat ||
       s.challenge ||
       s.trades.length ||
+      s.publicOutcome ||
       s.players.some((p) => p.pendingRecipe)
     )
       return;
     const id = currentPlayer(s);
-    if (id === undefined) return;
+    if (id === undefined) {
+      if (!s.event.resolved) advance(s);
+      return;
+    }
     const p = s.players[id],
       t = s.publicTurn;
     if (t.round <= 2 && p.ap === 0 && !t.acted) {
@@ -1476,10 +1478,6 @@ function runPublicAI(s: GameState) {
     }
     if (!p.ai) return;
     autoReserve(s, p);
-    if (t.round === 3) {
-      endTurn(s, p);
-      continue;
-    }
     if (t.acted) {
       endTurn(s, p);
       continue;
@@ -1553,8 +1551,8 @@ function runPublicAI(s: GameState) {
       });
     if (
       duelGoal &&
-      t.round === 1 &&
-      p.ap === 2 &&
+      t.round <= 2 &&
+      p.ap >= 1 &&
       s.failed < 2 &&
       !e.actions &&
       !e.potions

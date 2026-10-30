@@ -111,19 +111,19 @@ describe("Phase 3 新戦闘", () => {
       resolveRound(s, ["attack", "defend"], [item.id, undefined]),
     ).toThrow();
   });
-  it("A09 連夜襲撃禁止・警戒・呪詛Lv・偵察FP下限", () => {
+  it("A09 連夜襲撃許可・警戒・呪詛Lv・偵察FP下限", () => {
     let s = game();
     s.phase = "night";
     s.players.forEach((p) => (p.night = { kind: "guard" }));
     s.players[0].night = undefined;
     s.players[0].lastRaid = 0;
-    expect(() =>
+    expect(
       dispatch(s, {
         type: "night",
         player: 0,
         choice: { kind: "raid", target: 1 },
-      }),
-    ).toThrow("連夜");
+      }).players[0].night?.kind,
+    ).toBe("raid");
     s = dispatch(s, {
       type: "night",
       player: 0,

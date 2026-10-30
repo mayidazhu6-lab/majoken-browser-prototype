@@ -111,12 +111,15 @@ describe("v0.2.1 無防備・強化・最終ラウンド", () => {
     );
     expect(next.damage).toEqual([0, 0]);
   });
-  it("5R目のためるは持越し0で終了、連続ためる不可・最大5Rを維持", () => {
+  it("5R目のためるは拒否し攻撃・防御のみで終了、連続ためる不可・最大5Rを維持", () => {
     const s = game();
     startCombat(s, 0, 1, "public");
     for (let n = 0; n < 4; n++)
       resolveRound(s, ["defend", "defend"], [undefined, undefined]);
-    resolveRound(s, ["charge", "defend"], [undefined, undefined]);
+    expect(() =>
+      resolveRound(s, ["charge", "defend"], [undefined, undefined]),
+    ).toThrow("最終ラウンド");
+    resolveRound(s, ["defend", "defend"], [undefined, undefined]);
     expect(s.combat!.done).toBe(true);
     expect(s.combat!.rounds).toHaveLength(5);
     expect(s.combat!.charge).toEqual([0, 0]);
@@ -265,7 +268,7 @@ describe("v0.2.1 秘匿決闘の結果確認", () => {
     expect(simulationAction(s).type).toBe("round");
     s.combat!.done = true;
     s.combat!.winner = 0;
-    expect(simulationAction(s).type).toBe("reward");
+    expect(simulationAction(s).type).toBe("combatAck");
     s.combat!.kind = "secret";
     expect(simulationAction(s).type).toBe("combatAck");
   });
@@ -303,8 +306,8 @@ describe("v0.2.1 能力Lvと通知", () => {
   it.each([5, 8])("%iから1成長したら一度だけLv上昇を記録", (before) => {
     let s = game(3);
     s.players[0].stats.insight = before;
-    addItem(s, s.players[0], "obsidian");
-    addItem(s, s.players[0], "herb");
+    addItem(s, s.players[0], "water");
+    addItem(s, s.players[0], "dew");
     s = dispatch(s, { type: "research", player: 0, stat: "insight" });
     const notices = s.logs.filter((l) => l.type === "levelUp" && l.actor === 0);
     expect(notices).toHaveLength(1);

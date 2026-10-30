@@ -7,16 +7,8 @@ describe("Phase 4/5 全ゲーム試遊", () => {
     it(`A01/A10/A11 seed=${seed} 停止せず終了し操作再現`, () => {
       const s = simulate(seed);
       expect(s.phase).toBe("ended");
-      expect(s.day).toBe(seed === "witches-2026" ? 6 : 8);
-      expect(s.result?.reason).toBe(
-        seed === "witches-2026" ? "collapse" : "completed",
-      );
-      if (seed === "witches-2026") {
-        expect(s.failed).toBe(3);
-        expect(
-          s.players.every((p) => !p.dailyHistory.some((h) => h.day === s.day)),
-        ).toBe(true);
-      }
+      expect(s.day).toBe(8);
+      expect(s.result?.reason).toBe("completed");
       assertInvariants(s);
       expect(s.combatHistory.every((c) => c.done && c.rounds.length <= 5)).toBe(
         true,

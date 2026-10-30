@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createGame, dispatch, aiView } from "../src/domain/reducer";
 import { MATERIALS, STATS } from "../src/domain/config";
 import { addItem, RECIPES } from "../src/domain/items";
+import { simulationAction } from "../src/domain/simulation";
 import { fp } from "../src/domain/core";
 import {
   DAILY_GOALS,
@@ -51,13 +52,8 @@ describe("Phase 2 主要行動", () => {
     expect(s.players[0].stats.attack).toBe(5);
     expect(s.players[0].curse).toBe(0);
     s = dispatch(s, { type: "endTurn", player: 0 });
-    for (const t of [...s.trades])
-      s = dispatch(s, {
-        type: "tradeReply",
-        player: 0,
-        id: t.id,
-        accept: false,
-      });
+    for (let n = 0; (s.combat || s.challenge || s.trades.length) && n < 50; n++)
+      s = dispatch(s, simulationAction(s));
     s = dispatch(s, { type: "research", player: 0, stat: "attack" });
     expect(s.players[0].stats.attack).toBe(8);
     expect(() => dispatch(s, { type: "gather", player: 0 })).toThrow();
@@ -262,7 +258,7 @@ describe("Phase 4 イベント・HO・AI・勝敗", () => {
       ),
     ).toBe(true);
   });
-  it("FPだけでは卒業なし、同率首席とFP順位は別", () => {
+  it("FPだけでは卒業なし、未卒業者に順位なし", () => {
     let s = game();
     s.day = 8;
     s.phase = "ho";
@@ -274,7 +270,7 @@ describe("Phase 4 イベント・HO・AI・勝敗", () => {
     s = dispatch(s, { type: "advance" });
     expect(s.result?.graduates).toEqual([]);
     expect(s.result?.chiefs).toEqual([]);
-    expect(s.result?.ranking[0].rank).toBe(1);
+    expect(s.result?.ranking[0].rank).toBeNull();
   });
 });
 

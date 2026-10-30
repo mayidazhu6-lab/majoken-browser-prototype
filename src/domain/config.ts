@@ -1,6 +1,6 @@
 import type { Magic, Stat } from "./types";
 export const CONFIG = {
-  rulesVersion: "browser-0.2.1+decisions-4",
+  rulesVersion: "browser-0.2.2+decisions-5",
   days: 8,
   ap: 2,
   collapse: 3,
@@ -85,8 +85,8 @@ export const MAGICS: Record<
 };
 export const RESEARCH: Record<Stat, string[]> = {
   attack: ["obsidian", "crystal"],
-  defense: ["herb", "crystal"],
-  insight: ["obsidian", "herb"],
+  defense: ["herb", "sand"],
+  insight: ["water", "dew"],
 };
 export function level(value: number) {
   return value >= CONFIG.level3 ? 3 : value >= CONFIG.level2 ? 2 : 1;

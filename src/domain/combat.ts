@@ -12,6 +12,13 @@ export function automaticLoadout(p: Player) {
     .slice(0, level(p.stats.insight))
     .map((i) => i.id);
 }
+export function legalStances(c: Combat, side: number): Stance[] {
+  return STANCES.filter(
+    (v) =>
+      v !== "charge" ||
+      (c.previous[side] !== "charge" && c.rounds.length < CONFIG.maxRounds - 1),
+  );
+}
 export function startCombat(
   s: GameState,
   a: number,
@@ -125,12 +132,9 @@ export function resolveRound(
     { attack: number; defense: number; charge: number },
     { attack: number; defense: number; charge: number },
   ];
+  if ([0, 1].some((i) => !legalStances(c, i).includes(choices[i])))
+    throw Error("連続ためる・最終ラウンドのためるは不可");
   for (const i of [0, 1]) {
-    if (
-      !STANCES.includes(choices[i]) ||
-      (choices[i] === "charge" && c.previous[i] === "charge")
-    )
-      throw Error("連続ためるは不可");
     const id = potionIds[i];
     if (id !== undefined) {
       const item = c.brought[i].find((v) => v.id === id);
@@ -149,7 +153,7 @@ export function resolveRound(
   if (c.illusionRound === c.rounds.length)
     choices[1] = pick(
       s,
-      STANCES.filter((v) => v !== choices[1]),
+      legalStances(c, 1).filter((v) => v !== choices[1]),
       "幻惑による変更",
     );
   const rolls: [number, number] = [
@@ -182,7 +186,7 @@ export function resolveRound(
     Math.max(0, c.hp[1] - r.damage[1]),
   ];
   c.charge = r.charge;
-  c.previous = original;
+  c.previous = [...choices];
   c.rounds.push({
     insight: [ps[0].stats.insight, ps[1].stats.insight],
     nextCharge: [...r.charge],
@@ -243,11 +247,13 @@ export function chooseStance(
   previous: Stance | null,
   hp: [number, number],
   potions: string[] = [],
+  remainingRounds = CONFIG.maxRounds as number,
 ): Stance {
   let best: Stance = "defend",
     bestValue = -Infinity;
   for (const a of ["defend", "attack", "charge"] as Stance[]) {
-    if (a === "charge" && previous === "charge") continue;
+    if (a === "charge" && (previous === "charge" || remainingRounds <= 1))
+      continue;
     let score = 0;
     const buff = { attack: 0, defense: 0, charge: 0 };
     const effect =

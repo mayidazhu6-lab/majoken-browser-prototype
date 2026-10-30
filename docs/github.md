@@ -1,6 +1,10 @@
 # GitHub接続・Pages公開準備
 
-## v0.2.1作業（2026-10-30）
+## v0.2.2作業（2026-10-30）
+
+PR #1はopen/draft、head feat/browser-v0.2、base main、未マージを確認。同じブランチへv0.2.2を追加する。[原因・変更・懸念](v0.2.2.md)、[検証報告](test-report.md)。mainへのマージ・Pages公開は行わない。
+
+## v0.2.1作業（履歴・2026-10-30）
 
 対象8cea351の再レビュー4件の修正は [review-v0.2.1.md](review-v0.2.1.md)。同じブランチ・PR #1へ追加し、mainはマージしない。
 

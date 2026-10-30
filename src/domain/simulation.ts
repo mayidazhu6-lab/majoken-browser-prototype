@@ -10,11 +10,15 @@ import { canRecipe, materialIds, RECIPES } from "./items";
 import { RESEARCH, STATS } from "./config";
 export function simulationAction(s: GameState): Action {
   const p = s.players[0];
+  if (s.event.resolved && !s.event.acknowledged)
+    return { type: "eventAck", player: 0 };
+  if (s.publicOutcome) return { type: "publicOutcomeAck", player: 0 };
   if (s.challenge) return { type: "challengeReply", player: 0, fight: true };
   if (s.combat) {
     const c = s.combat;
     if (c.done)
-      return c.kind === "secret" && !c.resultAcknowledged
+      return (c.kind === "public" || c.kind === "secret") &&
+        !c.resultAcknowledged
         ? { type: "combatAck", player: 0 }
         : { type: "reward", player: 0, kind: "item" };
     const side = c.participants.indexOf(0);
@@ -22,7 +26,7 @@ export function simulationAction(s: GameState): Action {
       type: "round",
       player: 0,
       stance:
-        c.previous[side] === "charge"
+        c.previous[side] === "charge" || c.rounds.length === 4
           ? "attack"
           : c.rounds.length % 3 === 0
             ? "charge"

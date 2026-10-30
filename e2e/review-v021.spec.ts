@@ -49,6 +49,8 @@ function potionFixture() {
           c.charge[1 - side],
           c.previous[side],
           [c.hp[side], c.hp[1 - side]],
+          [],
+          5 - c.rounds.length,
         ),
       };
     }
@@ -88,7 +90,7 @@ function potionFixture() {
         s.publicTurn.round < 3 && !s.publicTurn.acted && p.ap > 0
           ? p.commands.length
             ? { type: "forced", player: 0, kind: "gather" }
-            : p.stats.insight < 9 && materialIds(p, ["obsidian", "herb"])
+            : p.stats.insight < 9 && materialIds(p, ["water", "dew"])
               ? { type: "research", player: 0, stat: "insight" }
               : { type: "gather", player: 0 }
           : { type: "endTurn", player: 0 };
@@ -136,7 +138,7 @@ test("Lv3未満のAIへ戦闘薬を譲渡しても不正持込せず、人間と
 test("攻撃vsためるのUI被ダメージは左右とも攻撃判定値−3・最低1", async ({
   page,
 }) => {
-  let s = createGame(setup);
+  let s = createGame({ ...setup, seed: "witches-2026" });
   const seen = new Set<number>();
   await page.goto("/");
   for (let n = 0; s.phase !== "ended" && n < 500 && seen.size < 2; n++) {
@@ -171,7 +173,7 @@ test("攻撃vsためるのUI被ダメージは左右とも攻撃判定値−3・
 test("研究所崩壊で最終判定されなかった日次HOは判定なし・報酬なしと表示", async ({
   page,
 }) => {
-  let s = createGame({ ...setup, seed: "collapse-ui-6" }),
+  let s = createGame({ ...setup, seed: "collapse-ui-298" }),
     before = s;
   for (let n = 0; s.phase !== "ended" && n < 500; n++) {
     before = s;
@@ -187,10 +189,8 @@ test("研究所崩壊で最終判定されなかった日次HOは判定なし・
       !p.pendingRecipe
     )
       a =
-        s.publicTurn.round < 3 && !s.publicTurn.acted && p.ap > 0
-          ? p.commands.length
-            ? { type: "forced", player: 0, kind: "gather" }
-            : { type: "gather", player: 0 }
+        p.commands.length && !s.publicTurn.acted
+          ? { type: "forced", player: 0, kind: "gather" }
           : { type: "endTurn", player: 0 };
     if (s.phase === "night" && !p.night)
       a = { type: "night", player: 0, choice: { kind: "rest" } };
@@ -201,8 +201,16 @@ test("研究所崩壊で最終判定されなかった日次HOは判定なし・
   await page.goto("/");
   await load(page, before);
   await expect(page.locator(".daily-ho-progress")).toContainText("達成見込み");
-  await page.locator(".progression button.primary").click();
+  await page
+    .getByRole("dialog", { name: "取引への返答が必要です" })
+    .getByRole("button", { name: "受諾", exact: true })
+    .click();
+  await page
+    .getByRole("dialog", { name: "共通イベントの結果" })
+    .getByRole("button", { name: "OK", exact: true })
+    .click();
   await expect(page.locator(".final-results")).toBeVisible();
+  await expect(page.locator(".final-results")).toContainText("卒業者なし");
   await expect(page.locator(".daily-ho-progress")).toContainText(
     "判定なし・報酬なし",
   );

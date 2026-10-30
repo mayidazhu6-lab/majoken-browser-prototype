@@ -138,13 +138,20 @@ test("夜錬金の追加・削除・素材不足拒否・複数確定・保存�
   await expect(
     page.getByRole("button", { name: "秘匿行動を確定", exact: true }),
   ).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "作成予定に追加", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("現在の所持素材で追加作成可能なレシピはありません。", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  const last = plan.at(-1)!;
+  await page.getByRole("button", { name: "削除", exact: true }).last().click();
+  await page.getByLabel("レシピ", { exact: true }).selectOption(last);
   await page
     .getByRole("button", { name: "作成予定に追加", exact: true })
     .click();
-  await expect(
-    page.getByRole("button", { name: "秘匿行動を確定", exact: true }),
-  ).toBeDisabled();
-  await page.getByRole("button", { name: "削除", exact: true }).last().click();
   await page
     .getByRole("button", { name: "秘匿行動を確定", exact: true })
     .click();
@@ -266,7 +273,7 @@ test("同日付の保存JSON読込で確定済み夜行動・対象・複数錬�
 test("秘匿決闘の当事者には内訳を表示し、第三者の戦闘・薬・HO・取引ログを表示しない", async ({
   page,
 }) => {
-  const s = simulate("moon-42");
+  const s = simulate("lab-77");
   const hidden = s.combatHistory.filter(
     (c) => c.kind === "secret" && !c.participants.includes(0),
   );
@@ -307,7 +314,7 @@ test("秘匿決闘の当事者には内訳を表示し、第三者の戦闘・�
   await expect(page.locator(".debug")).toHaveCount(0);
 });
 
-test("戦闘中と報酬選択待ちの保存再開、解決後も2AP決闘の元手番を保持", async ({
+test("戦闘中と結果確認待ちの保存再開、1AP決闘の元手番と残APを保持", async ({
   page,
 }) => {
   let s = createGame({
@@ -324,23 +331,23 @@ test("戦闘中と報酬選択待ちの保存再開、解決後も2AP決闘の�
     await page
       .locator(".stance-options")
       .getByRole("button", {
-        name: n % 2 === 0 ? "ためる" : "防御",
+        name: n < 4 && n % 2 === 0 ? "ためる" : "防御",
         exact: true,
       })
       .click();
     await page.getByRole("button", { name: /手を確定/ }).click();
   }
-  expect((await state(page)).phase).toBe("rewards");
+  expect((await state(page)).combat?.done).toBe(true);
   await page.reload();
   await page.getByRole("button", { name: "続きから", exact: true }).click();
-  await expect(page.locator(".combat-panel")).toContainText("次Rため");
-  await page
-    .getByRole("button", { name: "既定の能力を選ぶ", exact: true })
-    .click();
+  await expect(
+    page.getByRole("dialog", { name: "公開決闘の結果" }),
+  ).toContainText("次Rため");
+  await page.getByRole("button", { name: "OK", exact: true }).click();
   const resumed = await state(page);
   expect(resumed.phase).toBe("public");
   expect(resumed.publicTurn.round).toBe(1);
   expect(resumed.publicTurn.acted).toBe(true);
-  expect(resumed.players[0].ap).toBe(0);
+  expect(resumed.players[0].ap).toBe(1);
   expect(resumed.combatHistory).toHaveLength(1);
 });

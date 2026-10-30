@@ -95,6 +95,7 @@ export interface Reservation {
   stats: Partial<Stats>;
 }
 export interface CurrentEvent {
+  acknowledged?: boolean;
   finalProgress?: {
     materials: number;
     potions: number;
@@ -159,7 +160,7 @@ export interface Result {
   chiefs: number[];
   ranking: {
     player: number;
-    rank: number;
+    rank: number | null;
     fp: number;
     daily: number;
     graduated: boolean;
@@ -195,6 +196,7 @@ export interface GameState {
   nextCombat: number;
   nextTrade: number;
   combat?: Combat;
+  publicOutcome?: { from: number; to: number; items: string[] };
   challenge?: { from: number; to: number; mock: boolean };
   combatHistory: Combat[];
   duelQueue: [number, number][];
@@ -211,6 +213,8 @@ export interface GameState {
   };
 }
 export type Action =
+  | { type: "eventAck"; player: number }
+  | { type: "publicOutcomeAck"; player: number }
   | { type: "forced"; player: number; kind: "gather" | "research"; stat?: Stat }
   | { type: "gather"; player: number; potion?: number }
   | { type: "research"; player: number; stat: Stat; potion?: number }

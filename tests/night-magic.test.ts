@@ -1,3 +1,4 @@
+import { simulationAction } from "../src/domain/simulation";
 import { describe, it, expect } from "vitest";
 import { createGame, dispatch } from "../src/domain/reducer";
 import { addItem, canRecipe } from "../src/domain/items";
@@ -121,6 +122,8 @@ describe("魔法5種・秘匿6行動の統合", () => {
     s.phase = "night";
     s.players.forEach((p) => (p.night = { kind: "rest" }));
     s.players[0].night = undefined;
+    for (let n = 0; (s.combat || s.challenge || s.trades.length) && n < 50; n++)
+      s = dispatch(s, simulationAction(s));
     addItem(s, s.players[0], "crystal");
     const ap = s.players[0].ap;
     s = dispatch(s, {
@@ -170,10 +173,14 @@ describe("魔法5種・秘匿6行動の統合", () => {
     s.phase = "dawn";
     s.players[0].commands = [{ from: 1 }, { from: 2 }, { from: 3 }];
     s = dispatch(s, { type: "advance" });
+    for (let n = 0; (s.combat || s.challenge || s.trades.length) && n < 50; n++)
+      s = dispatch(s, simulationAction(s));
     expect(s.players[0].commands).toHaveLength(2);
     expect(() => dispatch(s, { type: "gather", player: 0 })).toThrow("命令");
     s = dispatch(s, { type: "forced", player: 0, kind: "gather" });
     s = dispatch(s, { type: "endTurn", player: 0 });
+    for (let n = 0; (s.combat || s.challenge || s.trades.length) && n < 50; n++)
+      s = dispatch(s, simulationAction(s));
     addItem(s, s.players[0], "crystal");
     addItem(s, s.players[0], "obsidian");
     s = dispatch(s, {
@@ -201,7 +208,7 @@ describe("魔法5種・秘匿6行動の統合", () => {
     expect(s.challenge).toBeUndefined();
     expect(s.combatHistory).toHaveLength(0);
     expect(s.players[1].fp).toBe(0);
-    expect(s.players[1].ap).toBe(0);
+    expect(s.players[1].ap).toBe(1);
     expect(
       ids.every((id) => s.players[1].inventory.some((i) => i.id === id)),
     ).toBe(true);

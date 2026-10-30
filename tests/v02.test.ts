@@ -38,7 +38,7 @@ function finishFight(s: GameState) {
     s = dispatch(
       s,
       s.combat.done
-        ? { type: "reward", player: 0, kind: "item" }
+        ? { type: "combatAck", player: 0 }
         : { type: "round", player: 0, stance: "defend" },
     );
   }
@@ -150,9 +150,9 @@ describe("v0.2 公開手番・割り込み", () => {
       .filter((l) => ["gather", "research"].includes(l.type))
       .map((l) => l.actor);
     expect(ordered).toEqual([0, 1, 2, 3]);
-    expect(() => dispatch(s, { type: "advance" })).toThrow("最終納品");
+    expect(() => dispatch(s, { type: "advance" })).toThrow("公開2巡");
   });
-  it("日替わりの順序を8日間維持し、各巡は各席1回、最終確認も全員1回", () => {
+  it("日替わりの順序を8日間維持し、各巡は各席1回、2巡後は自動判定", () => {
     let s = createGame({ ...setup, seed: "lab-77" });
     for (let n = 0; s.phase !== "ended" && n < 500; n++) {
       const expected = Array.from({ length: 4 }, (_, i) => (s.day - 1 + i) % 4);
@@ -162,7 +162,7 @@ describe("v0.2 公開手番・割り込み", () => {
     expect(s.day).toBe(8);
     expect(s.result?.reason).toBe("completed");
     for (let day = 1; day <= 8; day++) {
-      for (let round = 1; round <= 3; round++) {
+      for (let round = 1; round <= 2; round++) {
         const turns = s.logs.filter(
           (l) =>
             l.day === day && l.type === "turnEnd" && l.data?.round === round,
@@ -178,43 +178,30 @@ describe("v0.2 公開手番・割り込み", () => {
     s = dispatch(s, { type: "endTurn", player: 0 });
     expect(s.players[0].ap).toBe(2);
     expect(s.publicTurn.round).toBe(2);
-    expect(() => dispatch(s, { type: "duel", player: 0, target: 1 })).toThrow(
-      "巡目",
-    );
     s = dispatch(s, { type: "gather", player: 0 });
     s = dispatch(s, { type: "endTurn", player: 0 });
-    expect(s.publicTurn.round).toBe(3);
-    expect(s.players[0].ap).toBe(1);
-    expect(() => dispatch(s, { type: "gather", player: 0 })).toThrow(
-      "通常行動",
-    );
-    expect(() =>
-      dispatch(s, {
-        type: "trade",
-        player: 0,
-        target: 1,
-        offer: [],
-        request: { dew: 1 },
-      }),
-    ).toThrow("最終納品");
-    s = dispatch(s, { type: "endTurn", player: 0 });
     expect(s.publicTurn.round).toBe(4);
-    s = dispatch(s, { type: "advance" });
+    expect(s.players[0].ap).toBe(1);
+    expect(s.event.resolved).toBe(true);
+    expect(() => dispatch(s, { type: "gather", player: 0 })).toThrow(
+      "結果を確認",
+    );
+    s = dispatch(s, { type: "eventAck", player: 0 });
     expect(s.phase).toBe("magic");
   });
-  it("2AP公開決闘は1巡目の1行動。2巡目をスキップして最終納品へ", () => {
+  it("1AP公開決闘は1巡目の1行動。2巡目も通常行動可能", () => {
     let s = quietGame();
     s = dispatch(s, { type: "duel", player: 0, target: 1 });
-    expect(s.players.map((p) => p.ap)).toEqual([0, 2, 2, 2]);
+    expect(s.players.map((p) => p.ap)).toEqual([1, 2, 2, 2]);
     expect(s.publicTurn.acted).toBe(true);
     expect(() => dispatch(s, { type: "endTurn", player: 0 })).toThrow("戦闘中");
     s = finishFight(s);
     expect(currentPlayer(s)).toBe(0);
     expect(s.publicTurn.round).toBe(1);
     s = dispatch(s, { type: "endTurn", player: 0 });
-    expect(s.publicTurn.round).toBe(3);
+    expect(s.publicTurn.round).toBe(2);
     expect(currentPlayer(s)).toBe(0);
-    expect(s.players[0].ap).toBe(0);
+    expect(s.players[0].ap).toBe(1);
     expect(
       s.logs.filter((l) => l.actor === 0 && l.type === "combatStart"),
     ).toHaveLength(1);
@@ -231,7 +218,7 @@ describe("v0.2 公開手番・割り込み", () => {
     expect(s.players[0].ap).toBe(2);
     expect(currentPlayer(s)).toBe(0);
     expect(s.publicTurn.round).toBe(2);
-    expect(s.players[1].ap).toBe(0);
+    expect(s.players[1].ap).toBe(1);
     expect(s.logs.filter((l) => l.type === "combatStart")).toHaveLength(1);
   });
   it("強制命令2件は2巡に分割し、採集／研究以外やパスでは回避できない", () => {
@@ -259,7 +246,7 @@ describe("v0.2 公開手番・割り込み", () => {
       s.logs.filter((l) => l.type === "commandExecuted").map((l) => l.actor),
     ).toEqual([1, 2]);
   });
-  it("0AP納品・撤回を連続しても手番・APが変わらず、最終確認後にだけイベント確定", () => {
+  it("0AP納品・撤回を連続しても手番・APが変わらず、2巡終了時に自動でイベント確定", () => {
     let s = quietGame();
     s.event.id = 1;
     const id = s.players[0].inventory[0].id;
@@ -271,13 +258,11 @@ describe("v0.2 公開手番・割り込み", () => {
     expect(s.players.map((p) => p.ap)).toEqual([2, 2, 2, 2]);
     s = dispatch(s, { type: "endTurn", player: 0 });
     s = dispatch(s, { type: "endTurn", player: 0 });
-    expect(s.publicTurn.round).toBe(3);
-    expect(s.event.resolved).toBe(false);
-    s = dispatch(s, { type: "withdraw", player: 0 });
-    expect(s.event.resolved).toBe(false);
-    s = dispatch(s, { type: "endTurn", player: 0 });
-    s = dispatch(s, { type: "advance" });
+    expect(s.publicTurn.round).toBe(4);
     expect(s.event.resolved).toBe(true);
+    expect(() => dispatch(s, { type: "withdraw", player: 0 })).toThrow(
+      "結果を確認",
+    );
     expect(eventProgress(s)).toEqual(s.event.finalProgress);
   });
 });
@@ -351,7 +336,7 @@ describe("v0.2 取引", () => {
         s.players[1].inventory.find((i) => i.id === t.offer[0])?.lock,
       ).toBe(`trade:${t.id}`);
       expect(() => dispatch(s, { type: "endTurn", player: 1 })).toThrow("返答");
-      expect(() => dispatch(s, { type: "advance" })).toThrow("最終納品");
+      expect(() => dispatch(s, { type: "advance" })).toThrow("公開2巡");
       expect(() =>
         dispatch(s, { type: "tradeReply", player: 2, id: t.id, accept: true }),
       ).toThrow("取引がありません");
@@ -469,6 +454,7 @@ describe("v0.2 夜錬金・秘伝レシピ", () => {
     s.publicTurn.round = 4;
     s = dispatch(s, { type: "advance" });
     expect(canRecipe(s.players[0], "harvest", 2)).toBe(true);
+    s = dispatch(s, { type: "eventAck", player: 0 });
     s.phase = "night";
     addItem(s, s.players[0], "crystal");
     addItem(s, s.players[0], "sand");
@@ -500,7 +486,7 @@ describe("v0.2 保存・再生", () => {
     changed.state.publicTurn.index = 1;
     expect(() => deserialize(JSON.stringify(changed))).toThrow("一致しません");
   });
-  it("公開決闘の途中・勝利報酬待ちから再開しても手番とAPが重複しない", () => {
+  it("公開決闘の途中・結果確認待ちから再開しても手番とAPが重複しない", () => {
     let s = createGame({
       ...setup,
       seed: "reward-5",
@@ -509,23 +495,23 @@ describe("v0.2 保存・再生", () => {
     s = dispatch(s, { type: "duel", player: 0, target: 1 });
     for (let round = 0; round < 5; round++) {
       s = deserialize(serialize(s));
-      expect(s.players[0].ap).toBe(0);
+      expect(s.players[0].ap).toBe(1);
       expect(s.publicTurn.acted).toBe(true);
       s = dispatch(s, {
         type: "round",
         player: 0,
-        stance: round % 2 === 0 ? "charge" : "defend",
+        stance: round < 4 && round % 2 === 0 ? "charge" : "defend",
       });
     }
-    expect(s.phase).toBe("rewards");
+    expect(s.combat?.done).toBe(true);
     const saved = deserialize(serialize(s));
-    const a: Action = { type: "reward", player: 0, kind: "item" };
+    const a: Action = { type: "combatAck", player: 0 };
     expect(dispatch(saved, a)).toEqual(dispatch(s, a));
     s = dispatch(saved, a);
     expect(s.phase).toBe("public");
     expect(s.publicTurn.round).toBe(1);
     expect(currentPlayer(s)).toBe(0);
-    expect(s.players[0].ap).toBe(0);
+    expect(s.players[0].ap).toBe(1);
     expect(s.combatHistory).toHaveLength(1);
   });
   it("通常手番・取引返答待ち・戦闘・夜錬金・日替わりの各地点で保存と再生が一致", () => {
@@ -563,8 +549,7 @@ describe("v0.2 保存・再生", () => {
     for (const key of [
       "turn:1",
       "turn:2",
-      "turn:3",
-      "turn:4",
+      "magic",
       "trade",
       "combat",
       "brew",
