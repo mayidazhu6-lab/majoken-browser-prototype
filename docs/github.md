@@ -1,6 +1,10 @@
 # GitHub接続・Pages公開準備
 
-## v0.2作業（2026-10-30）
+## v0.2.1作業（2026-10-30）
+
+既存の `feat/browser-v0.2` と [PR #1](https://github.com/mayidazhu6-lab/majoken-browser-prototype/pull/1) を更新。仕様確定・変更と制約は [v0.2.1.md](v0.2.1.md)。mainへのマージ・Pages公開は実施しない。
+
+## v0.2作業（履歴・2026-10-30）
 
 対象は `mayidazhu6-lab/majoken-browser-prototype`。作業ブランチは `feat/browser-v0.2`。ローカル検証結果は [test-report.md](test-report.md)。ユーザー指示に基づき作業ブランチをpushし、mainへのマージはレビュー承認後とする。Pagesは公開しない。
 

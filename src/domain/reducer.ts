@@ -16,6 +16,7 @@ import {
   RESEARCH,
   STATS,
   level,
+  levelEffect,
 } from "./config";
 import { hashSeed, pick, sample } from "./rng";
 import {
@@ -32,6 +33,7 @@ import {
   EVENTS,
   donationItems,
   eventProgress,
+  reservationRoom,
   reserve,
   resolveEvent,
   startEvent,
@@ -178,6 +180,22 @@ function ap(s: GameState, p: Player, cost = 1) {
     if (s.phase === "public") s.publicTurn.acted = true;
   }
   return curse;
+}
+function levelNotice(s: GameState, p: Player, stat: Stat, beforeValue: number) {
+  const before = level(beforeValue),
+    after = level(p.stats[stat]);
+  if (after > before)
+    log(
+      s,
+      "levelUp",
+      `${p.name}の${LABELS[stat]}がLv${before}→Lv${after}（能力値${p.stats[stat]}）。${levelEffect(stat, after)}`,
+      {
+        actor: p.id,
+        kind: stat,
+        amount: after,
+        data: { before, after, value: p.stats[stat] },
+      },
+    );
 }
 function used(s: GameState, p: Player, id: number | undefined, effect: string) {
   if (id === undefined) return 0;
@@ -366,6 +384,12 @@ function finishCombat(s: GameState) {
       if (c.kind === "public") fp(s, w, 1, "duel");
     }
   }
+  if (
+    c.kind === "secret" &&
+    c.participants.some((id) => !s.players[id].ai) &&
+    !c.resultAcknowledged
+  )
+    return;
   if (c.winner === null) {
     s.combat = undefined;
     return;
@@ -391,7 +415,14 @@ function applyReward(
   stat?: Stat,
 ) {
   const c = s.combat!;
-  assert(c?.done && c.winner === w.id, "報酬選択できません");
+  assert(
+    c?.done &&
+      c.winner === w.id &&
+      (c.kind !== "secret" ||
+        c.resultAcknowledged ||
+        c.participants.every((id) => s.players[id].ai)),
+    "報酬選択できません",
+  );
   const loser = s.players[c.participants.find((id) => id !== w.id)!];
   if (c.kind === "public") {
     const opts = STATS.filter(
@@ -405,6 +436,7 @@ function applyReward(
     const selected = stat ?? opts[0];
     if (selected) {
       assert(opts.includes(selected), "移転できない能力です");
+      const beforeValue = w.stats[selected];
       loser.stats[selected]--;
       w.stats[selected]++;
       log(s, "statTransfer", `${LABELS[selected]}を1移転`, {
@@ -412,6 +444,7 @@ function applyReward(
         target: loser.id,
         kind: selected,
       });
+      levelNotice(s, w, selected, beforeValue);
     }
   } else if (kind === "command") {
     assert(s.day < 8, "8日目は命令不可");
@@ -734,7 +767,7 @@ function evaluateHO(s: GameState) {
     log(
       s,
       "dailyHO",
-      `日次HO「${goalDescription(p.dailyGoal, false).name}」：${daily[i] ? "達成 / 報酬 FP+1" : "未達成"}。条件：${goalDescription(p.dailyGoal, false).condition}`,
+      `日次HO「${goalDescription(p.dailyGoal, false).name}」：${daily[i] ? "日次HO達成！ FP+1" : "未達成"}。条件：${goalDescription(p.dailyGoal, false).condition}`,
       {
         actor: p.id,
         amount: daily[i] ? 1 : 0,
@@ -1054,7 +1087,7 @@ function apply(s: GameState, a: Action) {
   assert(s.phase !== "ended", "終了済みです");
   if (s.challenge && a.type !== "challengeReply")
     throw Error("挑戦への返答を完了してください");
-  if (s.combat && !["round", "loadout", "reward"].includes(a.type))
+  if (s.combat && !["round", "loadout", "reward", "combatAck"].includes(a.type))
     throw Error("戦闘中です");
   switch (a.type) {
     case "endTurn":
@@ -1090,12 +1123,14 @@ function apply(s: GameState, a: Action) {
       consume(p, ids);
       const curse = ap(s, p);
       const growth = Math.max(0, 1 + p.rest + bonus - curse);
+      const beforeValue = p.stats[a.stat];
       p.stats[a.stat] += growth;
       log(s, "research", `${p.name}が${LABELS[a.stat]}を研究 +${growth}`, {
         actor: p.id,
         kind: a.stat,
         amount: growth,
       });
+      levelNotice(s, p, a.stat, beforeValue);
       break;
     }
     case "brew":
@@ -1266,6 +1301,27 @@ function apply(s: GameState, a: Action) {
     case "round":
       combatRound(s, p, a);
       break;
+    case "combatAck": {
+      const c = s.combat;
+      assert(
+        c?.done &&
+          c.kind === "secret" &&
+          c.participants.includes(p.id) &&
+          !p.ai &&
+          !c.resultAcknowledged,
+        "結果確認できません",
+      );
+      c.resultAcknowledged = true;
+      const history = s.combatHistory.find((h) => h.id === c.id);
+      if (history) history.resultAcknowledged = true;
+      log(s, "combatAck", "秘匿決闘の結果を確認", {
+        actor: p.id,
+        audience: [...c.participants],
+        data: { combat: c.id },
+      });
+      finishCombat(s);
+      break;
+    }
     case "reward":
       applyReward(s, p, a.kind, a.stat);
       break;
@@ -1355,7 +1411,10 @@ function autoReserve(s: GameState, p: Player) {
     pr = v.progress;
   const ids = donationItems(s, p);
   const stats: Partial<Record<Stat, number>> = {};
-  let need = (e.stats ?? 0) - pr.stats;
+  let need = Math.min(
+    (e.stats ?? 0) - pr.stats,
+    Math.max(0, reservationRoom(s, p) - ids.length),
+  );
   if (
     e.stats &&
     (!e.either || pr.materials + ids.length < (e.materials ?? 0))

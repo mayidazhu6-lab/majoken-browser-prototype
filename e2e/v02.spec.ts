@@ -191,14 +191,12 @@ test("同日付の保存JSON読込で確定済み夜行動・対象・複数錬�
   });
   await page.goto("/");
   await importState(page, scout);
-  const panel = page
-    .locator("section")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "秘密の行動をひとつ。",
-        exact: true,
-      }),
-    });
+  const panel = page.locator("section").filter({
+    has: page.getByRole("heading", {
+      name: "秘密の行動をひとつ。",
+      exact: true,
+    }),
+  });
   await expect(panel.locator(".night-options button.chosen")).toHaveText(
     "偵察",
   );
@@ -268,7 +266,7 @@ test("同日付の保存JSON読込で確定済み夜行動・対象・複数錬�
 test("秘匿決闘の当事者には内訳を表示し、第三者の戦闘・薬・HO・取引ログを表示しない", async ({
   page,
 }) => {
-  const s = simulate("lab-77");
+  const s = simulate("moon-42");
   const hidden = s.combatHistory.filter(
     (c) => c.kind === "secret" && !c.participants.includes(0),
   );

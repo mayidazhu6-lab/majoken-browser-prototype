@@ -64,6 +64,7 @@ describe("Phase 2 主要行動", () => {
   });
   it("A04 納品予約ロック・過剰納品拒否・失敗返却", () => {
     const s = game();
+    s.publicTurn.round = 2;
     s.event = {
       id: 1,
       specified: "water",
@@ -82,6 +83,7 @@ describe("Phase 2 主要行動", () => {
   });
   it("成功納品のみ消費、能力下限と予約撤回", () => {
     const s = game();
+    s.publicTurn.round = 2;
     s.event = {
       id: 6,
       specified: "water",
@@ -199,6 +201,7 @@ describe("Phase 4 イベント・HO・AI・勝敗", () => {
     expect(EVENTS).toHaveLength(12);
     for (const e of EVENTS) {
       const s = game();
+      s.publicTurn.round = 2;
       s.event = {
         id: e.id,
         specified: "water",
@@ -278,6 +281,7 @@ describe("Phase 4 イベント・HO・AI・勝敗", () => {
 describe("最終レビューの回帰検証", () => {
   it("確定したイベント進捗を納品消費後も表示できる", () => {
     const s = game();
+    s.publicTurn.round = 2;
     s.event = {
       id: 1,
       specified: "water",

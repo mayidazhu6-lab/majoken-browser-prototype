@@ -191,6 +191,22 @@ export function eventProgress(s: GameState) {
     success,
   };
 }
+export function reservationUnits(s: GameState, p: Player) {
+  return s.event.reservations
+    .filter((r) => r.player === p.id)
+    .reduce(
+      (n, r) =>
+        n +
+        r.items.length +
+        Object.values(r.stats).reduce((a, b) => a + (b ?? 0), 0),
+      0,
+    );
+}
+export function reservationRoom(s: GameState, p: Player) {
+  return s.phase === "public" && s.publicTurn.round === 1
+    ? Math.max(0, 1 - reservationUnits(s, p))
+    : Infinity;
+}
 export function reserve(
   s: GameState,
   p: Player,
@@ -220,6 +236,10 @@ export function reserve(
     throw Error("対象外の納品物");
   const before = eventProgress(s);
   const ns = Object.values(stats).reduce((a, b) => a + (b ?? 0), 0);
+  if (ids.length + ns > reservationRoom(s, p))
+    throw Error(
+      "第1巡の納品予約は1人1個までです（素材・薬・能力1ポイントを合算）",
+    );
   if (ns && !e.stats) throw Error("能力納品の対象外");
   for (const k of STATS) {
     const reserved = s.event.reservations
@@ -250,7 +270,12 @@ export function reserve(
     `${p.name}が納品を予約：素材+${items.filter((i) => isMaterial(i.kind)).length}・薬+${items.filter((i) => !isMaterial(i.kind)).length}・能力+${ns}（合計 素材${progress.materials}・薬${progress.potions}・能力${progress.stats}）`,
     {
       actor: p.id,
-      data: { items: items.map((i) => i.kind), stats },
+      data: {
+        items: items.map((i) => i.kind),
+        stats,
+        round: s.publicTurn.round,
+        units: ids.length + ns,
+      },
     },
   );
 }
@@ -294,7 +319,17 @@ export function resolveEvent(s: GameState) {
     if (success) {
       p.inventory = p.inventory.filter((i) => !ids.includes(i.id));
       if (!e.either || s.event.route === "stats")
-        for (const k of STATS) p.stats[k] -= r.stats[k] ?? 0;
+        for (const k of STATS) {
+          const amount = r.stats[k] ?? 0;
+          p.stats[k] -= amount;
+          if (amount)
+            log(
+              s,
+              "statDonation",
+              `${p.name}が${k === "attack" ? "攻撃" : k === "defense" ? "防御" : "洞察"}を${amount}納品（恒久値−${amount}）`,
+              { actor: p.id, kind: k, amount: -amount },
+            );
+        }
     }
     p.inventory.forEach((i) => {
       if (i.lock === "event") delete i.lock;
@@ -343,7 +378,7 @@ export function donationItems(s: GameState, p: Player): number[] {
   if (e.potions)
     return pool
       .filter((i) => !isMaterial(i.kind))
-      .slice(0, e.potions - pr.potions)
+      .slice(0, Math.min(e.potions - pr.potions, reservationRoom(s, p)))
       .map((i) => i.id);
   if (!e.materials) return [];
   const eligible = pool.filter(
@@ -363,5 +398,8 @@ export function donationItems(s: GameState, p: Player): number[] {
   const room = Math.max(0, e.materials - pr.materials - missing);
   for (const i of eligible)
     if (selected.length < room && !selected.includes(i.id)) selected.push(i.id);
-  return selected.slice(0, Math.max(0, e.materials - pr.materials));
+  return selected.slice(
+    0,
+    Math.min(reservationRoom(s, p), Math.max(0, e.materials - pr.materials)),
+  );
 }

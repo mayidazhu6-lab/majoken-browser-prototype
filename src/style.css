@@ -1037,9 +1037,6 @@ footer > span:first-child {
   max-width: 100%;
   overflow-x: auto;
 }
-.combat-rounds table {
-  min-width: 720px;
-}
 .log-entry:not(.private) {
   border-left: 2px solid #557968;
   padding-left: 8px;
@@ -1053,4 +1050,94 @@ footer > span:first-child {
   padding: 6px 0;
   font-size: 12px;
   line-height: 1.7;
+}
+
+.persistent-turn {
+  position: sticky;
+  top: 8px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-color: var(--mint);
+  box-shadow: 0 4px 16px #0008;
+}
+.persistent-turn p {
+  flex-basis: 100%;
+  margin: 0;
+}
+.interrupt-reason {
+  color: var(--pink);
+}
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #0b0914d9;
+}
+.blocking-dialog {
+  width: min(960px, 100%);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 2px solid var(--mint);
+  box-shadow: 0 16px 60px #0009;
+}
+.blocking-dialog h2 {
+  color: var(--mint);
+}
+.combat-rounds table {
+  min-width: 520px;
+  table-layout: fixed;
+}
+.combat-rounds th:first-child {
+  width: 38px;
+}
+.combat-rounds td {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.combat-rounds p {
+  margin: 5px 0;
+  font-size: 11px;
+}
+.versus small {
+  display: block;
+}
+.daily-ho-progress {
+  color: var(--mint);
+}
+.reservation-limit {
+  border-left: 3px solid var(--mint);
+  padding-left: 12px;
+}
+.results-summary {
+  border-color: var(--mint);
+}
+.level-guide p {
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.blocking-dialog h2 {
+  flex-shrink: 0;
+}
+.dialog-content {
+  overflow: auto;
+  min-height: 0;
+}
+.dialog-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12px;
+  padding-top: 14px;
+  margin-top: 12px;
+  border-top: 1px solid #514459;
 }

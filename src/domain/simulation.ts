@@ -1,22 +1,22 @@
 import type { Action, GameState, Setup, Stat } from "./types";
 import { createGame, dispatch, currentPlayer } from "./reducer";
-import { EVENTS, eventProgress, donationItems } from "./events";
+import {
+  EVENTS,
+  eventProgress,
+  donationItems,
+  reservationRoom,
+} from "./events";
 import { canRecipe, materialIds, RECIPES } from "./items";
 import { RESEARCH, STATS } from "./config";
 export function simulationAction(s: GameState): Action {
   const p = s.players[0];
   if (s.challenge) return { type: "challengeReply", player: 0, fight: true };
-  if (p.pendingRecipe)
-    return {
-      type: "unlock",
-      player: 0,
-      recipe: RECIPES.find(
-        (r) => r.tier === "special" && !p.recipes.includes(r.id),
-      )!.id,
-    };
   if (s.combat) {
     const c = s.combat;
-    if (c.done) return { type: "reward", player: 0, kind: "item" };
+    if (c.done)
+      return c.kind === "secret" && !c.resultAcknowledged
+        ? { type: "combatAck", player: 0 }
+        : { type: "reward", player: 0, kind: "item" };
     const side = c.participants.indexOf(0);
     return {
       type: "round",
@@ -29,6 +29,14 @@ export function simulationAction(s: GameState): Action {
             : "attack",
     };
   }
+  if (p.pendingRecipe)
+    return {
+      type: "unlock",
+      player: 0,
+      recipe: RECIPES.find(
+        (r) => r.tier === "special" && !p.recipes.includes(r.id),
+      )!.id,
+    };
   if (s.phase === "public") {
     const t = s.trades.find((t) => t.to === 0);
     if (t) return { type: "tradeReply", player: 0, id: t.id, accept: true };
@@ -40,7 +48,10 @@ export function simulationAction(s: GameState): Action {
     const pr = eventProgress(s);
     const ids = donationItems(s, p);
     const stats: Partial<Record<Stat, number>> = {};
-    let need = (e.stats ?? 0) - pr.stats;
+    let need = Math.min(
+      (e.stats ?? 0) - pr.stats,
+      Math.max(0, reservationRoom(s, p) - ids.length),
+    );
     if (
       e.stats &&
       (!e.either || pr.materials + ids.length < (e.materials ?? 0))

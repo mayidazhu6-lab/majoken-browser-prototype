@@ -70,7 +70,7 @@ describe("v0.2 戦闘", () => {
       }
     },
   );
-  it("攻撃vsためるは差分、ためる側カウンターなし。防御vsためるは双方0", () => {
+  it("攻撃vsためるは無防備、ためる側カウンターなし。防御vsためるは双方0", () => {
     expect(
       calculateRound(
         [stats, stats],
@@ -79,7 +79,7 @@ describe("v0.2 戦闘", () => {
         [0, 0],
         [zero, zero],
       ).damage,
-    ).toEqual([0, 5]);
+    ).toEqual([0, 3]);
     const r = calculateRound(
       [stats, stats],
       ["charge", "attack"],
@@ -87,7 +87,7 @@ describe("v0.2 戦闘", () => {
       [0, 0],
       [zero, zero],
     );
-    expect(r.damage).toEqual([0, 0]);
+    expect(r.damage).toEqual([1, 0]);
     expect(r.charge).toEqual([10, 0]);
     expect(
       calculateRound(
@@ -109,10 +109,10 @@ describe("v0.2 戦闘", () => {
     loadout(s, s.players[0], [potion.id]);
     resolveRound(s, ["charge", "defend"], [potion.id, undefined]);
     const r = s.combat!.rounds[0];
-    expect(r.base).toEqual([3, s.players[1].stats.defense]);
+    expect(r.base).toEqual([9, s.players[1].stats.defense]);
     expect(r.insight[0]).toBe(9);
     expect(r.nextCharge[0]).toBe(9 + r.rolls[0] + 4);
-    expect(r.values[0]).toBe(3 + r.rolls[0] + 1);
+    expect(r.values[0]).toBe(9 + r.rolls[0] + 4);
     expect(r.counter).toEqual([false, false]);
     resolveRound(s, ["attack", "defend"], [undefined, undefined]);
     const next = s.combat!.rounds[1];
@@ -530,7 +530,11 @@ describe("v0.2 保存・再生", () => {
   });
   it("通常手番・取引返答待ち・戦闘・夜錬金・日替わりの各地点で保存と再生が一致", () => {
     // Real action histories, never patched fixtures, cover checkpoints over eight days.
-    let s = createGame({ ...setup, seed: "witches-2026" });
+    let s = createGame({
+      ...setup,
+      seed: "witches-2026",
+      stats: { attack: 3, defense: 4, insight: 3 },
+    });
     const seen = new Set<string>();
     for (let n = 0; s.phase !== "ended" && n < 500; n++) {
       const key = s.trades.length

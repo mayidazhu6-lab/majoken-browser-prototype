@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import BlockingDialog from "./components/BlockingDialog.vue";
+import CombatRounds from "./components/CombatRounds.vue";
 import { useGameStore } from "./stores/game";
 import {
   CONFIG,
@@ -9,10 +11,17 @@ import {
   RESEARCH,
   STATS,
   level,
+  nextLevel,
+  levelEffect,
 } from "./domain/config";
-import { EVENTS, eventProgress } from "./domain/events";
+import {
+  EVENTS,
+  eventProgress,
+  reservationRoom,
+  reservationUnits,
+} from "./domain/events";
 import { available, recipe, RECIPES } from "./domain/items";
-import { goalDescription } from "./domain/ho";
+import { goalDescription, dailyProgress } from "./domain/ho";
 import { dispatch, currentPlayer } from "./domain/reducer";
 import { serialize } from "./domain/persistence";
 import type {
@@ -132,6 +141,61 @@ const publicHistory = computed(
     ) ?? [],
 );
 const combat = computed(() => s.value?.combat);
+const incomingTrade = computed(() => s.value?.trades.find((t) => t.to === 0));
+const secretResult = computed(() =>
+  combat.value?.kind === "secret" &&
+  combat.value.done &&
+  !combat.value.resultAcknowledged &&
+  combat.value.participants.includes(0)
+    ? combat.value
+    : undefined,
+);
+const blockingModal = computed(
+  () => !!incomingTrade.value || !!secretResult.value,
+);
+const hoProgress = computed(() =>
+  s.value ? dailyProgress(s.value, me.value) : undefined,
+);
+const interruptReason = computed(() => {
+  if (incomingTrade.value)
+    return "取引への返答待ちです。中央のダイアログで受諾・拒否してください。";
+  if (secretResult.value)
+    return "秘匿決闘の結果確認待ちです。内容を確認してOKを押してください。";
+  if (combat.value)
+    return combat.value.done
+      ? "勝利報酬の選択待ちです。"
+      : "決闘中のため公開行動はできません。";
+  if (s.value?.challenge)
+    return "挑戦への返答待ちです。対戦・降参を選んでください。";
+  if (
+    s.value?.phase === "public" &&
+    currentPlayer(s.value) !== 0 &&
+    s.value.publicTurn.round < 4
+  )
+    return "他の魔女の手番です。";
+  if (s.value?.publicTurn.acted && s.value.phase === "public")
+    return "この手番の1AP行動は完了しました。0AP操作後、手番を終了してください。";
+  return "";
+});
+const personalResults = computed(
+  () =>
+    s.value?.logs.filter(
+      (l) =>
+        l.day === s.value.day &&
+        (l.audience === "public" ||
+          (Array.isArray(l.audience) && l.audience.includes(0))) &&
+        (l.actor === 0 || l.target === 0) &&
+        [
+          "fp",
+          "research",
+          "statTransfer",
+          "statDonation",
+          "levelUp",
+          "dailyHO",
+        ].includes(l.type),
+    ) ?? [],
+);
+
 watch(
   () => combat.value?.id,
   () => {
@@ -259,7 +323,7 @@ const nextLabel = computed(
 </script>
 
 <template>
-  <div class="app-shell">
+  <div class="app-shell" :inert="blockingModal">
     <header class="topbar">
       <a class="brand" href="./"
         ><span class="brand-mark">✧</span
@@ -268,7 +332,7 @@ const nextLabel = computed(
         ></a
       >
       <div class="top-actions">
-        <span class="version">試遊版 v0.2</span
+        <span class="version">試遊版 v0.2.1</span
         ><button @click="loadSave()">続きから</button
         ><template v-if="s"
           ><button @click="store.save()">保存</button
@@ -380,6 +444,25 @@ const nextLabel = computed(
           <small>{{ s.failed }} / 3 失敗</small>
         </div>
       </div>
+      <section
+        v-if="s.phase === 'public' || combat?.returnPhase === 'public'"
+        class="panel persistent-turn"
+        role="status"
+      >
+        <strong>{{
+          s.publicTurn.round <= 2
+            ? `公開行動・第${s.publicTurn.round}巡`
+            : s.publicTurn.round === 3
+              ? "最終納品確認"
+              : "公開行動完了"
+        }}</strong>
+        <span v-if="currentPlayer(s) !== undefined"
+          >現在の手番：{{ s.players[currentPlayer(s)!].name }}</span
+        >
+        <p v-if="interruptReason" class="interrupt-reason">
+          {{ interruptReason }}
+        </p>
+      </section>
       <div class="game-grid">
         <aside class="left-column">
           <section class="panel">
@@ -433,6 +516,11 @@ const nextLabel = computed(
                 本日の日次HO：{{ goalDescription(me.dailyGoal, false).name }}
               </h3>
               <p>{{ goalDescription(me.dailyGoal, false).condition }}</p>
+              <p v-if="hoProgress" class="daily-ho-progress" role="status">
+                <strong>{{ hoProgress.status }}</strong> ·
+                {{ hoProgress.current }}/{{ hoProgress.total }}
+              </p>
+              <p v-if="hoProgress" class="muted">{{ hoProgress.detail }}</p>
               <small
                 >これまでの日次達成：{{
                   me.dailyHistory.filter((h) => h.achieved).length
@@ -454,6 +542,18 @@ const nextLabel = computed(
               >
             </div>
           </section>
+          <details class="panel level-guide" :open="s.phase === 'public'">
+            <summary>あなたの能力Lvと解禁効果</summary>
+            <p v-for="k in STATS" :key="k" :data-stat="k">
+              {{ LABELS[k] }} {{ me.stats[k] }} / Lv{{ level(me.stats[k])
+              }}<br />
+              {{
+                nextLevel(me.stats[k]) === null
+                  ? "最高Lvです"
+                  : `次のLvまであと${nextLevel(me.stats[k])! - me.stats[k]}（能力値${nextLevel(me.stats[k])}）`
+              }}<br />{{ levelEffect(k, level(me.stats[k])) }}
+            </p>
+          </details>
           <section class="panel">
             <div class="section-heading">
               <h2>あなたの所持品</h2>
@@ -573,7 +673,16 @@ const nextLabel = computed(
             </p>
             <button @click="store.state = undefined">新しい研究を始める</button>
           </section>
-          <section v-if="event && progress" class="panel event-panel">
+          <section
+            v-if="
+              event &&
+              progress &&
+              s.phase === 'public' &&
+              !combat &&
+              !s.challenge
+            "
+            class="panel event-panel"
+          >
             <div class="section-heading">
               <span class="eyebrow">TODAY'S COOPERATIVE EVENT</span
               ><span class="difficulty" :class="event.difficulty">{{
@@ -652,7 +761,7 @@ const nextLabel = computed(
               </p>
             </details>
           </section>
-          <section v-if="me.pendingRecipe" class="panel">
+          <section v-if="me.pendingRecipe && !combat" class="panel">
             <h2>10FP到達 · 特殊レシピを選択</h2>
             <button
               v-for="r in RECIPES.filter(
@@ -722,21 +831,23 @@ const nextLabel = computed(
               }}
             </h2>
             <div class="versus">
-              <div>
-                <strong>{{ me.name }}</strong
-                ><b>{{ combat.hp[mySide] }} <small>HP</small></b>
-              </div>
-              <span>VS</span>
-              <div>
-                <strong>{{
-                  s.players[combat.participants[1 - mySide]].name
-                }}</strong
-                ><b>{{ combat.hp[1 - mySide] }} <small>HP</small></b>
-              </div>
+              <template v-for="(id, side) in combat.participants" :key="id">
+                <span v-if="side === 1">VS</span>
+                <div :data-player="id" :data-side="side">
+                  <strong>{{ s.players[id].name }}</strong
+                  ><small>{{
+                    side === 0 ? "仕掛けた魔女" : "仕掛けられた魔女"
+                  }}</small
+                  ><b>{{ combat.hp[side] }} <small>HP</small></b>
+                </div>
+              </template>
             </div>
             <template v-if="!combat.done"
               ><p class="muted">
-                攻撃・防御・ためるを同時選択。ためるは次ラウンドで消費し、連続使用はできません。
+                攻撃・防御・ためるを同時選択。ためる中は無防備です。洞察＋1D6（薬補正あり）を次Rの攻撃・防御へ加え、そのRで消費します。連続ためるはできません。
+              </p>
+              <p v-if="combat.rounds.length === 4" class="interrupt-reason">
+                第5ラウンドです。ためるを選んでも次のラウンドがないため、強化効果を発揮しません。
               </p>
               <details v-if="!combat.rounds.length">
                 <summary>
@@ -821,7 +932,11 @@ const nextLabel = computed(
                       : "あなたの敗北"
                 }}
               </h3>
-              <template v-if="combat.winner === 0"
+              <template
+                v-if="
+                  combat.winner === 0 &&
+                  (combat.kind !== 'secret' || combat.resultAcknowledged)
+                "
                 ><template v-if="combat.kind === 'public'"
                   ><p>移転する能力を選択</p>
                   <button
@@ -854,57 +969,10 @@ const nextLabel = computed(
                 ></template
               ></template
             >
-            <div class="combat-rounds">
-              <table>
-                <caption>
-                  左 / 右：{{
-                    combat.participants
-                      .map((id) => s.players[id].name)
-                      .join(" / ")
-                  }}
-                </caption>
-                <thead>
-                  <tr>
-                    <th>R</th>
-                    <th>手</th>
-                    <th>出目</th>
-                    <th>判定値</th>
-                    <th>基礎 / ため補正 / 警戒</th>
-                    <th>薬補正（攻/防/ため）</th>
-                    <th>洞察 / 次Rため</th>
-                    <th>被ダメージ / 残HP / カウンター</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(r, i) in combat.rounds" :key="i">
-                    <td>{{ i + 1 }}</td>
-                    <td>{{ r.choices.map((v) => LABELS[v]).join(" / ") }}</td>
-                    <td>{{ r.rolls.join(" / ") }}</td>
-                    <td>{{ r.values.join(" / ") }}</td>
-                    <td>
-                      {{ r.base?.join("/") }} / {{ r.chargeBonus?.join("/") }} /
-                      {{ r.guard?.join("/") }}
-                    </td>
-                    <td>
-                      {{
-                        r.buffs
-                          ?.map((b) => `${b.attack}/${b.defense}/${b.charge}`)
-                          .join(" ・ ")
-                      }}
-                    </td>
-                    <td>
-                      {{ r.insight.join("/") }} / {{ r.nextCharge.join("/") }}
-                    </td>
-                    <td>
-                      {{ r.damage.join("/") }} / {{ r.hp.join("/") }} /
-                      {{
-                        r.counter?.map((v) => (v ? "発生" : "なし")).join("/")
-                      }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <CombatRounds
+              :combat="combat"
+              :names="combat.participants.map((id) => s.players[id].name)"
+            />
             <p v-if="combat.kind === 'secret'" class="muted">
               解決済みラウンドの詳細は当事者だけに表示します。
             </p>
@@ -1117,7 +1185,14 @@ const nextLabel = computed(
               </div></template
             >
             <template v-if="tab === 'event'"
-              ><p>納品は0AP。成功時のみ消費し、失敗時は返却します。</p>
+              ><p class="reservation-limit">
+                {{
+                  s.publicTurn.round === 1
+                    ? `第1巡：1人1個まで（素材・薬・能力1ポイントを合算）。予約済み${reservationUnits(s, me)}、残り${reservationRoom(s, me)}。取消で枠が回復します。`
+                    : "第2巡以降：個人上限なし。残りの納品枠へ先着順で予約できます。"
+                }}
+              </p>
+              <p>納品は0AP。成功時のみ消費し、失敗時は返却します。</p>
               <div class="item-picker">
                 <button
                   v-for="i in available(me)"
@@ -1479,18 +1554,54 @@ const nextLabel = computed(
               }}</strong>
             </p>
           </section>
-          <section v-if="publicHistory.length" class="panel public-history">
-            <h2>この日の公開行動（実行順）</h2>
+          <details v-if="s.phase !== 'public'" class="panel event-archive">
+            <summary>共通イベントの履歴</summary>
+            <article
+              v-for="l in s.logs.filter((l) => l.type === 'eventResult')"
+              :key="l.seq"
+            >
+              <h3>第{{ l.day }}日：{{ l.text }}</h3>
+              <p>{{ EVENTS[Number(l.data?.event) - 1]?.description }}</p>
+            </article>
+          </details>
+          <details
+            v-if="publicHistory.length"
+            class="panel public-history"
+            :open="s.phase === 'public' && !combat"
+          >
+            <summary>この日の公開行動（実行順・自分のペースで確認）</summary>
             <ol class="log-scroll">
               <li
                 v-for="l in publicHistory"
                 :key="l.seq"
                 :data-public-seq="l.seq"
               >
-                {{ s.players[l.actor ?? 0].name }}：{{ l.text }}
+                {{
+                  l.type === "win"
+                    ? `${s.players[l.actor!].name}：${l.text}`
+                    : l.text
+                }}
+                <small v-if="l.type === 'turnEnd'">
+                  · 残AP {{ l.data?.remainingAP }}</small
+                >
               </li>
             </ol>
-            <p class="muted">過去の日の行動も研究日誌から確認できます。</p>
+            <p class="muted">
+              自動進行でも履歴は消えません。過去の日の行動も研究日誌から確認できます。
+            </p>
+          </details>
+          <section
+            v-if="
+              ['results', 'ho', 'dawn', 'ended'].includes(s.phase) && !combat
+            "
+            class="panel results-summary"
+          >
+            <h2>本日のFP・HO・能力変化</h2>
+            <p>
+              現在FP {{ me.fp }} · 攻撃 {{ me.stats.attack }} / 防御
+              {{ me.stats.defense }} / 洞察 {{ me.stats.insight }}
+            </p>
+            <p v-for="l in personalResults" :key="l.seq">{{ l.text }}</p>
           </section>
           <section
             v-if="s.phase !== 'ended' && !combat && !s.challenge"
@@ -1538,22 +1649,10 @@ const nextLabel = computed(
                       : s.players[c.winner!].name + "勝利"
                 }}
               </h3>
-              <p v-for="(r, i) in c.rounds" :key="i">
-                R{{ i + 1 }} {{ r.choices.map((v) => LABELS[v]).join(" / ") }} ·
-                基礎 {{ r.base?.join("/") }} · 1D6 {{ r.rolls.join("/") }} ·
-                ため補正 {{ r.chargeBonus?.join("/") }} · 警戒
-                {{ r.guard?.join("/") }} · 薬
-                {{
-                  r.buffs
-                    ?.map((b) => `${b.attack}/${b.defense}/${b.charge}`)
-                    .join("・")
-                }}
-                · 洞察 {{ r.insight.join("/") }} · 次Rため
-                {{ r.nextCharge.join("/") }} · 判定 {{ r.values.join("/") }} ·
-                被ダメージ {{ r.damage.join("/") }} · HP {{ r.hp.join("/") }} ·
-                カウンター
-                {{ r.counter?.map((v) => (v ? "発生" : "なし")).join("/") }}
-              </p>
+              <CombatRounds
+                :combat="c"
+                :names="c.participants.map((id) => s.players[id].name)"
+              />
             </article>
           </details>
         </main>
@@ -1587,7 +1686,7 @@ const nextLabel = computed(
             </div>
           </section>
           <section
-            v-for="t in s.trades.filter((t) => t.to === 0 || t.from === 0)"
+            v-for="t in s.trades.filter((t) => t.from === 0)"
             :key="t.id"
             class="panel"
           >
@@ -1688,6 +1787,89 @@ const nextLabel = computed(
         </details>
       </section>
     </template>
+    <BlockingDialog v-if="incomingTrade" title="取引への返答が必要です">
+      <p>
+        未決の取引があるため、手番進行と公開行動を停止しています。受諾・拒否するまで表示します。
+      </p>
+      <h3>
+        取引提案：{{ s.players[incomingTrade.from].name }} → {{ me.name }}
+      </h3>
+      <p>
+        提供：{{
+          incomingTrade.offer
+            .map((id) =>
+              itemName(
+                s.players[incomingTrade!.from].inventory.find(
+                  (i) => i.id === id,
+                )?.kind ?? "",
+              ),
+            )
+            .join("・") || "なし"
+        }}
+      </p>
+      <p>
+        要求：{{
+          Object.entries(incomingTrade.request)
+            .map(([k, n]) => `${itemName(k)} ×${n}`)
+            .join("・") || "なし"
+        }}
+      </p>
+      <p>成立・拒否とも0AP。内容は当事者だけに表示します。</p>
+      <template #actions>
+        <button
+          class="primary"
+          @click="
+            act({
+              type: 'tradeReply',
+              player: 0,
+              id: incomingTrade.id,
+              accept: true,
+            })
+          "
+        >
+          受諾
+        </button>
+        <button
+          @click="
+            act({
+              type: 'tradeReply',
+              player: 0,
+              id: incomingTrade.id,
+              accept: false,
+            })
+          "
+        >
+          拒否
+        </button>
+      </template>
+    </BlockingDialog>
+    <BlockingDialog v-if="secretResult" title="秘匿決闘の結果">
+      <h3>
+        {{
+          secretResult.winner === null
+            ? "引き分け"
+            : secretResult.winner === 0
+              ? "あなたの勝利"
+              : "あなたの敗北"
+        }}
+      </h3>
+      <p>
+        {{
+          secretResult.participants.map((id) => s.players[id].name).join(" vs ")
+        }}
+        · 最終HP {{ secretResult.hp.join(" / ") }}
+      </p>
+      <CombatRounds
+        :combat="secretResult"
+        :names="secretResult.participants.map((id) => s.players[id].name)"
+      />
+      <p>当事者だけへの結果です。OKの後に勝者の報酬選択・処理へ進みます。</p>
+      <template #actions>
+        <button class="primary" @click="act({ type: 'combatAck', player: 0 })">
+          OK
+        </button>
+      </template>
+    </BlockingDialog>
     <footer>
       <span>✧ 魔女たちの共同研究</span
       ><span

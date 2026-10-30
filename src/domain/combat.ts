@@ -21,6 +21,7 @@ export function startCombat(
     brought: [[], []],
     rounds: [],
     done: false,
+    resultAcknowledged: false,
     returnPhase: s.phase,
     illusionRound:
       kind === "secret" &&
@@ -77,7 +78,7 @@ export function calculateRound(
 ) {
   const values = choices.map((c, i) =>
     c === "charge"
-      ? stats[i].defense + rolls[i] + guard[i]
+      ? stats[i].insight + rolls[i] + buffs[i].charge
       : stats[i][c === "attack" ? "attack" : "defense"] +
         rolls[i] +
         charge[i] +
@@ -95,7 +96,7 @@ export function calculateRound(
       const diff = values[i] - values[j];
       if (choices[j] === "defend") {
         if (diff < 0) hits[i] = damage(-diff);
-      } else if (diff > 0) hits[j] = damage(diff);
+      } else hits[j] = Math.max(1, Math.floor(values[i] / 3));
     }
   const next = choices.map((c, i) =>
     c === "charge" ? stats[i].insight + rolls[i] + buffs[i].charge : 0,
@@ -167,6 +168,7 @@ export function resolveRound(
     buffs,
     guards,
   );
+  if (c.rounds.length + 1 >= CONFIG.maxRounds) r.charge = [0, 0];
   c.hp = [
     Math.max(0, c.hp[0] - r.damage[0]),
     Math.max(0, c.hp[1] - r.damage[1]),
@@ -177,13 +179,16 @@ export function resolveRound(
     insight: [ps[0].stats.insight, ps[1].stats.insight],
     nextCharge: [...r.charge],
     base: choices.map(
-      (v, i) => ps[i].stats[v === "attack" ? "attack" : "defense"],
+      (v, i) =>
+        ps[i].stats[
+          v === "attack" ? "attack" : v === "charge" ? "insight" : "defense"
+        ],
     ) as [number, number],
     chargeBonus: choices.map((v, i) =>
       v === "charge" ? 0 : chargeBonus[i],
     ) as [number, number],
     buffs,
-    guard: choices.map((v, i) => (v === "attack" ? 0 : guards[i])) as [
+    guard: choices.map((v, i) => (v === "defend" ? guards[i] : 0)) as [
       number,
       number,
     ],

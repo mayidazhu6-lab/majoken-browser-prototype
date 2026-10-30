@@ -44,6 +44,34 @@ const results = seeds.map((seed) => {
         stat: l.kind,
         amount: l.amount,
       })),
+    contributionByDay: Array.from({ length: s.day }, (_, i) => ({
+      day: i + 1,
+      firstRoundDonors: [
+        ...new Set(
+          s.logs
+            .filter(
+              (l) =>
+                l.day === i + 1 &&
+                l.type === "reserve" &&
+                l.data?.round === 1 &&
+                Number(l.data?.units) > 0,
+            )
+            .map((l) => l.actor),
+        ),
+      ],
+      contributors: [
+        ...new Set(
+          s.logs
+            .filter((l) => l.day === i + 1 && l.type === "contribution")
+            .map((l) => l.actor),
+        ),
+      ],
+    })),
+    donationHO: s.players.flatMap((p) =>
+      p.dailyHistory
+        .filter((h) => [7, 11].includes(h.id))
+        .map((h) => ({ player: p.id, ...h })),
+    ),
     actions: s.actions.length,
   };
 });

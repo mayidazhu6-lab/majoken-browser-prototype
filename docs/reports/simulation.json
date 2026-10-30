@@ -1,12 +1,12 @@
 {
-  "rulesVersion": "browser-0.2+decisions-2",
+  "rulesVersion": "browser-0.2.1+decisions-3",
   "policy": "cooperative human bot + three normal AI (unmodified rules)",
   "summary": {
     "seeds": 3,
     "completionRate": 1,
     "collapseRate": 0,
-    "longHOAchievementRate": 0.16666666666666666,
-    "dailyHOAchievementRate": 0.4479166666666667
+    "longHOAchievementRate": 0.3333333333333333,
+    "dailyHOAchievementRate": 0.3333333333333333
   },
   "results": [
     {
@@ -16,6 +16,7 @@
       "completed": true,
       "collapse": false,
       "graduates": [
+        0,
         3
       ],
       "chiefs": [
@@ -27,148 +28,57 @@
           "stats": {
             "attack": 1,
             "defense": 1,
-            "insight": 3
+            "insight": 5
           },
-          "fp": 6,
+          "fp": 8,
           "longHO": 20,
-          "longAchieved": false,
-          "dailyAchieved": 2
+          "longAchieved": true,
+          "dailyAchieved": 0
         },
         {
           "name": "リラ",
           "stats": {
-            "attack": 1,
-            "defense": 2,
-            "insight": 6
+            "attack": 4,
+            "defense": 3,
+            "insight": 5
           },
-          "fp": 11,
+          "fp": 10,
           "longHO": 10,
           "longAchieved": false,
-          "dailyAchieved": 4
+          "dailyAchieved": 2
         },
         {
           "name": "ネム",
           "stats": {
-            "attack": 1,
-            "defense": 5,
-            "insight": 4
+            "attack": 8,
+            "defense": 2,
+            "insight": 5
           },
-          "fp": 18,
+          "fp": 14,
           "longHO": 19,
           "longAchieved": false,
-          "dailyAchieved": 7
+          "dailyAchieved": 5
         },
         {
           "name": "シオン",
           "stats": {
-            "attack": 4,
-            "defense": 5,
-            "insight": 9
+            "attack": 2,
+            "defense": 4,
+            "insight": 6
           },
-          "fp": 4,
+          "fp": 11,
           "longHO": 8,
           "longAchieved": true,
-          "dailyAchieved": 3
+          "dailyAchieved": 2
         }
       ],
       "combats": [
         {
           "kind": "secret",
-          "winner": 1,
+          "winner": 0,
           "rounds": 5,
           "hp": [
-            16,
-            12
-          ],
-          "participants": [
-            1,
-            0
-          ]
-        },
-        {
-          "kind": "secret",
-          "winner": 2,
-          "rounds": 5,
-          "hp": [
-            15,
-            4
-          ],
-          "participants": [
-            2,
-            0
-          ]
-        },
-        {
-          "kind": "public",
-          "winner": 2,
-          "rounds": 5,
-          "hp": [
-            16,
-            6
-          ],
-          "participants": [
-            2,
-            0
-          ]
-        },
-        {
-          "kind": "secret",
-          "winner": 3,
-          "rounds": 5,
-          "hp": [
-            16,
-            8
-          ],
-          "participants": [
-            3,
-            0
-          ]
-        },
-        {
-          "kind": "public",
-          "winner": 2,
-          "rounds": 5,
-          "hp": [
-            6,
-            2
-          ],
-          "participants": [
-            2,
-            0
-          ]
-        },
-        {
-          "kind": "public",
-          "winner": 2,
-          "rounds": 5,
-          "hp": [
-            1,
-            14
-          ],
-          "participants": [
-            1,
-            2
-          ]
-        },
-        {
-          "kind": "secret",
-          "winner": 2,
-          "rounds": 5,
-          "hp": [
-            16,
-            7
-          ],
-          "participants": [
-            2,
-            0
-          ]
-        },
-        {
-          "kind": "secret",
-          "winner": null,
-          "rounds": 5,
-          "hp": [
-            16,
+            9,
             16
           ],
           "participants": [
@@ -177,77 +87,51 @@
           ]
         },
         {
-          "kind": "mock",
+          "kind": "secret",
+          "winner": null,
+          "rounds": 5,
+          "hp": [
+            9,
+            9
+          ],
+          "participants": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "public",
           "winner": 2,
+          "rounds": 5,
+          "hp": [
+            12,
+            9
+          ],
+          "participants": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 0,
           "rounds": 5,
           "hp": [
             10,
-            13
+            15
           ],
           "participants": [
             1,
-            2
-          ]
-        },
-        {
-          "kind": "public",
-          "winner": 2,
-          "rounds": 4,
-          "hp": [
-            16,
-            0
-          ],
-          "participants": [
-            2,
             0
           ]
         },
         {
           "kind": "secret",
-          "winner": 2,
-          "rounds": 4,
-          "hp": [
-            18,
-            0
-          ],
-          "participants": [
-            2,
-            0
-          ]
-        },
-        {
-          "kind": "secret",
-          "winner": 3,
-          "rounds": 5,
-          "hp": [
-            17,
-            6
-          ],
-          "participants": [
-            3,
-            0
-          ]
-        },
-        {
-          "kind": "public",
-          "winner": 2,
-          "rounds": 5,
-          "hp": [
-            13,
-            4
-          ],
-          "participants": [
-            2,
-            0
-          ]
-        },
-        {
-          "kind": "public",
           "winner": 2,
           "rounds": 5,
           "hp": [
             11,
-            10
+            9
           ],
           "participants": [
             2,
@@ -256,11 +140,11 @@
         },
         {
           "kind": "secret",
-          "winner": 1,
+          "winner": 0,
           "rounds": 5,
           "hp": [
-            12,
-            6
+            11,
+            16
           ],
           "participants": [
             1,
@@ -269,11 +153,11 @@
         },
         {
           "kind": "secret",
-          "winner": 3,
+          "winner": 0,
           "rounds": 5,
           "hp": [
-            15,
-            2
+            11,
+            14
           ],
           "participants": [
             3,
@@ -282,24 +166,50 @@
         },
         {
           "kind": "mock",
-          "winner": null,
+          "winner": 2,
           "rounds": 5,
           "hp": [
-            20,
-            20
+            4,
+            12
           ],
           "participants": [
-            3,
-            1
+            1,
+            2
           ]
         },
         {
           "kind": "secret",
-          "winner": null,
+          "winner": 2,
           "rounds": 5,
           "hp": [
-            16,
-            16
+            11,
+            8
+          ],
+          "participants": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 0,
+          "rounds": 5,
+          "hp": [
+            11,
+            15
+          ],
+          "participants": [
+            1,
+            0
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": 2,
+          "rounds": 5,
+          "hp": [
+            10,
+            9
           ],
           "participants": [
             2,
@@ -322,6 +232,12 @@
         },
         {
           "day": 2,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 2,
           "player": 1,
           "delta": 1,
           "source": "event"
@@ -330,40 +246,22 @@
           "day": 2,
           "player": 2,
           "delta": 1,
-          "source": "ho"
+          "source": "event"
         },
         {
           "day": 2,
           "player": 3,
           "delta": 1,
-          "source": "ho"
-        },
-        {
-          "day": 3,
-          "player": 2,
-          "delta": 1,
-          "source": "duel"
-        },
-        {
-          "day": 3,
-          "player": 2,
-          "delta": 1,
-          "source": "duel"
-        },
-        {
-          "day": 3,
-          "player": 2,
-          "delta": 2,
           "source": "event"
         },
         {
-          "day": 3,
+          "day": 2,
           "player": 1,
           "delta": 1,
           "source": "ho"
         },
         {
-          "day": 3,
+          "day": 2,
           "player": 2,
           "delta": 1,
           "source": "ho"
@@ -371,32 +269,26 @@
         {
           "day": 4,
           "player": 0,
-          "delta": 1,
+          "delta": 2,
           "source": "event"
         },
         {
           "day": 4,
           "player": 1,
-          "delta": 1,
+          "delta": 2,
           "source": "event"
         },
         {
           "day": 4,
           "player": 2,
-          "delta": 1,
+          "delta": 2,
           "source": "event"
         },
         {
           "day": 4,
           "player": 3,
-          "delta": 1,
+          "delta": 2,
           "source": "event"
-        },
-        {
-          "day": 4,
-          "player": 0,
-          "delta": 1,
-          "source": "ho"
         },
         {
           "day": 4,
@@ -405,70 +297,64 @@
           "source": "ho"
         },
         {
-          "day": 4,
+          "day": 5,
+          "player": 0,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 5,
+          "player": 1,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 5,
+          "player": 2,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 5,
+          "player": 3,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 5,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 5,
           "player": 3,
           "delta": 1,
           "source": "ho"
         },
         {
-          "day": 5,
-          "player": 2,
-          "delta": 1,
-          "source": "duel"
-        },
-        {
-          "day": 5,
-          "player": 0,
-          "delta": 1,
-          "source": "event"
-        },
-        {
-          "day": 5,
-          "player": 1,
-          "delta": 1,
-          "source": "event"
-        },
-        {
-          "day": 5,
-          "player": 2,
-          "delta": 1,
-          "source": "ho"
-        },
-        {
-          "day": 6,
-          "player": 2,
-          "delta": 1,
-          "source": "duel"
-        },
-        {
-          "day": 6,
-          "player": 1,
-          "delta": 2,
-          "source": "event"
-        },
-        {
           "day": 6,
           "player": 0,
           "delta": 1,
-          "source": "ho"
+          "source": "event"
         },
         {
           "day": 6,
           "player": 1,
           "delta": 1,
-          "source": "ho"
+          "source": "event"
+        },
+        {
+          "day": 6,
+          "player": 2,
+          "delta": 1,
+          "source": "event"
         },
         {
           "day": 6,
           "player": 3,
           "delta": 1,
-          "source": "ho"
-        },
-        {
-          "day": 7,
-          "player": 2,
-          "delta": 1,
-          "source": "duel"
+          "source": "event"
         },
         {
           "day": 7,
@@ -490,9 +376,9 @@
         },
         {
           "day": 7,
-          "player": 1,
-          "delta": 1,
-          "source": "ho"
+          "player": 3,
+          "delta": 2,
+          "source": "event"
         },
         {
           "day": 7,
@@ -502,13 +388,19 @@
         },
         {
           "day": 8,
-          "player": 1,
+          "player": 3,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 8,
+          "player": 2,
           "delta": 1,
           "source": "ho"
         },
         {
           "day": 8,
-          "player": 2,
+          "player": 3,
           "delta": 1,
           "source": "ho"
         }
@@ -534,60 +426,194 @@
         },
         {
           "day": 2,
+          "player": 1,
+          "stat": "insight",
+          "amount": 1
+        },
+        {
+          "day": 2,
           "player": 3,
           "stat": "defense",
           "amount": 1
         },
         {
           "day": 4,
-          "player": 1,
-          "stat": "defense",
-          "amount": 2
-        },
-        {
-          "day": 4,
           "player": 3,
-          "stat": "defense",
-          "amount": 2
-        },
-        {
-          "day": 4,
-          "player": 2,
           "stat": "insight",
           "amount": 1
         },
         {
           "day": 5,
-          "player": 3,
+          "player": 2,
+          "stat": "attack",
+          "amount": 1
+        },
+        {
+          "day": 5,
+          "player": 0,
+          "stat": "insight",
+          "amount": 1
+        },
+        {
+          "day": 5,
+          "player": 1,
+          "stat": "attack",
+          "amount": 1
+        },
+        {
+          "day": 5,
+          "player": 2,
           "stat": "insight",
           "amount": 1
         },
         {
           "day": 7,
-          "player": 3,
-          "stat": "insight",
-          "amount": 2
+          "player": 2,
+          "stat": "attack",
+          "amount": 1
         },
         {
-          "day": 7,
-          "player": 1,
+          "day": 8,
+          "player": 2,
           "stat": "insight",
           "amount": 1
         },
         {
           "day": 8,
           "player": 3,
-          "stat": "insight",
+          "stat": "defense",
           "amount": 1
         },
         {
           "day": 8,
-          "player": 1,
+          "player": 0,
           "stat": "insight",
           "amount": 1
         }
       ],
-      "actions": 201
+      "contributionByDay": [
+        {
+          "day": 1,
+          "firstRoundDonors": [],
+          "contributors": []
+        },
+        {
+          "day": 2,
+          "firstRoundDonors": [
+            1,
+            2,
+            3,
+            0
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 3,
+          "firstRoundDonors": [],
+          "contributors": []
+        },
+        {
+          "day": 4,
+          "firstRoundDonors": [
+            3,
+            0,
+            1,
+            2
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 5,
+          "firstRoundDonors": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 6,
+          "firstRoundDonors": [
+            1,
+            2,
+            3,
+            0
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 7,
+          "firstRoundDonors": [
+            2,
+            3,
+            0,
+            1
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 8,
+          "firstRoundDonors": [
+            3,
+            0,
+            1,
+            2
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        }
+      ],
+      "donationHO": [
+        {
+          "player": 0,
+          "day": 3,
+          "id": 11,
+          "achieved": false
+        },
+        {
+          "player": 2,
+          "day": 7,
+          "id": 7,
+          "achieved": true
+        },
+        {
+          "player": 2,
+          "day": 8,
+          "id": 11,
+          "achieved": true
+        }
+      ],
+      "actions": 194
     },
     {
       "seed": "moon-42",
@@ -601,11 +627,11 @@
         {
           "name": "試験魔女",
           "stats": {
-            "attack": 1,
-            "defense": 3,
-            "insight": 3
+            "attack": 2,
+            "defense": 4,
+            "insight": 4
           },
-          "fp": 6,
+          "fp": 10,
           "longHO": 12,
           "longAchieved": false,
           "dailyAchieved": 2
@@ -613,35 +639,35 @@
         {
           "name": "リラ",
           "stats": {
-            "attack": 3,
+            "attack": 1,
             "defense": 5,
-            "insight": 7
+            "insight": 5
           },
-          "fp": 6,
+          "fp": 11,
           "longHO": 6,
           "longAchieved": false,
-          "dailyAchieved": 4
+          "dailyAchieved": 3
         },
         {
           "name": "ネム",
-          "stats": {
-            "attack": 6,
-            "defense": 5,
-            "insight": 6
-          },
-          "fp": 8,
-          "longHO": 16,
-          "longAchieved": false,
-          "dailyAchieved": 5
-        },
-        {
-          "name": "シオン",
           "stats": {
             "attack": 2,
             "defense": 4,
             "insight": 6
           },
-          "fp": 4,
+          "fp": 11,
+          "longHO": 16,
+          "longAchieved": false,
+          "dailyAchieved": 2
+        },
+        {
+          "name": "シオン",
+          "stats": {
+            "attack": 6,
+            "defense": 5,
+            "insight": 6
+          },
+          "fp": 10,
           "longHO": 11,
           "longAchieved": false,
           "dailyAchieved": 2
@@ -666,11 +692,11 @@
           "winner": 2,
           "rounds": 5,
           "hp": [
-            9,
-            12
+            14,
+            16
           ],
           "participants": [
-            3,
+            1,
             2
           ]
         },
@@ -679,60 +705,8 @@
           "winner": 0,
           "rounds": 5,
           "hp": [
-            7,
-            15
-          ],
-          "participants": [
-            1,
-            0
-          ]
-        },
-        {
-          "kind": "secret",
-          "winner": 1,
-          "rounds": 5,
-          "hp": [
-            13,
-            5
-          ],
-          "participants": [
-            1,
-            0
-          ]
-        },
-        {
-          "kind": "mock",
-          "winner": 2,
-          "rounds": 5,
-          "hp": [
-            9,
-            11
-          ],
-          "participants": [
-            1,
-            2
-          ]
-        },
-        {
-          "kind": "public",
-          "winner": null,
-          "rounds": 5,
-          "hp": [
-            15,
-            15
-          ],
-          "participants": [
-            3,
-            2
-          ]
-        },
-        {
-          "kind": "secret",
-          "winner": 2,
-          "rounds": 4,
-          "hp": [
-            17,
-            0
+            10,
+            16
           ],
           "participants": [
             2,
@@ -741,11 +715,24 @@
         },
         {
           "kind": "secret",
-          "winner": 2,
+          "winner": 0,
           "rounds": 5,
           "hp": [
-            13,
+            11,
             15
+          ],
+          "participants": [
+            2,
+            0
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": null,
+          "rounds": 5,
+          "hp": [
+            20,
+            20
           ],
           "participants": [
             3,
@@ -762,6 +749,24 @@
         },
         {
           "day": 1,
+          "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 1,
+          "player": 2,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 1,
+          "player": 3,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 1,
           "player": 0,
           "delta": 1,
           "source": "ho"
@@ -774,109 +779,163 @@
         },
         {
           "day": 2,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 2,
+          "player": 2,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 3,
           "player": 2,
           "delta": 1,
           "source": "duel"
         },
         {
-          "day": 2,
-          "player": 1,
-          "delta": 1,
-          "source": "ho"
-        },
-        {
-          "day": 2,
-          "player": 2,
-          "delta": 1,
-          "source": "ho"
-        },
-        {
-          "day": 2,
-          "player": 3,
-          "delta": 1,
-          "source": "ho"
-        },
-        {
           "day": 3,
-          "player": 1,
-          "delta": 1,
-          "source": "event"
-        },
-        {
-          "day": 3,
-          "player": 2,
-          "delta": 1,
-          "source": "event"
-        },
-        {
-          "day": 3,
-          "player": 1,
-          "delta": 1,
-          "source": "ho"
-        },
-        {
-          "day": 3,
-          "player": 2,
-          "delta": 1,
-          "source": "ho"
-        },
-        {
-          "day": 4,
-          "player": 3,
-          "delta": 1,
-          "source": "event"
-        },
-        {
-          "day": 4,
-          "player": 3,
-          "delta": 1,
-          "source": "ho"
-        },
-        {
-          "day": 5,
           "player": 0,
           "delta": 2,
           "source": "event"
         },
         {
-          "day": 5,
+          "day": 3,
+          "player": 1,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 3,
+          "player": 2,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 3,
+          "player": 3,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 3,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 4,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 2,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 3,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 4,
           "player": 1,
           "delta": 1,
           "source": "ho"
         },
         {
           "day": 5,
-          "player": 2,
-          "delta": 1,
-          "source": "ho"
-        },
-        {
-          "day": 6,
           "player": 1,
           "delta": 1,
-          "source": "event"
-        },
-        {
-          "day": 6,
-          "player": 2,
-          "delta": 1,
-          "source": "event"
+          "source": "ho"
         },
         {
           "day": 6,
           "player": 0,
           "delta": 1,
-          "source": "ho"
+          "source": "event"
         },
         {
           "day": 6,
           "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 6,
+          "player": 2,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 6,
+          "player": 3,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 0,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 1,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 2,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 3,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 0,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 7,
+          "player": 3,
           "delta": 1,
           "source": "ho"
         },
         {
           "day": 8,
           "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 8,
+          "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 8,
+          "player": 2,
           "delta": 1,
           "source": "event"
         },
@@ -885,12 +944,6 @@
           "player": 3,
           "delta": 1,
           "source": "event"
-        },
-        {
-          "day": 8,
-          "player": 2,
-          "delta": 1,
-          "source": "ho"
         }
       ],
       "growth": [
@@ -913,64 +966,178 @@
           "amount": 1
         },
         {
-          "day": 2,
+          "day": 3,
           "player": 2,
-          "stat": "defense",
-          "amount": 2
-        },
-        {
-          "day": 2,
-          "player": 1,
-          "stat": "defense",
+          "stat": "insight",
           "amount": 1
         },
         {
           "day": 3,
-          "player": 1,
+          "player": 3,
           "stat": "attack",
-          "amount": 1
-        },
-        {
-          "day": 4,
-          "player": 1,
-          "stat": "insight",
           "amount": 2
         },
         {
           "day": 5,
-          "player": 3,
-          "stat": "insight",
-          "amount": 1
-        },
-        {
-          "day": 6,
           "player": 2,
-          "stat": "attack",
-          "amount": 1
+          "stat": "insight",
+          "amount": 0
         },
         {
-          "day": 6,
-          "player": 0,
+          "day": 5,
+          "player": 1,
           "stat": "defense",
           "amount": 1
         },
         {
-          "day": 7,
+          "day": 5,
           "player": 2,
           "stat": "insight",
           "amount": 1
         },
         {
+          "day": 6,
+          "player": 3,
+          "stat": "attack",
+          "amount": 1
+        },
+        {
           "day": 7,
-          "player": 2,
+          "player": 3,
           "stat": "insight",
+          "amount": 2
+        },
+        {
+          "day": 7,
+          "player": 0,
+          "stat": "insight",
+          "amount": 1
+        },
+        {
+          "day": 7,
+          "player": 1,
+          "stat": "defense",
           "amount": 1
         },
         {
           "day": 8,
           "player": 3,
-          "stat": "insight",
+          "stat": "defense",
           "amount": 1
+        }
+      ],
+      "contributionByDay": [
+        {
+          "day": 1,
+          "firstRoundDonors": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 2,
+          "firstRoundDonors": [],
+          "contributors": [
+            1,
+            2
+          ]
+        },
+        {
+          "day": 3,
+          "firstRoundDonors": [
+            2,
+            3,
+            0,
+            1
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 4,
+          "firstRoundDonors": [
+            3,
+            0,
+            1,
+            2
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 5,
+          "firstRoundDonors": [],
+          "contributors": []
+        },
+        {
+          "day": 6,
+          "firstRoundDonors": [
+            1,
+            2,
+            3,
+            0
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 7,
+          "firstRoundDonors": [
+            2,
+            3,
+            0,
+            1
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 8,
+          "firstRoundDonors": [],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        }
+      ],
+      "donationHO": [
+        {
+          "player": 2,
+          "day": 2,
+          "id": 7,
+          "achieved": true
+        },
+        {
+          "player": 3,
+          "day": 5,
+          "id": 7,
+          "achieved": false
         }
       ],
       "actions": 134
@@ -982,6 +1149,7 @@
       "completed": true,
       "collapse": false,
       "graduates": [
+        1,
         3
       ],
       "chiefs": [
@@ -991,35 +1159,35 @@
         {
           "name": "試験魔女",
           "stats": {
-            "attack": 3,
+            "attack": 5,
             "defense": 6,
-            "insight": 6
+            "insight": 3
           },
-          "fp": 4,
+          "fp": 7,
           "longHO": 12,
           "longAchieved": false,
-          "dailyAchieved": 2
+          "dailyAchieved": 1
         },
         {
           "name": "リラ",
           "stats": {
-            "attack": 4,
-            "defense": 4,
-            "insight": 9
+            "attack": 6,
+            "defense": 3,
+            "insight": 6
           },
-          "fp": 7,
+          "fp": 11,
           "longHO": 9,
-          "longAchieved": false,
+          "longAchieved": true,
           "dailyAchieved": 4
         },
         {
           "name": "ネム",
           "stats": {
-            "attack": 3,
-            "defense": 3,
+            "attack": 5,
+            "defense": 5,
             "insight": 5
           },
-          "fp": 8,
+          "fp": 9,
           "longHO": 17,
           "longAchieved": false,
           "dailyAchieved": 3
@@ -1028,23 +1196,23 @@
           "name": "シオン",
           "stats": {
             "attack": 6,
-            "defense": 6,
-            "insight": 4
+            "defense": 4,
+            "insight": 5
           },
-          "fp": 7,
+          "fp": 13,
           "longHO": 21,
           "longAchieved": true,
-          "dailyAchieved": 5
+          "dailyAchieved": 6
         }
       ],
       "combats": [
         {
-          "kind": "secret",
+          "kind": "mock",
           "winner": 1,
           "rounds": 5,
           "hp": [
-            15,
-            16
+            11,
+            12
           ],
           "participants": [
             2,
@@ -1053,19 +1221,58 @@
         },
         {
           "kind": "secret",
-          "winner": 3,
+          "winner": null,
           "rounds": 5,
           "hp": [
-            16,
+            8,
             8
           ],
           "participants": [
-            3,
-            0
+            1,
+            3
           ]
         },
         {
-          "kind": "mock",
+          "kind": "public",
+          "winner": 1,
+          "rounds": 5,
+          "hp": [
+            10,
+            7
+          ],
+          "participants": [
+            1,
+            3
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": null,
+          "rounds": 5,
+          "hp": [
+            14,
+            14
+          ],
+          "participants": [
+            2,
+            1
+          ]
+        },
+        {
+          "kind": "secret",
+          "winner": null,
+          "rounds": 5,
+          "hp": [
+            8,
+            8
+          ],
+          "participants": [
+            1,
+            3
+          ]
+        },
+        {
+          "kind": "public",
           "winner": null,
           "rounds": 5,
           "hp": [
@@ -1073,47 +1280,8 @@
             9
           ],
           "participants": [
-            3,
-            1
-          ]
-        },
-        {
-          "kind": "secret",
-          "winner": 3,
-          "rounds": 5,
-          "hp": [
-            13,
-            2
-          ],
-          "participants": [
-            3,
-            0
-          ]
-        },
-        {
-          "kind": "mock",
-          "winner": null,
-          "rounds": 5,
-          "hp": [
-            20,
-            20
-          ],
-          "participants": [
             1,
-            2
-          ]
-        },
-        {
-          "kind": "secret",
-          "winner": 0,
-          "rounds": 5,
-          "hp": [
-            14,
-            15
-          ],
-          "participants": [
-            3,
-            0
+            3
           ]
         }
       ],
@@ -1150,6 +1318,12 @@
         },
         {
           "day": 2,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 2,
           "player": 1,
           "delta": 1,
           "source": "event"
@@ -1157,6 +1331,12 @@
         {
           "day": 2,
           "player": 2,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 2,
+          "player": 3,
           "delta": 1,
           "source": "event"
         },
@@ -1180,15 +1360,45 @@
         },
         {
           "day": 3,
-          "player": 2,
-          "delta": 2,
-          "source": "event"
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
         },
         {
           "day": 3,
-          "player": 3,
+          "player": 2,
           "delta": 1,
           "source": "ho"
+        },
+        {
+          "day": 4,
+          "player": 1,
+          "delta": 1,
+          "source": "duel"
+        },
+        {
+          "day": 4,
+          "player": 0,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 1,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 2,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 4,
+          "player": 3,
+          "delta": 1,
+          "source": "event"
         },
         {
           "day": 4,
@@ -1197,16 +1407,10 @@
           "source": "ho"
         },
         {
-          "day": 5,
+          "day": 6,
           "player": 0,
           "delta": 1,
           "source": "event"
-        },
-        {
-          "day": 5,
-          "player": 1,
-          "delta": 1,
-          "source": "ho"
         },
         {
           "day": 6,
@@ -1216,25 +1420,61 @@
         },
         {
           "day": 6,
-          "player": 0,
-          "delta": 1,
-          "source": "ho"
-        },
-        {
-          "day": 6,
-          "player": 1,
-          "delta": 1,
-          "source": "ho"
-        },
-        {
-          "day": 7,
           "player": 2,
           "delta": 1,
           "source": "event"
         },
         {
+          "day": 6,
+          "player": 3,
+          "delta": 1,
+          "source": "event"
+        },
+        {
+          "day": 6,
+          "player": 1,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 6,
+          "player": 3,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
           "day": 7,
           "player": 0,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 1,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 2,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 3,
+          "delta": 2,
+          "source": "event"
+        },
+        {
+          "day": 7,
+          "player": 0,
+          "delta": 1,
+          "source": "ho"
+        },
+        {
+          "day": 7,
+          "player": 1,
           "delta": 1,
           "source": "ho"
         },
@@ -1258,13 +1498,7 @@
         },
         {
           "day": 8,
-          "player": 1,
-          "delta": 1,
-          "source": "ho"
-        },
-        {
-          "day": 8,
-          "player": 2,
+          "player": 3,
           "delta": 1,
           "source": "ho"
         }
@@ -1278,44 +1512,50 @@
         },
         {
           "day": 2,
+          "player": 1,
+          "stat": "insight",
+          "amount": 2
+        },
+        {
+          "day": 2,
           "player": 3,
-          "stat": "defense",
+          "stat": "attack",
           "amount": 2
         },
         {
           "day": 3,
           "player": 2,
           "stat": "defense",
-          "amount": 2
+          "amount": 1
         },
         {
           "day": 3,
           "player": 1,
-          "stat": "insight",
-          "amount": 2
-        },
-        {
-          "day": 3,
-          "player": 3,
           "stat": "attack",
           "amount": 2
         },
         {
           "day": 4,
-          "player": 1,
-          "stat": "insight",
-          "amount": 2
+          "player": 3,
+          "stat": "attack",
+          "amount": 1
         },
         {
-          "day": 5,
+          "day": 4,
           "player": 2,
           "stat": "attack",
           "amount": 2
         },
         {
+          "day": 4,
+          "player": 3,
+          "stat": "attack",
+          "amount": 1
+        },
+        {
           "day": 5,
-          "player": 1,
-          "stat": "insight",
+          "player": 2,
+          "stat": "attack",
           "amount": 1
         },
         {
@@ -1323,11 +1563,17 @@
           "player": 1,
           "stat": "insight",
           "amount": 1
+        },
+        {
+          "day": 6,
+          "player": 2,
+          "stat": "defense",
+          "amount": 2
         },
         {
           "day": 6,
           "player": 3,
-          "stat": "defense",
+          "stat": "insight",
           "amount": 1
         },
         {
@@ -1338,30 +1584,138 @@
         },
         {
           "day": 7,
-          "player": 0,
-          "stat": "insight",
-          "amount": 3
-        },
-        {
-          "day": 8,
           "player": 3,
           "stat": "defense",
-          "amount": 1
+          "amount": 2
         },
         {
-          "day": 8,
-          "player": 1,
-          "stat": "defense",
-          "amount": 1
-        },
-        {
-          "day": 8,
-          "player": 2,
-          "stat": "insight",
-          "amount": 1
+          "day": 7,
+          "player": 0,
+          "stat": "attack",
+          "amount": 3
         }
       ],
-      "actions": 135
+      "contributionByDay": [
+        {
+          "day": 1,
+          "firstRoundDonors": [],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 2,
+          "firstRoundDonors": [
+            1,
+            2,
+            3,
+            0
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 3,
+          "firstRoundDonors": [],
+          "contributors": [
+            1,
+            2
+          ]
+        },
+        {
+          "day": 4,
+          "firstRoundDonors": [
+            3,
+            0,
+            1,
+            2
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 5,
+          "firstRoundDonors": [],
+          "contributors": []
+        },
+        {
+          "day": 6,
+          "firstRoundDonors": [
+            1,
+            2,
+            3,
+            0
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 7,
+          "firstRoundDonors": [
+            2,
+            3,
+            0,
+            1
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "day": 8,
+          "firstRoundDonors": [
+            3,
+            0,
+            1,
+            2
+          ],
+          "contributors": [
+            0,
+            1,
+            2,
+            3
+          ]
+        }
+      ],
+      "donationHO": [
+        {
+          "player": 1,
+          "day": 2,
+          "id": 11,
+          "achieved": true
+        },
+        {
+          "player": 3,
+          "day": 4,
+          "id": 11,
+          "achieved": true
+        },
+        {
+          "player": 3,
+          "day": 7,
+          "id": 11,
+          "achieved": true
+        }
+      ],
+      "actions": 119
     }
   ]
 }

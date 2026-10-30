@@ -141,6 +141,7 @@ export interface Combat {
   rounds: Round[];
   winner?: number | null;
   done: boolean;
+  resultAcknowledged: boolean;
   returnPhase: Phase;
   illusionRound: number;
   initiator: number;
@@ -230,6 +231,7 @@ export type Action =
   | { type: "challengeReply"; player: number; fight: boolean; items?: number[] }
   | { type: "loadout"; player: number; items: number[] }
   | { type: "round"; player: number; stance: Stance; potion?: number }
+  | { type: "combatAck"; player: number }
   | { type: "reward"; player: number; kind: "item" | "command"; stat?: Stat }
   | { type: "magic"; player: number; target?: number }
   | { type: "vote"; player: number; event: number }

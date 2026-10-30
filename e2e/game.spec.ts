@@ -66,6 +66,12 @@ test("画面の操作だけで8日間を完走", async ({ page }) => {
           .click();
         await page.getByRole("button", { name: /手を確定/ }).click();
         break;
+      case "combatAck":
+        await page
+          .getByRole("dialog", { name: "秘匿決闘の結果" })
+          .getByRole("button", { name: "OK", exact: true })
+          .click();
+        break;
       case "reward":
         await page
           .getByRole("button", {

@@ -1,6 +1,6 @@
 import type { Magic, Stat } from "./types";
 export const CONFIG = {
-  rulesVersion: "browser-0.2+decisions-2",
+  rulesVersion: "browser-0.2.1+decisions-3",
   days: 8,
   ap: 2,
   collapse: 3,
@@ -90,4 +90,17 @@ export const RESEARCH: Record<Stat, string[]> = {
 };
 export function level(value: number) {
   return value >= CONFIG.level3 ? 3 : value >= CONFIG.level2 ? 2 : 1;
+}
+export function nextLevel(value: number) {
+  return value < CONFIG.level2
+    ? CONFIG.level2
+    : value < CONFIG.level3
+      ? CONFIG.level3
+      : null;
+}
+export function levelEffect(stat: Stat, lv: number) {
+  if (stat === "attack") return `呪詛の減衰量 ${CONFIG.curse[lv - 1]}`;
+  if (stat === "defense")
+    return `警戒の初R防御補正 +${lv}、休息成功時の翌日採集・研究 +${CONFIG.rest[lv - 1]}`;
+  return `戦闘薬持込枠 ${lv}個${lv === 3 ? "。Lv3戦闘薬の作成・持込を解禁" : "（現在の戦闘薬はLv3で解禁）"}`;
 }
