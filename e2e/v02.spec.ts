@@ -16,13 +16,11 @@ async function state(page: Page): Promise<GameState> {
   );
 }
 async function importState(page: Page, s: GameState) {
-  await page
-    .locator('input[type="file"]')
-    .setInputFiles({
-      name: "v02.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(serialize(s)),
-    });
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "v02.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(serialize(s)),
+  });
   await expect(page.locator(".alert.error")).toHaveCount(0);
 }
 
@@ -48,13 +46,11 @@ test("v0.1領域を保持し、続行・JSON取込は版不一致。新規保存
     await page.evaluate(() => localStorage.getItem("majoken-save-v1")),
   ).toBe(old);
   const before = await state(page);
-  await page
-    .locator('input[type="file"]')
-    .setInputFiles({
-      name: "v01.json",
-      mimeType: "application/json",
-      buffer: Buffer.from(old),
-    });
+  await page.locator('input[type="file"]').setInputFiles({
+    name: "v01.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(old),
+  });
   await expect(page.locator(".alert.error")).toContainText(
     "バージョンが一致しません",
   );
@@ -169,6 +165,104 @@ test("夜錬金の追加・削除・素材不足拒否・複数確定・保存�
   expect(
     (await state(page)).logs.filter((l) => l.type === "brew" && l.actor === 0),
   ).toHaveLength(plan.length);
+});
+
+test("同日付の保存JSON読込で確定済み夜行動・対象・複数錬金の表示を同期", async ({
+  page,
+}) => {
+  let base = createGame(setup);
+  for (let n = 0; base.phase !== "night" && n < 100; n++)
+    base = dispatch(base, simulationAction(base));
+  expect(base.phase).toBe("night");
+  const scout = dispatch(base, {
+    type: "night",
+    player: 0,
+    choice: { kind: "scout", target: 2 },
+  });
+  const three = dispatch(base, {
+    type: "night",
+    player: 0,
+    choice: { kind: "brew", recipes: ["study", "study", "watch"] },
+  });
+  const two = dispatch(base, {
+    type: "night",
+    player: 0,
+    choice: { kind: "brew", recipes: ["cleanse", "watch"] },
+  });
+  await page.goto("/");
+  await importState(page, scout);
+  const panel = page
+    .locator("section")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "秘密の行動をひとつ。",
+        exact: true,
+      }),
+    });
+  await expect(panel.locator(".night-options button.chosen")).toHaveText(
+    "偵察",
+  );
+  for (const [saved, count, studyCount, cleanseCount] of [
+    [three, 3, 2, 0],
+    [two, 2, 0, 1],
+  ] as const) {
+    expect(saved.day).toBe(scout.day);
+    await importState(page, saved);
+    expect(await state(page)).toEqual(saved);
+    await expect(panel.locator(".night-options button.chosen")).toHaveText(
+      "錬金",
+    );
+    await expect(
+      panel.getByText(`作成予定 ${count} 個（固定上限なし）`, { exact: true }),
+    ).toBeVisible();
+    await expect(
+      panel.locator("p").filter({ hasText: "研鑽の薬" }),
+    ).toHaveCount(studyCount);
+    await expect(
+      panel.locator("p").filter({ hasText: "浄化の薬" }),
+    ).toHaveCount(cleanseCount);
+    await expect(
+      panel.locator("p").filter({ hasText: "守護の薬" }),
+    ).toHaveCount(1);
+    await expect(
+      panel.getByRole("button", { name: "作成予定に追加", exact: true }),
+    ).toBeDisabled();
+    await expect(
+      panel.getByRole("button", { name: "削除", exact: true }),
+    ).toHaveCount(count);
+  }
+  await importState(page, scout);
+  await expect(panel.locator(".night-options button.chosen")).toHaveText(
+    "偵察",
+  );
+  await expect(panel.getByLabel("対象", { exact: true })).toHaveValue("2");
+  await expect(panel.getByLabel("対象", { exact: true })).toBeDisabled();
+  await expect(
+    panel.getByRole("button", { name: "削除", exact: true }),
+  ).toHaveCount(0);
+  // Reloading an uncommitted save also clears local drafts on the same day.
+  await importState(page, base);
+  await expect(panel.locator(".night-options button.chosen")).toHaveText(
+    "休息",
+  );
+  await panel
+    .locator(".night-options")
+    .getByRole("button", { name: "錬金", exact: true })
+    .click();
+  await panel
+    .getByRole("button", { name: "作成予定に追加", exact: true })
+    .click();
+  await importState(page, base);
+  await expect(panel.locator(".night-options button.chosen")).toHaveText(
+    "休息",
+  );
+  await panel
+    .locator(".night-options")
+    .getByRole("button", { name: "錬金", exact: true })
+    .click();
+  await expect(
+    panel.getByText("作成予定 0 個（固定上限なし）", { exact: true }),
+  ).toBeVisible();
 });
 
 test("秘匿決闘の当事者には内訳を表示し、第三者の戦闘・薬・HO・取引ログを表示しない", async ({

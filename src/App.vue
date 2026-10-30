@@ -51,14 +51,33 @@ const debug = ref(false),
   brought = ref<number[]>([]),
   changeMagic = ref<Magic>("foresight");
 const hoNoticeDay = ref(0);
+watch([() => s.value?.day, () => me.value?.night], syncNightDisplay, {
+  immediate: true,
+});
 watch(
   () => s.value?.day,
   () => {
-    nightPlan.value = [...(me.value?.night?.recipes ?? [])];
-    night.value = me.value?.night?.kind ?? "rest";
     hoNoticeDay.value = 0;
   },
 );
+function syncNightDisplay() {
+  const saved = me.value?.night;
+  night.value = saved?.kind ?? "rest";
+  nightPlan.value = [...(saved?.recipes ?? [])];
+  nightRecipe.value = nightPlan.value[0] ?? "vigor";
+  nightPotion.value = saved?.potion;
+  target.value = saved?.target ?? 1;
+}
+function loadSave(json?: string) {
+  const previous = store.state;
+  store.load(json);
+  if (store.state !== previous) syncNightDisplay();
+}
+function startGame() {
+  const previous = store.state;
+  store.start(setup.value);
+  if (store.state !== previous) syncNightDisplay();
+}
 const event = computed(() =>
   s.value ? EVENTS[s.value.event.id - 1] : undefined,
 );
@@ -173,7 +192,7 @@ async function upload(e: Event) {
       store.error = "10MB以下のセーブを選択してください";
       return;
     }
-    store.load(await file.text());
+    loadSave(await file.text());
   }
   (e.target as HTMLInputElement).value = "";
 }
@@ -250,7 +269,7 @@ const nextLabel = computed(
       >
       <div class="top-actions">
         <span class="version">試遊版 v0.2</span
-        ><button @click="store.load()">続きから</button
+        ><button @click="loadSave()">続きから</button
         ><template v-if="s"
           ><button @click="store.save()">保存</button
           ><button @click="download">JSON保存</button></template
@@ -331,7 +350,7 @@ const nextLabel = computed(
         <button
           class="primary start-button"
           :disabled="total !== 10 || !setup.name.trim() || !setup.seed"
-          @click="store.start(setup)"
+          @click="startGame"
         >
           8日間の研究をはじめる <span>→</span>
         </button>
@@ -1345,7 +1364,11 @@ const nextLabel = computed(
               }}
             </p>
             <label v-if="['raid', 'curse', 'scout'].includes(night)"
-              >対象<select v-model="target">
+              >対象<select
+                v-model="target"
+                aria-label="対象"
+                :disabled="!!me.night"
+              >
                 <option
                   v-for="p in s.players.slice(1)"
                   :key="p.id"
@@ -1355,7 +1378,11 @@ const nextLabel = computed(
                 </option>
               </select></label
             ><label v-if="night === 'brew'"
-              >レシピ<select v-model="nightRecipe" aria-label="レシピ">
+              >レシピ<select
+                v-model="nightRecipe"
+                aria-label="レシピ"
+                :disabled="!!me.night"
+              >
                 <option v-for="r in RECIPES" :key="r.id" :value="r.id">
                   {{ r.name }}（{{ r.materials.map(itemName).join("＋") }}）
                 </option>
@@ -1377,7 +1404,7 @@ const nextLabel = computed(
               <p>作成予定 {{ nightPlan.length }} 個（固定上限なし）</p>
             </div>
             <label v-if="['guard', 'scout'].includes(night)"
-              >同時に使う薬<select v-model="nightPotion">
+              >同時に使う薬<select v-model="nightPotion" :disabled="!!me.night">
                 <option :value="undefined">なし</option>
                 <option
                   v-for="i in available(me).filter(
