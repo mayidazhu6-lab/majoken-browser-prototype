@@ -4,6 +4,14 @@ import { recipe } from "./items";
 import { pick } from "./rng";
 import { log } from "./core";
 export const STANCES: Stance[] = ["attack", "defend", "charge"];
+/** Ownership is unrestricted; only eligible, unlocked items enter combat. */
+export function automaticLoadout(p: Player) {
+  if (level(p.stats.insight) < 3) return [];
+  return p.inventory
+    .filter((i) => !i.lock && recipe(i.kind)?.tier === "combat")
+    .slice(0, level(p.stats.insight))
+    .map((i) => i.id);
+}
 export function startCombat(
   s: GameState,
   a: number,
@@ -96,7 +104,7 @@ export function calculateRound(
       const diff = values[i] - values[j];
       if (choices[j] === "defend") {
         if (diff < 0) hits[i] = damage(-diff);
-      } else hits[j] = Math.max(1, Math.floor(values[i] / 3));
+      } else hits[j] = Math.max(1, values[i] - 3);
     }
   const next = choices.map((c, i) =>
     c === "charge" ? stats[i].insight + rolls[i] + buffs[i].charge : 0,

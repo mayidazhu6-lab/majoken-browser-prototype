@@ -1,6 +1,6 @@
 import type { Magic, Stat } from "./types";
 export const CONFIG = {
-  rulesVersion: "browser-0.2.1+decisions-3",
+  rulesVersion: "browser-0.2.1+decisions-4",
   days: 8,
   ap: 2,
   collapse: 3,

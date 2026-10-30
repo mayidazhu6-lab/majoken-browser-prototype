@@ -23,16 +23,19 @@ async function load(page: Page, s: GameState) {
   await expect(page.locator(".alert.error")).toHaveCount(0);
 }
 function findResults() {
-  let s = createGame(setup);
   const found: Record<string, GameState> = {};
-  for (let n = 0; s.phase !== "ended" && n < 500; n++) {
-    const c = s.combat;
-    if (c?.kind === "secret" && c.done && !c.resultAcknowledged) {
-      const key = c.winner === null ? "draw" : c.winner === 0 ? "win" : "loss";
-      found[key] ??= structuredClone(s);
-      if (Object.keys(found).length === 3) break;
+  for (const seed of ["moon-42", "result-0"]) {
+    let s = createGame({ ...setup, seed });
+    for (let n = 0; s.phase !== "ended" && n < 500; n++) {
+      const c = s.combat;
+      if (c?.kind === "secret" && c.done && !c.resultAcknowledged) {
+        const key =
+          c.winner === null ? "draw" : c.winner === 0 ? "win" : "loss";
+        found[key] ??= structuredClone(s);
+        if (Object.keys(found).length === 3) return found;
+      }
+      s = dispatch(s, simulationAction(s));
     }
-    s = dispatch(s, simulationAction(s));
   }
   return found;
 }

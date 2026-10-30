@@ -41,9 +41,18 @@ function game(event = 1) {
   return s;
 }
 describe("v0.2.1 無防備・強化・最終ラウンド", () => {
-  it.each([2, 3, 5, 6, 9])(
+  it.each([
+    [2, 1],
+    [3, 1],
+    [4, 1],
+    [5, 2],
+    [6, 3],
+    [9, 6],
+    [19, 16],
+    [99, 96],
+  ])(
     "攻撃判定%iはためるに必ず命中し、防御・同値・高い強化値では回避できない",
-    (value) => {
+    (value, expectedDamage) => {
       for (const side of [0, 1]) {
         const attacker = { attack: value - 1, defense: 99, insight: 99 };
         const charger = { attack: 1, defense: 999, insight: value - 1 };
@@ -60,7 +69,7 @@ describe("v0.2.1 無防備・強化・最終ラウンド", () => {
           [999, 999],
         );
         expect(r.values).toEqual([value, value]);
-        expect(r.damage[1 - side]).toBe(Math.max(1, Math.floor(value / 3)));
+        expect(r.damage[1 - side]).toBe(expectedDamage);
         expect(r.damage[side]).toBe(0);
       }
     },
@@ -82,7 +91,7 @@ describe("v0.2.1 無防備・強化・最終ラウンド", () => {
       [zero, zero],
     );
     expect(attack.values[0]).toBe(19);
-    expect(attack.damage).toEqual([0, 6]);
+    expect(attack.damage).toEqual([0, 16]);
     expect(attack.charge[0]).toBe(0);
     const defense = calculateRound(
       [stats, stats],

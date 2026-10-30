@@ -45,6 +45,7 @@ import {
   chooseStance,
   chooseCombatPotion,
   loadout,
+  automaticLoadout,
   resolveRound,
   startCombat,
 } from "./combat";
@@ -483,10 +484,7 @@ function combatRound(
   const q = s.players[c.participants[other]];
   assert(q.ai, "AI応答以外は未対応");
   if (!c.rounds.length && c.brought[other].length === 0) {
-    const ids = available(q)
-      .filter((i) => recipe(i.kind)?.tier === "combat")
-      .slice(0, level(q.stats.insight))
-      .map((i) => i.id);
+    const ids = automaticLoadout(q);
     if (ids.length) loadout(s, q, ids);
   }
   const choice = chooseStance(
@@ -523,10 +521,7 @@ function autoCombats(s: GameState) {
     if (!c.rounds.length)
       for (const id of c.participants) {
         const p = s.players[id];
-        const ids = available(p)
-          .filter((i) => recipe(i.kind)?.tier === "combat")
-          .slice(0, level(p.stats.insight))
-          .map((i) => i.id);
+        const ids = automaticLoadout(p);
         if (ids.length) loadout(s, p, ids);
       }
     const choices = c.participants.map((id, i) =>

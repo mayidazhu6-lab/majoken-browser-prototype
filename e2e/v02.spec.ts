@@ -312,7 +312,7 @@ test("戦闘中と報酬選択待ちの保存再開、解決後も2AP決闘の�
 }) => {
   let s = createGame({
     ...setup,
-    seed: "reward-1",
+    seed: "reward-5",
     stats: { attack: 2, defense: 2, insight: 6 },
   });
   s = dispatch(s, { type: "duel", player: 0, target: 1 });

@@ -38,7 +38,7 @@ describe("Phase 3 新戦闘", () => {
       [zero, zero],
     );
     expect(r.charge).toEqual([10, 0]);
-    expect(r.damage).toEqual([1, 0]);
+    expect(r.damage).toEqual([2, 0]);
     const next = calculateRound(
       [stats, stats],
       ["attack", "defend"],

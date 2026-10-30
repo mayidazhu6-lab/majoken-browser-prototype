@@ -79,7 +79,7 @@ describe("v0.2 戦闘", () => {
         [0, 0],
         [zero, zero],
       ).damage,
-    ).toEqual([0, 3]);
+    ).toEqual([0, 7]);
     const r = calculateRound(
       [stats, stats],
       ["charge", "attack"],
@@ -87,7 +87,7 @@ describe("v0.2 戦闘", () => {
       [0, 0],
       [zero, zero],
     );
-    expect(r.damage).toEqual([1, 0]);
+    expect(r.damage).toEqual([2, 0]);
     expect(r.charge).toEqual([10, 0]);
     expect(
       calculateRound(
@@ -503,7 +503,7 @@ describe("v0.2 保存・再生", () => {
   it("公開決闘の途中・勝利報酬待ちから再開しても手番とAPが重複しない", () => {
     let s = createGame({
       ...setup,
-      seed: "reward-1",
+      seed: "reward-5",
       stats: { attack: 2, defense: 2, insight: 6 },
     });
     s = dispatch(s, { type: "duel", player: 0, target: 1 });
@@ -532,7 +532,7 @@ describe("v0.2 保存・再生", () => {
     // Real action histories, never patched fixtures, cover checkpoints over eight days.
     let s = createGame({
       ...setup,
-      seed: "witches-2026",
+      seed: "moon-42",
       stats: { attack: 3, defense: 4, insight: 3 },
     });
     const seen = new Set<string>();

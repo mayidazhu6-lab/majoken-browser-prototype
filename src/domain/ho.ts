@@ -146,8 +146,9 @@ export function dailyProgress(s: GameState, p: Player) {
   const reserved = s.event.reservations.some(
     (r) =>
       r.player === p.id &&
-      (((!e.either || s.event.route === "materials") && r.items.length > 0) ||
-        ((!e.either || s.event.route === "stats") &&
+      (((!e.either || !s.event.route || s.event.route === "materials") &&
+        r.items.length > 0) ||
+        ((!e.either || !s.event.route || s.event.route === "stats") &&
           Object.values(r.stats).some((n) => (n ?? 0) > 0))),
   );
   const candidate =
@@ -271,20 +272,26 @@ export function dailyProgress(s: GameState, p: Player) {
   const judged = p.dailyHistory.find(
     (h) => h.day === s.day && h.id === goal.id,
   );
-  const status = judged?.achieved
-    ? "達成確定"
-    : !judged && met
-      ? "達成見込み"
-      : "未達成";
+  const unjudgedCollapse =
+    s.phase === "ended" && s.result?.reason === "collapse" && !judged;
+  const status = unjudgedCollapse
+    ? "判定なし・報酬なし"
+    : judged?.achieved
+      ? "達成確定"
+      : !judged && met
+        ? "達成見込み"
+        : "未達成";
   return {
     status,
     current: Math.min(total, Math.max(0, current)),
     total,
-    detail: judged
-      ? "最終判定済みです。"
-      : [7, 11].includes(goal.id) && !s.event.resolved && candidate
-        ? "予約・行動は有効候補です。イベント成功と公開終了時の確定が必要です。"
-        : "最終判定は夜のHO判定時に行います。",
+    detail: unjudgedCollapse
+      ? "研究所崩壊により本日の日次HOは最終判定されず、報酬は付与されません。"
+      : judged
+        ? "最終判定済みです。"
+        : [7, 11].includes(goal.id) && !s.event.resolved && candidate
+          ? "予約・行動は有効候補です。イベント成功と公開終了時の確定が必要です。"
+          : "最終判定は夜のHO判定時に行います。",
   };
 }
 

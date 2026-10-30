@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { simulate } from "../src/domain/simulation";
 import { CONFIG } from "../src/domain/config";
 const seeds = process.argv.slice(2);
-if (!seeds.length) seeds.push("witches-2026", "moon-42", "lab-77");
+if (!seeds.length) seeds.push("witches-2026", "moon-42", "lab-77", "review-1");
 const results = seeds.map((seed) => {
   const s = simulate(seed);
   return {

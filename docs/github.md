@@ -2,6 +2,8 @@
 
 ## v0.2.1作業（2026-10-30）
 
+対象8cea351の再レビュー4件の修正は [review-v0.2.1.md](review-v0.2.1.md)。同じブランチ・PR #1へ追加し、mainはマージしない。
+
 既存の `feat/browser-v0.2` と [PR #1](https://github.com/mayidazhu6-lab/majoken-browser-prototype/pull/1) を更新。仕様確定・変更と制約は [v0.2.1.md](v0.2.1.md)。mainへのマージ・Pages公開は実施しない。
 
 ## v0.2作業（履歴・2026-10-30）
