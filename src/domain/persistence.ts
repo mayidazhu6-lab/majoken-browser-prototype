@@ -19,7 +19,7 @@ export function deserialize(json: string): GameState {
     data.state?.rulesVersion !== CONFIG.rulesVersion
   )
     throw Error(
-      "保存データのバージョンが一致しません。v0.2.2の保存データを選択してください",
+      "保存データのバージョンが一致しません。v0.2.2以降の同一ルールの保存データを選択してください",
     );
   const s = data.state as GameState;
   assertInvariants(s);

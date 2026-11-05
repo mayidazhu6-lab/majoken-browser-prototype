@@ -1,3 +1,4 @@
+import { settleScreens, expectGoalProgress } from "./helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { createGame, dispatch, currentPlayer } from "../src/domain/reducer";
 import { simulationAction } from "../src/domain/simulation";
@@ -25,6 +26,7 @@ async function load(page: Page, s: GameState) {
     buffer: Buffer.from(serialize(s)),
   });
   await expect(page.locator(".alert.error")).toHaveCount(0);
+  await settleScreens(page);
 }
 function potionFixture() {
   let s = createGame({
@@ -125,6 +127,7 @@ test("Lv3未満のAIへ戦闘薬を譲渡しても不正持込せず、人間と
       .getByRole("button", { name: "攻撃", exact: true })
       .click();
     await page.getByRole("button", { name: /手を確定/ }).click();
+    await settleScreens(page);
     await expect(page.locator(".alert.error")).toHaveCount(0);
   }
   const after = await state(page),
@@ -156,14 +159,16 @@ test("攻撃vsためるのUI被ダメージは左右とも攻撃判定値−3・
             expect(r.damage[side]).toBe(expected);
             await expect(
               dialog
-                .locator(`tbody tr`)
+                .locator(`tbody tr:has(td[data-side])`)
                 .nth(index)
                 .locator(`td[data-side="${side}"]`),
             ).toContainText(`被ダメージ ${expected}`);
             seen.add(side);
           }
       }
-      await dialog.getByRole("button", { name: "OK", exact: true }).click();
+      await dialog
+        .getByRole("button", { name: "確認した", exact: true })
+        .click();
     }
     s = dispatch(s, simulationAction(s));
   }
@@ -200,18 +205,17 @@ test("研究所崩壊で最終判定されなかった日次HOは判定なし・
   expect(dailyProgress(before, before.players[0]).status).toBe("達成見込み");
   await page.goto("/");
   await load(page, before);
-  await expect(page.locator(".daily-ho-progress")).toContainText("達成見込み");
   await page
     .getByRole("dialog", { name: "取引への返答が必要です" })
     .getByRole("button", { name: "受諾", exact: true })
     .click();
   await page
     .getByRole("dialog", { name: "共通イベントの結果" })
-    .getByRole("button", { name: "OK", exact: true })
+    .getByRole("button", { name: "確認した", exact: true })
     .click();
   await expect(page.locator(".final-results")).toBeVisible();
   await expect(page.locator(".final-results")).toContainText("卒業者なし");
-  await expect(page.locator(".daily-ho-progress")).toContainText(
+  await expect(page.locator(".results-summary")).toContainText(
     "判定なし・報酬なし",
   );
   expect((await state(page)).players[0].fp).toBe(before.players[0].fp);
@@ -220,7 +224,8 @@ test("研究所崩壊で最終判定されなかった日次HOは判定なし・
   ).toBe(false);
   await page.reload();
   await page.getByRole("button", { name: "続きから", exact: true }).click();
-  await expect(page.locator(".daily-ho-progress")).toContainText(
+  await settleScreens(page);
+  await expect(page.locator(".results-summary")).toContainText(
     "判定なし・報酬なし",
   );
 });
@@ -240,10 +245,8 @@ test("二択イベントは未確定の素材予約を進捗に数え、ルー�
   expect(s.event.route).toBeUndefined();
   await page.goto("/");
   await load(page, s);
-  await expect(page.locator(".daily-ho-progress")).toHaveText(/未達成.*1\/1/);
-  await expect(page.locator(".daily-ho-progress")).not.toContainText(
-    "達成見込み",
-  );
+  await expectGoalProgress(page, /未達成.*1 \/ 1/);
+
   s = dispatch(s, { type: "gather", player: 0 });
   s = dispatch(s, { type: "endTurn", player: 0 });
   for (
@@ -267,10 +270,10 @@ test("二択イベントは未確定の素材予約を進捗に数え、ルー�
   });
   expect(s.event.route).toBe("materials");
   await load(page, s);
-  await expect(page.locator(".daily-ho-progress")).toContainText("達成見込み");
+  await expectGoalProgress(page, "達成見込み");
   s = dispatch(s, { type: "withdraw", player: 0 });
   expect(s.event.route).toBeUndefined();
   await load(page, s);
-  await expect(page.locator(".daily-ho-progress")).toHaveText(/未達成.*0\/1/);
+  await expectGoalProgress(page, /未達成.*0 \/ 1/);
   expect(s.players[0].dailyGoal.achieved).toBe(false);
 });

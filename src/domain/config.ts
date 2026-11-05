@@ -48,7 +48,7 @@ export const LABELS: Record<string, string> = {
   duels: "秘匿決闘",
   rewards: "戦利品",
   results: "夜結果",
-  ho: "HO判定",
+  ho: "課題判定",
   dawn: "夜明け",
   ended: "研究終了",
 };

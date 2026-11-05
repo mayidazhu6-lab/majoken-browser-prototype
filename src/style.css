@@ -1168,3 +1168,148 @@ footer > span:first-child {
   border: 1px solid currentColor;
   border-radius: 0.5rem;
 }
+
+/* v0.2.3: one task per screen, persistent navigation and combat status. */
+.focus-screen {
+  max-width: 780px;
+  margin: 2rem auto;
+  padding: 2rem;
+}
+.focus-screen p {
+  line-height: 1.9;
+}
+.setup-layout:has(.intro) {
+  display: block;
+  max-width: 900px;
+  margin: auto;
+}
+.setup-layout:has(.creation) {
+  display: block;
+  max-width: 720px;
+  margin: auto;
+}
+.game-grid {
+  position: relative;
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+  padding-right: 90px;
+}
+.right-column {
+  grid-column: 1 / -1;
+}
+.right-column .panel {
+  margin-top: 1rem;
+}
+.common-menu {
+  position: fixed;
+  right: 16px;
+  top: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 10;
+}
+.common-menu button {
+  min-width: 72px;
+  min-height: 64px;
+}
+.action-detail,
+.battle-screen {
+  display: block;
+  max-width: 1000px;
+  margin: auto;
+}
+.battle-screen {
+  padding-right: 0;
+}
+.action-menu {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.action-menu button {
+  min-height: 88px;
+  font-size: 1.1rem;
+}
+.battle-header {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: #182c32;
+  color: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px #0004;
+}
+.material-count {
+  display: block;
+  margin: 8px 0;
+}
+.blocking-dialog {
+  width: min(1000px, 96vw);
+  max-height: 94dvh;
+}
+.session-bar {
+  scroll-margin-top: 20px;
+}
+@media (max-width: 760px) {
+  .game-grid {
+    display: flex;
+    flex-direction: column;
+    padding-right: 0;
+    padding-bottom: 100px;
+  }
+  .center-column {
+    order: 0;
+    width: 100%;
+  }
+  .left-column {
+    order: 1;
+    width: 100%;
+  }
+  .right-column {
+    order: 2;
+    width: 100%;
+  }
+  .common-menu {
+    top: auto;
+    bottom: 10px;
+    right: 10px;
+    flex-direction: column;
+  }
+  .common-menu button {
+    min-height: 50px;
+    padding: 6px;
+  }
+  .focus-screen {
+    margin: 1rem 0;
+    padding: 1rem;
+  }
+  .battle-header {
+    padding: 12px;
+    gap: 8px;
+  }
+  .combat-rounds {
+    overflow-x: auto;
+  }
+}
+@media (max-width: 760px) {
+  .game-grid {
+    padding-right: 78px;
+  }
+  .battle-screen {
+    padding-right: 0;
+  }
+  .common-menu {
+    right: 8px;
+  }
+  .action-menu {
+    grid-template-columns: 1fr;
+  }
+  .session-bar .risk {
+    max-width: none;
+    flex-wrap: wrap;
+  }
+}
