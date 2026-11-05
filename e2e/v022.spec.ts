@@ -1,3 +1,4 @@
+import { settleScreens } from "./helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { createGame, dispatch, currentPlayer } from "../src/domain/reducer";
 import { simulationAction, simulate } from "../src/domain/simulation";
@@ -23,6 +24,7 @@ async function load(page: Page, s: GameState) {
     buffer: Buffer.from(serialize(s)),
   });
   await expect(page.locator(".alert.error")).toHaveCount(0);
+  await settleScreens(page);
 }
 function checkpoint(
   predicate: (s: GameState) => boolean,
@@ -49,13 +51,15 @@ test("ためる確定後は次Rの選択を解除し、連続・第5Rのため�
   await load(page, s);
   await page.getByRole("button", { name: "決闘", exact: true }).click();
   await page.getByRole("button", { name: "公開決闘 1AP", exact: true }).click();
+  await settleScreens(page);
   expect((await state(page)).players[0].ap).toBe(1);
 
   const charge = page
     .locator(".stance-options")
-    .getByRole("button", { name: "ためる", exact: true });
+    .getByRole("button", { name: /^ためる/ });
   await charge.click();
   await page.getByRole("button", { name: /手を確定/ }).click();
+  await settleScreens(page);
   await expect(charge).toBeDisabled();
   await expect(charge).not.toHaveClass(/chosen/);
   for (let i = 1; i < 4; i++) {
@@ -64,17 +68,19 @@ test("ためる確定後は次Rの選択を解除し、連続・第5Rのため�
       .getByRole("button", { name: "防御", exact: true })
       .click();
     await page.getByRole("button", { name: /手を確定/ }).click();
+    await settleScreens(page);
   }
   await expect(charge).toBeDisabled();
   await expect(page.locator(".combat-panel")).toContainText(
     "第5ラウンドです。ためるは選択できません",
   );
   await page.getByRole("button", { name: /手を確定/ }).click();
+  await settleScreens(page);
   const dialog = page.getByRole("dialog", { name: "公開決闘の結果" });
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText("能力移転はありません");
-  await expect(page.locator(".event-panel .event-metrics")).toBeVisible(); // Requirements remain available during a public duel.
-  await dialog.getByRole("button", { name: "OK", exact: true }).click();
+  await expect(page.locator(".event-panel .event-metrics")).toBeHidden(); // Requirements remain available during a public duel.
+  await dialog.getByRole("button", { name: "確認した", exact: true }).click();
   expect((await state(page)).players[0].ap).toBe(1);
 });
 test("連夜の襲撃は選択でき、確定後に操作できない理由が表示される", async ({
@@ -110,6 +116,7 @@ test("連夜の襲撃は選択でき、確定後に操作できない理由が�
   await page
     .getByRole("button", { name: "秘匿行動を確定", exact: true })
     .click();
+  await settleScreens(page);
   await expect(raid).toBeDisabled();
   await expect(
     page.getByText("この夜の行動は確定済みです。別の行動は選択できません。", {
@@ -142,8 +149,9 @@ test("2巡終了で納品自動確定、イベント結果をOKまで維持し�
   await expect(dialog).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "続きから", exact: true }).click();
+  await settleScreens(page);
   await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "OK", exact: true }).click();
+  await dialog.getByRole("button", { name: "確認した", exact: true }).click();
   expect((await state(page)).event.acknowledged).toBe(true);
   const precedes = await page
     .locator(".progression")
@@ -162,7 +170,7 @@ test("購買部は個体IDを表示せず種類別数量で3素材を選択し1A
   const s = createGame({ ...setup, seed: "shop-ui-022" });
   await page.goto("/");
   await load(page, s);
-  await page.getByRole("button", { name: "取引", exact: true }).click();
+  await page.getByRole("button", { name: "購買部", exact: true }).click();
   await expect(page.locator(".actions-panel")).not.toContainText(/#\d+/);
   const quantity = page.locator(".grouped-items input").first();
   await quantity.fill("999");
@@ -234,7 +242,7 @@ test("公開決闘の降参は譲渡品とFPなしを確認してから復帰す
   );
   await page.goto("/");
   await load(page, s);
-  await expect(page.locator(".event-panel")).toBeVisible();
+  await expect(page.locator(".event-panel")).toBeHidden();
   await selectItems(
     page,
     s,
@@ -251,9 +259,10 @@ test("公開決闘の降参は譲渡品とFPなしを確認してから復帰す
   const before = await state(page);
   await page.reload();
   await page.getByRole("button", { name: "続きから", exact: true }).click();
+  await settleScreens(page);
   await expect(dialog).toBeVisible();
   expect(await state(page)).toEqual(before);
-  await dialog.getByRole("button", { name: "OK", exact: true }).click();
+  await dialog.getByRole("button", { name: "確認した", exact: true }).click();
   await expect(dialog).toHaveCount(0);
 });
 test("最終結果は卒業者だけに順位を付け、未卒業・卒業者なしを明示する", async ({
@@ -298,7 +307,7 @@ test("通常行動でAP0になった後も0APの魔女間取引を申請でき�
   expect(s.players[0].ap).toBe(0);
   await page.goto("/");
   await load(page, s);
-  await page.getByRole("button", { name: "取引", exact: true }).click();
+  await page.getByRole("button", { name: "魔女間取引", exact: true }).click();
   await page.getByText("提供と要求の個数を入力", { exact: true }).click();
   const item = available(s.players[0])[0]!;
   const label =

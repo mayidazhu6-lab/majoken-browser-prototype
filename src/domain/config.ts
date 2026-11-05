@@ -1,6 +1,7 @@
 import type { Magic, Stat } from "./types";
+export const LEGACY_RULES_VERSION = "browser-0.2.2+decisions-5";
 export const CONFIG = {
-  rulesVersion: "browser-0.2.2+decisions-5",
+  rulesVersion: "browser-0.2.3+decisions-6",
   days: 8,
   ap: 2,
   collapse: 3,
@@ -48,7 +49,7 @@ export const LABELS: Record<string, string> = {
   duels: "秘匿決闘",
   rewards: "戦利品",
   results: "夜結果",
-  ho: "HO判定",
+  ho: "課題判定",
   dawn: "夜明け",
   ended: "研究終了",
 };
@@ -104,3 +105,6 @@ export function levelEffect(stat: Stat, lv: number) {
     return `警戒の初R防御補正 +${lv}、休息成功時の翌日採集・研究 +${CONFIG.rest[lv - 1]}`;
   return `戦闘薬持込枠 ${lv}個${lv === 3 ? "。Lv3戦闘薬の作成・持込を解禁" : "（現在の戦闘薬はLv3で解禁）"}`;
 }
+
+export const supportedRulesVersion = (version: string) =>
+  version === CONFIG.rulesVersion || version === LEGACY_RULES_VERSION;

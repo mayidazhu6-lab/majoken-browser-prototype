@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref, watch, nextTick } from "vue";
+import { combatReason, revealedActions } from "./ui/combatPresentation";
+import { plannedMaterials, potionDescription } from "./ui/alchemy";
+import TaskBriefing from "./components/TaskBriefing.vue";
 import BlockingDialog from "./components/BlockingDialog.vue";
 import GroupedItems from "./components/GroupedItems.vue";
 import { legalStances } from "./domain/combat";
@@ -31,17 +34,42 @@ import {
   canRecipe,
   isMaterial,
 } from "./domain/items";
-import { goalDescription, dailyProgress } from "./domain/ho";
+import {
+  goalDescription as describeGoal,
+  dailyProgress as describeDailyProgress,
+} from "./domain/ho";
+import { graduationProgress } from "./ui/graduationProgress";
+import { uiText } from "./ui/text";
 import { dispatch, currentPlayer } from "./domain/reducer";
 import { serialize } from "./domain/persistence";
 import type {
   Action,
+  Combat,
   Magic,
   NightKind,
   Setup,
   Stat,
   Stance,
 } from "./domain/types";
+function goalDescription(...args: Parameters<typeof describeGoal>) {
+  const description = describeGoal(...args);
+  return {
+    ...description,
+    name: uiText(description.name),
+    condition: uiText(description.condition).replace(
+      /席(\d+)/g,
+      (seat, number) => store.state?.players[Number(number) - 1]?.name ?? seat,
+    ),
+  };
+}
+function dailyProgress(...args: Parameters<typeof describeDailyProgress>) {
+  const progress = describeDailyProgress(...args);
+  return {
+    ...progress,
+    status: uiText(progress.status),
+    detail: uiText(progress.detail),
+  };
+}
 const store = useGameStore();
 const s = computed(() => store.state!);
 const me = computed(() => s.value?.players[0]!);
@@ -70,15 +98,57 @@ const debug = ref(false),
   brought = ref<number[]>([]),
   changeMagic = ref<Magic>("foresight");
 const hoNoticeDay = ref(0);
+const creation = ref(false);
+const graduation = ref(false);
+const actionScreen = ref("");
+const actionLabels: Record<string, string> = {
+  gather: "採集",
+  research: "研究",
+  event: "納品",
+  shop: "購買部",
+  trade: "魔女間取引",
+  duel: "決闘",
+};
+const menu = ref("");
+const menuTab = ref("materials");
+const actionResult = ref<string[]>([]);
+const battleStep = ref("intro");
+const mockResult = ref<Combat>();
+const illusionPlanned = ref(false);
+const latestRound = computed(() => combat.value?.rounds.at(-1));
+const briefing = computed(
+  () =>
+    !!s.value &&
+    (graduation.value ||
+      (s.value.phase === "public" && hoNoticeDay.value !== s.value.day)),
+);
+function cancelAction() {
+  actionScreen.value = "";
+  selected.value = [];
+  reserveStats.value = {};
+  nightPlan.value = [];
+  actionPotion.value = undefined;
+}
+function openAction(id: string) {
+  cancelAction();
+  actionScreen.value = id;
+  if (["gather", "research"].includes(id)) tab.value = "field";
+  else tab.value = id;
+  if (id === "brew")
+    nightRecipe.value = brewCandidates.value[0]?.id ?? RECIPES[0].id;
+}
+function restoreView() {
+  cancelAction();
+  menu.value = "";
+  actionResult.value = [];
+  graduation.value = s.value?.day === 1 && s.value?.revision === 0;
+  hoNoticeDay.value = 0;
+  battleStep.value = s.value?.combat?.done ? "end" : "intro";
+  mockResult.value = undefined;
+}
 watch([() => s.value?.day, () => me.value?.night], syncNightDisplay, {
   immediate: true,
 });
-watch(
-  () => s.value?.day,
-  () => {
-    hoNoticeDay.value = 0;
-  },
-);
 function syncNightDisplay() {
   const saved = me.value?.night;
   night.value = saved?.kind ?? "rest";
@@ -90,12 +160,19 @@ function syncNightDisplay() {
 function loadSave(json?: string) {
   const previous = store.state;
   store.load(json);
-  if (store.state !== previous) syncNightDisplay();
+  if (store.state !== previous) {
+    syncNightDisplay();
+    restoreView();
+    restorePresentation(json);
+  }
 }
 function startGame() {
   const previous = store.state;
   store.start(setup.value);
-  if (store.state !== previous) syncNightDisplay();
+  if (store.state !== previous) {
+    syncNightDisplay();
+    restoreView();
+  }
 }
 const event = computed(() =>
   s.value ? EVENTS[s.value.event.id - 1] : undefined,
@@ -150,7 +227,7 @@ const publicHistory = computed(
         ].includes(l.type),
     ) ?? [],
 );
-const combat = computed(() => s.value?.combat);
+const combat = computed(() => s.value?.combat ?? mockResult.value);
 const incomingTrade = computed(() => s.value?.trades.find((t) => t.to === 0));
 const secretResult = computed(() =>
   (combat.value?.kind === "public" || combat.value?.kind === "secret") &&
@@ -175,9 +252,20 @@ const brewCandidates = computed(() => {
     (r) => canRecipe(copy, r.id, s.value.day) && materialIds(copy, r.materials),
   );
 });
-watch(brewCandidates, (candidates) => {
-  if (!candidates.some((r) => r.id === nightRecipe.value))
-    nightRecipe.value = candidates[0]?.id ?? "";
+const brewMaterials = computed(() =>
+  me.value ? plannedMaterials(me.value, nightPlan.value) : [],
+);
+const brewReason = computed(() => {
+  if (!me.value || !recipe(nightRecipe.value))
+    return "レシピを選択してください。";
+  if (me.value.night) return "この夜の行動は確定済みです。";
+  if (!canRecipe(me.value, nightRecipe.value, s.value.day))
+    return recipe(nightRecipe.value)?.tier === "combat"
+      ? "作成には洞察Lv3が必要です。"
+      : "未解放のレシピです。";
+  return brewCandidates.value.some((r) => r.id === nightRecipe.value)
+    ? ""
+    : "作成予定分を除く素材が不足しています。";
 });
 watch(tab, () => {
   selected.value = [];
@@ -216,12 +304,18 @@ const reserveReason = computed(() =>
         stats: reserveStats.value,
       }),
 );
+const showGameDialogs = computed(
+  () => !briefing.value && !actionResult.value.length,
+);
 const blockingModal = computed(
   () =>
-    !!incomingTrade.value ||
-    !!secretResult.value ||
-    !!eventResult.value ||
-    !!s.value?.publicOutcome,
+    !!menu.value ||
+    (showGameDialogs.value &&
+      (!!incomingTrade.value ||
+        (!!secretResult.value &&
+          (!myCombat.value || battleStep.value === "end")) ||
+        !!eventResult.value ||
+        !!s.value?.publicOutcome)),
 );
 const hoProgress = computed(() =>
   s.value ? dailyProgress(s.value, me.value) : undefined,
@@ -230,7 +324,7 @@ const interruptReason = computed(() => {
   if (incomingTrade.value)
     return "取引への返答待ちです。中央のダイアログで受諾・拒否してください。";
   if (secretResult.value)
-    return `${secretResult.value.kind === "public" ? "公開" : "秘匿"}決闘の結果確認待ちです。内容を確認してOKを押してください。`;
+    return `${secretResult.value.kind === "public" ? "公開" : "秘匿"}決闘の結果確認待ちです。内容を確認して確認したを押してください。`;
   if (combat.value)
     return combat.value.done
       ? "勝利報酬の選択待ちです。"
@@ -247,6 +341,17 @@ const interruptReason = computed(() => {
     return "この手番の1AP行動は完了しました。0AP操作後、手番を終了してください。";
   return "";
 });
+const nightResults = computed(() =>
+  visibleLogs.value.filter(
+    (l) =>
+      l.day === s.value?.day &&
+      ["night", "duels", "rewards", "results", "ho", "dawn"].includes(
+        l.phase,
+      ) &&
+      (l.actor === 0 || l.target === 0) &&
+      !["combatRound", "combatAck", "fp", "levelUp"].includes(l.type),
+  ),
+);
 const personalResults = computed(
   () =>
     s.value?.logs.filter(
@@ -289,7 +394,66 @@ const history = computed(
 );
 const itemName = (kind: string) => LABELS[kind] ?? recipe(kind)?.name ?? kind;
 function act(a: Action) {
+  const previous = s.value;
+  const seq = previous?.logs.at(-1)?.seq ?? 0;
   store.act(a);
+  if (s.value !== previous) {
+    if (s.value.combat?.id !== previous?.combat?.id)
+      battleStep.value = s.value.combat?.done ? "end" : "intro";
+    if (a.type === "reward" || a.type === "combatAck") {
+      const lines = s.value.logs
+        .filter(
+          (l) =>
+            l.seq > seq &&
+            l.type !== "combatAck" &&
+            (l.audience === "public" ||
+              (Array.isArray(l.audience) && l.audience.includes(0))),
+        )
+        .map((l) => l.text);
+      const changes = s.value.players
+        .map((p, i) =>
+          p.inventory.length !== previous.players[i].inventory.length ||
+          p.fp !== previous.players[i].fp
+            ? `${p.id === 0 ? "あなた" : p.name}：アイテム合計 ${previous.players[i].inventory.length} → ${p.inventory.length}、名声 ${previous.players[i].fp} → ${p.fp}`
+            : "",
+        )
+        .filter(Boolean);
+      if (lines.length || changes.length)
+        actionResult.value = [...lines, ...changes];
+    }
+    if (a.type === "round") {
+      if (!s.value.combat && previous?.combat?.kind === "mock")
+        mockResult.value = s.value.combatHistory.at(-1);
+      battleStep.value = "reveal";
+    } else if (
+      [
+        "gather",
+        "research",
+        "forced",
+        "reserve",
+        "withdraw",
+        "shop",
+        "trade",
+        "night",
+        "magic",
+        "usePotion",
+      ].includes(a.type)
+    ) {
+      actionResult.value = s.value.logs
+        .filter(
+          (l) =>
+            l.seq > seq &&
+            l.type !== "combatAck" &&
+            (l.audience === "public" ||
+              (Array.isArray(l.audience) && l.audience.includes(0))),
+        )
+        .map((l) => l.text);
+      if (!actionResult.value.length)
+        actionResult.value = ["行動を確定しました。"];
+      actionScreen.value = "";
+      menu.value = "";
+    }
+  }
   selected.value = [];
   battlePotion.value = undefined;
 }
@@ -305,10 +469,79 @@ function actionError(a: Action) {
 function can(a: Action) {
   return !actionError(a);
 }
+function presentation() {
+  return {
+    version: 1,
+    key: JSON.stringify([s.value?.setup, s.value?.actions]),
+    graduation: graduation.value,
+    day: hoNoticeDay.value,
+    actionResult: actionResult.value,
+    battleStep: battleStep.value,
+    mockResult: mockResult.value,
+  };
+}
+function restorePresentation(json?: string) {
+  try {
+    const view = json
+      ? JSON.parse(json).presentation
+      : JSON.parse(localStorage.getItem("majoken-ui-v023") ?? "null");
+    if (
+      view?.version !== 1 ||
+      view.key !== JSON.stringify([s.value?.setup, s.value?.actions])
+    )
+      return;
+    graduation.value = view.graduation === true;
+    hoNoticeDay.value = Number.isInteger(view.day) ? view.day : 0;
+    actionResult.value = Array.isArray(view.actionResult)
+      ? view.actionResult.filter((x: unknown) => typeof x === "string")
+      : [];
+    if (
+      ["intro", "choose", "reveal", "judgment", "end"].includes(view.battleStep)
+    )
+      battleStep.value = view.battleStep;
+    // Use the validated game history; never trust a supplied combat snapshot.
+    if (
+      view.mockResult &&
+      s.value?.combatHistory.at(-1)?.kind === "mock" &&
+      s.value.actions.at(-1)?.type === "round"
+    )
+      mockResult.value = s.value.combatHistory.at(-1);
+  } catch {
+    /* Optional UI metadata must not prevent a valid game from loading. */
+  }
+}
+watch(
+  [
+    () => s.value,
+    graduation,
+    hoNoticeDay,
+    actionResult,
+    battleStep,
+    mockResult,
+  ],
+  () => {
+    if (!s.value) return;
+    try {
+      localStorage.setItem("majoken-ui-v023", JSON.stringify(presentation()));
+    } catch {
+      /* Game save and JSON export remain available. */
+    }
+  },
+  { flush: "post" },
+);
 function download() {
   if (!s.value) return;
   const url = URL.createObjectURL(
-    new Blob([serialize(s.value)], { type: "application/json" }),
+    new Blob(
+      [
+        JSON.stringify(
+          { ...JSON.parse(serialize(s.value)), presentation: presentation() },
+          null,
+          2,
+        ),
+      ],
+      { type: "application/json" },
+    ),
   );
   const a = document.createElement("a");
   a.href = url;
@@ -371,11 +604,41 @@ const nextLabel = computed(
       night: "秘匿行動を解決",
       duels: "秘匿決闘を進める",
       results: "夜結果を確定",
-      ho: "HOを判定",
+      ho: "今日の課題を判定",
       dawn: "次の日へ",
       ended: "終了",
       rewards: "報酬選択",
     })[s.value?.phase ?? "public"],
+);
+watch(
+  () => [s.value?.day, s.value?.phase, combat.value?.id].join(":"),
+  () => {
+    actionScreen.value = "";
+  },
+);
+watch(
+  () =>
+    [
+      s.value?.day,
+      s.value?.phase,
+      briefing.value,
+      creation.value,
+      actionScreen.value,
+      actionResult.value.length,
+      menu.value,
+      menuTab.value,
+      battleStep.value,
+      combat.value?.id,
+      !!eventResult.value,
+      !!secretResult.value,
+    ].join(":"),
+  async () => {
+    await nextTick();
+    window.scrollTo({ top: 0, behavior: "instant" });
+    document
+      .querySelector<HTMLElement>("main h2, .center-column h2")
+      ?.focus({ preventScroll: true });
+  },
 );
 </script>
 
@@ -389,7 +652,7 @@ const nextLabel = computed(
         ></a
       >
       <div class="top-actions">
-        <span class="version">試遊版 v0.2.2</span
+        <span class="version">試遊版 v0.2.3</span
         ><button @click="loadSave()">続きから</button
         ><template v-if="s"
           ><button @click="store.save()">保存</button
@@ -404,14 +667,14 @@ const nextLabel = computed(
       </div>
     </header>
     <div v-if="store.error" role="alert" class="alert error">
-      {{ store.error }}<button @click="store.error = ''">閉じる</button>
+      {{ uiText(store.error) }}<button @click="store.error = ''">閉じる</button>
     </div>
     <div v-if="store.notice" role="status" class="alert">
       {{ store.notice }}<button @click="store.notice = ''">閉じる</button>
     </div>
     <main v-if="!s" class="setup-layout">
-      <section class="intro">
-        <p class="eyebrow">8 DAYS / 4 WITCHES / ONE LABORATORY</p>
+      <section v-if="!creation" class="intro">
+        <p class="eyebrow">8日間 / 4人の魔女 / ひとつの研究所</p>
         <div class="sigil" aria-hidden="true">✦<span>☽</span></div>
         <h1>
           仲良くしないと負ける。<br />でも、仲良くするだけじゃ<br /><em
@@ -421,23 +684,26 @@ const nextLabel = computed(
         <p class="lead">
           研究所を守る8日間。<br />3人のAI魔女と協力しながら、<br />あなただけの秘密の研究を完成させよう。
         </p>
+        <button class="primary start-button" @click="creation = true">
+          ゲーム開始 →
+        </button>
         <div class="intro-notes">
           <span>01　共同研究を成功させる</span
-          ><span>02　秘密目標で卒業を目指す</span
-          ><span>03　日次目標と名声で首席を競う</span>
+          ><span>02　卒業課題で卒業を目指す</span
+          ><span>03　今日の課題と名声で首席を競う</span>
         </div>
         <p class="muted">
           ブラウザ内で動く試験用ゲームです。保存データ・開発者表示には秘密情報を含みます。
         </p>
       </section>
-      <section class="panel creation">
-        <p class="eyebrow">YOUR WITCH</p>
+      <section v-else class="panel creation">
+        <p class="eyebrow">キャラクターメイク</p>
         <h2>研究所へようこそ</h2>
         <p class="muted">名前、魔法、能力を決めて研究を始めましょう。</p>
         <label>魔女の名前<input v-model="setup.name" maxlength="24" /></label
         ><label
           >乱数シード<input v-model="setup.seed" maxlength="100" /><small
-            >同じseedと操作で同じ結果を再現します。</small
+            >同じシードと操作で同じ結果を再現します。</small
           ></label
         >
         <div class="field-label">固有魔法</div>
@@ -449,7 +715,7 @@ const nextLabel = computed(
             @click="setup.magic = id"
           >
             <strong>{{ m.name }}</strong
-            ><small>CD {{ m.cd }}日</small>
+            ><small>再使用まで {{ m.cd }}日</small>
           </button>
         </div>
         <p class="magic-description">{{ MAGICS[setup.magic].description }}</p>
@@ -481,7 +747,7 @@ const nextLabel = computed(
     <template v-else-if="me">
       <div class="session-bar">
         <div>
-          <span class="eyebrow">RESEARCH JOURNAL</span>
+          <span class="eyebrow">研究の進行</span>
           <h1>第 {{ s.day }} 日 <span>/ 8</span></h1>
         </div>
         <nav aria-label="進行状況">
@@ -498,11 +764,12 @@ const nextLabel = computed(
           <div>
             <b v-for="i in 3" :key="i" :class="{ failed: i <= s.failed }">✦</b>
           </div>
-          <small>{{ s.failed }} / 3 失敗</small>
+          <small>{{ s.failed }} / 3 失敗（通算3回で全員敗北）</small
+          ><strong>残りAP {{ me.ap }} / 2 · 名声 {{ me.fp }}</strong>
         </div>
       </div>
       <section
-        v-if="s.phase === 'public' || combat?.returnPhase === 'public'"
+        v-if="s.phase === 'public' && !combat"
         class="panel persistent-turn"
         role="status"
       >
@@ -518,12 +785,65 @@ const nextLabel = computed(
           {{ interruptReason }}
         </p>
       </section>
-      <div class="game-grid">
-        <aside class="left-column">
+      <nav
+        v-if="
+          !briefing &&
+          !combat &&
+          ['public', 'magic', 'night', 'vote'].includes(s.phase)
+        "
+        class="common-menu"
+        aria-label="共通メニュー"
+      >
+        <button
+          @click="
+            menu = 'inventory';
+            menuTab = 'materials';
+          "
+        >
+          🎒<br />持ち物
+        </button>
+        <button
+          @click="
+            menu = 'goals';
+            menuTab = 'daily';
+          "
+        >
+          📜<br />課題
+        </button>
+      </nav>
+      <TaskBriefing
+        v-if="briefing"
+        :graduation="graduation"
+        :day="s.day"
+        :name="
+          goalDescription(graduation ? me.longGoal : me.dailyGoal, graduation)
+            .name
+        "
+        :condition="
+          goalDescription(graduation ? me.longGoal : me.dailyGoal, graduation)
+            .condition
+        "
+        @confirm="graduation ? (graduation = false) : (hoNoticeDay = s.day)"
+      />
+      <section
+        v-else-if="actionResult.length"
+        class="panel focus-screen action-result"
+      >
+        <h2 tabindex="-1">行動の結果</h2>
+        <p v-for="(line, i) in actionResult" :key="i">{{ uiText(line) }}</p>
+        <p>残りAP：{{ me.ap }} / 2</p>
+        <button class="primary" @click="actionResult = []">確認した</button>
+      </section>
+      <div
+        v-else
+        class="game-grid"
+        :class="{ 'battle-screen': !!combat, 'action-detail': !!actionScreen }"
+      >
+        <aside v-if="!combat && !actionScreen" class="left-column">
           <section class="panel">
             <div class="section-heading">
               <h2>研究室の魔女たち</h2>
-              <small>PUBLIC</small>
+              <small>公開情報</small>
             </div>
             <article
               v-for="p in s.players"
@@ -537,67 +857,27 @@ const nextLabel = computed(
               <div class="witch-info">
                 <div>
                   <strong>{{ p.name }}</strong
-                  ><span class="tag">{{ p.ai ? "AI" : "YOU" }}</span
-                  ><b class="fp">{{ p.fp }} <small>FP</small></b>
+                  ><span class="tag">{{ p.ai ? "AI" : "あなた" }}</span
+                  ><b v-if="p.id === 0" class="fp"
+                    >{{ p.fp }} <small>FP</small></b
+                  >
                 </div>
                 <div class="stats">
                   <span v-for="k in STATS" :key="k"
                     >{{ LABELS[k] }} <b>{{ p.stats[k] }}</b
-                    ><small>Lv{{ level(p.stats[k]) }}</small></span
+                    ><small v-if="p.id === 0"
+                      >Lv{{ level(p.stats[k]) }}</small
+                    ></span
                   >
                 </div>
-                <small class="muted"
+                <small v-if="p.id === 0" class="muted"
                   >AP {{ "●".repeat(p.ap) }}{{ "○".repeat(2 - p.ap) }}</small
                 >
+                <small>アイテム合計 {{ p.inventory.length }} 個</small>
               </div>
             </article>
           </section>
-          <section class="panel secret">
-            <div class="section-heading">
-              <h2>あなただけの研究</h2>
-              <small>PRIVATE</small>
-            </div>
-            <div class="goal">
-              <span class="eyebrow">長期HO · 卒業条件</span>
-              <h3>{{ goalDescription(me.longGoal, true).name }}</h3>
-              <p>{{ goalDescription(me.longGoal, true).condition }}</p>
-              <span class="tag">{{
-                me.longGoal.achieved ? "達成記録あり" : "最終日に判定"
-              }}</span>
-            </div>
-            <div class="goal">
-              <span class="eyebrow">本日の日次HO · 達成でFP+1</span>
-              <h3 :key="s.day" class="daily-ho-heading">
-                本日の日次HO：{{ goalDescription(me.dailyGoal, false).name }}
-              </h3>
-              <p>{{ goalDescription(me.dailyGoal, false).condition }}</p>
-              <p v-if="hoProgress" class="daily-ho-progress" role="status">
-                <strong>{{ hoProgress.status }}</strong> ·
-                {{ hoProgress.current }}/{{ hoProgress.total }}
-              </p>
-              <p v-if="hoProgress" class="muted">{{ hoProgress.detail }}</p>
-              <small
-                >これまでの日次達成：{{
-                  me.dailyHistory.filter((h) => h.achieved).length
-                }}回</small
-              >
-            </div>
-            <div class="own-magic">
-              <strong>{{ MAGICS[me.magic].name }}</strong
-              ><span>{{
-                me.availableDay <= s.day
-                  ? "使用可能"
-                  : `第${me.availableDay}日から`
-              }}</span>
-              <p>{{ MAGICS[me.magic].description }}</p>
-              <small v-if="me.temporaryRecipe"
-                >秘伝：{{ itemName(me.temporaryRecipe.kind) }}（第{{
-                  me.temporaryRecipe.day
-                }}日夜まで）</small
-              >
-            </div>
-          </section>
-          <details class="panel level-guide" :open="s.phase === 'public'">
+          <details class="panel level-guide">
             <summary>あなたの能力Lvと解禁効果</summary>
             <p v-for="k in STATS" :key="k" :data-stat="k">
               {{ LABELS[k] }} {{ me.stats[k] }} / Lv{{ level(me.stats[k])
@@ -609,65 +889,10 @@ const nextLabel = computed(
               }}<br />{{ levelEffect(k, level(me.stats[k])) }}
             </p>
           </details>
-          <section class="panel">
-            <div class="section-heading">
-              <h2>あなたの所持品</h2>
-              <small>{{ me.inventory.length }} ITEMS</small>
-            </div>
-            <p v-if="!me.inventory.length" class="muted">所持品なし</p>
-            <div
-              class="inventory-row"
-              v-for="(count, kind) in inventory"
-              :key="kind"
-            >
-              <span>{{ itemName(String(kind)) }}</span
-              ><b
-                >{{ count.free
-                }}<small v-if="count.total !== count.free">
-                  / 予約{{ count.total - count.free }}</small
-                ></b
-              >
-            </div>
-            <p class="muted">休息 +{{ me.rest }} / 呪詛 −{{ me.curse }}</p>
-            <div
-              v-for="i in me.inventory.filter(
-                (i) => ['purify', 'talent'].includes(i.kind) && !i.lock,
-              )"
-              :key="i.id"
-              class="potion-use"
-            >
-              <template v-if="i.kind === 'talent'"
-                ><select v-model="changeMagic">
-                  <option v-for="(m, k) in MAGICS" :key="k" :value="k">
-                    {{ m.name }}
-                  </option>
-                </select></template
-              ><button
-                :disabled="
-                  !can({
-                    type: 'usePotion',
-                    player: 0,
-                    item: i.id,
-                    magic: changeMagic,
-                  })
-                "
-                @click="
-                  act({
-                    type: 'usePotion',
-                    player: 0,
-                    item: i.id,
-                    magic: changeMagic,
-                  })
-                "
-              >
-                {{ itemName(i.kind) }}を使う
-              </button>
-            </div>
-          </section>
         </aside>
         <main class="center-column">
           <section v-if="s.result" class="panel final-results">
-            <p class="eyebrow">RESEARCH COMPLETE</p>
+            <p class="eyebrow">研究終了</p>
             <h2>
               {{
                 s.result.reason === "collapse"
@@ -681,7 +906,7 @@ const nextLabel = computed(
                   ? "協力イベントが3回失敗したため、全員敗北です。"
                   : s.result.chiefs.length
                     ? `首席：${s.result.chiefs.map((id) => s.players[id].name).join("・")}`
-                    : "卒業者なし：長期HO達成者がいません。"
+                    : "卒業者なし：卒業課題達成者がいません。"
               }}
             </p>
             <p
@@ -697,7 +922,7 @@ const nextLabel = computed(
                   <tr>
                     <th>魔女</th>
                     <th>卒業</th>
-                    <th>日次HO</th>
+                    <th>今日の課題</th>
                     <th>FP順位</th>
                   </tr>
                 </thead>
@@ -715,7 +940,7 @@ const nextLabel = computed(
               </table>
             </div>
             <details v-for="p in s.players" :key="p.id">
-              <summary>{{ p.name }}のHOと判定根拠</summary>
+              <summary>{{ p.name }}の課題と判定根拠</summary>
               <h3>
                 {{ goalDescription(p.longGoal, true).name }}：{{
                   p.longGoal.achieved ? "達成" : "未達成"
@@ -740,9 +965,10 @@ const nextLabel = computed(
           <section
             v-if="event && progress && s.phase === 'public'"
             class="panel event-panel"
+            v-show="actionScreen === 'event'"
           >
             <div class="section-heading">
-              <span class="eyebrow">TODAY'S COOPERATIVE EVENT</span
+              <span class="eyebrow">今日の共通イベント</span
               ><span class="difficulty" :class="event.difficulty">{{
                 event.difficulty
               }}</span>
@@ -875,10 +1101,26 @@ const nextLabel = computed(
             </button>
           </section>
           <section v-if="combat && myCombat" class="panel combat-panel">
-            <p class="eyebrow">
-              {{ combat.kind === "secret" ? "PRIVATE DUEL" : "PUBLIC DUEL" }} /
-              ROUND {{ combat.rounds.length + Number(!combat.done) }} OF 5
-            </p>
+            <div class="battle-header" role="status">
+              <strong
+                >第
+                {{
+                  Math.min(
+                    5,
+                    combat.rounds.length +
+                      Number(!combat.done && battleStep === "choose"),
+                  ) || 1
+                }}
+                ラウンド / 最大5</strong
+              >
+              <span v-for="(id, side) in combat.participants" :key="id"
+                >{{ id === 0 ? "あなた" : s.players[id].name }} HP
+                {{ combat.hp[side]
+                }}<b v-if="!combat.done && combat.charge[side] > 0">
+                  · 次の攻撃・防御にためる +{{ combat.charge[side] }}</b
+                ></span
+              >
+            </div>
             <h2>
               {{
                 combat.kind === "mock"
@@ -900,8 +1142,49 @@ const nextLabel = computed(
                 </div>
               </template>
             </div>
-            <template v-if="!combat.done"
-              ><p class="muted">
+            <section v-if="battleStep === 'intro'" class="battle-intro">
+              <h3>対戦相手を確認</h3>
+              <p>
+                最大5ラウンド。HPが0になるか5ラウンド終了で決着し、残りHPが多い魔女が勝ちます。同じHPなら引き分けです。
+              </p>
+              <button
+                class="primary"
+                @click="battleStep = combat.done ? 'end' : 'choose'"
+              >
+                {{ combat.done ? "戦闘結果を確認" : "行動選択へ" }}
+              </button>
+            </section>
+            <section v-if="battleStep === 'reveal' && latestRound">
+              <h3>双方の行動公開</h3>
+              <p>
+                {{
+                  revealedActions(
+                    latestRound,
+                    combat.participants.map((id) => s.players[id].name),
+                  )
+                }}
+              </p>
+              <button class="primary" @click="battleStep = 'judgment'">
+                判定結果を見る
+              </button>
+            </section>
+            <section v-if="battleStep === 'judgment'">
+              <h3>第{{ combat.rounds.length }}ラウンドの判定結果</h3>
+              <CombatRounds
+                :combat="combat"
+                :names="combat.participants.map((id) => s.players[id].name)"
+                :only-last="true"
+              />
+              <button
+                class="primary"
+                @click="battleStep = combat.done ? 'end' : 'choose'"
+              >
+                {{ combat.done ? "戦闘終了へ" : "次のラウンドへ" }}
+              </button>
+            </section>
+            <template v-if="!combat.done && battleStep === 'choose'"
+              ><h3>行動選択</h3>
+              <p class="muted">
                 攻撃・防御・ためるを同時選択。ためる中は無防備です。洞察＋1D6（薬補正あり）を次Rの攻撃・防御へ加え、そのRで消費します。連続ためるはできません。
               </p>
               <p v-if="combat.rounds.length === 4" class="interrupt-reason">
@@ -944,7 +1227,28 @@ const nextLabel = computed(
                   @click="stance = v"
                 >
                   {{ LABELS[v] }}
+                  <small v-if="!legalStances(combat, mySide).includes(v)">{{
+                    combat.rounds.length === 4
+                      ? "最終ラウンドは使用不可"
+                      : "連続では使用不可"
+                  }}</small>
                 </button>
+              </div>
+              <div v-if="me.magic === 'illusion'" class="illusion-status">
+                <label class="checkbox-row"
+                  ><input
+                    type="checkbox"
+                    :checked="
+                      me.activeMagic &&
+                      combat.kind === 'secret' &&
+                      combat.initiator === 0
+                    "
+                    disabled
+                  />幻惑を使用する（夜の確定内容）</label
+                >
+                <p>
+                  夜の固有魔法で使用を確定し、自分から襲撃した秘匿決闘でのみ、相手の行動を1ラウンド変更します。戦闘中は変更できません。再使用まで2日。
+                </p>
               </div>
               <label
                 >このラウンドの薬<select v-model="battlePotion">
@@ -978,8 +1282,19 @@ const nextLabel = computed(
               >
                 手を確定 · 1D6を振る
               </button></template
-            ><template v-else
-              ><h3>
+            ><template v-if="combat.done && battleStep === 'end'"
+              ><p>{{ combatReason(combat) }}</p>
+              <button
+                v-if="combat.kind === 'mock'"
+                class="primary"
+                @click="
+                  mockResult = undefined;
+                  battleStep = 'intro';
+                "
+              >
+                確認した
+              </button>
+              <h3>
                 {{
                   combat.winner === null
                     ? "引き分け"
@@ -1007,10 +1322,13 @@ const nextLabel = computed(
                 ></template
               ></template
             >
-            <CombatRounds
-              :combat="combat"
-              :names="combat.participants.map((id) => s.players[id].name)"
-            />
+            <details v-if="battleStep === 'choose' && combat.rounds.length">
+              <summary>前のラウンドの判定を見る</summary>
+              <CombatRounds
+                :combat="combat"
+                :names="combat.participants.map((id) => s.players[id].name)"
+              />
+            </details>
             <p v-if="combat.kind === 'secret'" class="muted">
               解決済みラウンドの詳細は当事者だけに表示します。
             </p>
@@ -1066,20 +1384,9 @@ const nextLabel = computed(
             </button>
           </section>
           <section
-            v-if="s.phase === 'public' && hoNoticeDay !== s.day"
-            class="panel daily-ho-notice"
-            role="status"
+            v-if="s.phase === 'public' && !combat && !actionScreen"
+            class="panel turn-status"
           >
-            <h2>
-              {{ s.day }}日目の日次HO：{{
-                goalDescription(me.dailyGoal, false).name
-              }}
-            </h2>
-            <p>{{ goalDescription(me.dailyGoal, false).condition }}</p>
-            <p>達成報酬：FP+1（本日のHO判定時）</p>
-            <button @click="hoNoticeDay = s.day">確認しました</button>
-          </section>
-          <section v-if="s.phase === 'public'" class="panel turn-status">
             <h2>
               {{
                 s.publicTurn.round <= 2
@@ -1105,25 +1412,36 @@ const nextLabel = computed(
               <h2>今日、何を研究する？</h2>
               <span class="ap-badge">{{ me.ap }} AP</span>
             </div>
-            <nav class="tabs">
+            <p v-if="!actionScreen">
+              1AP行動を1回選び、納品・取引を済ませたら「手番終了」へ。何もしないでパスすることもできます。
+            </p>
+            <p v-if="!actionScreen && event">
+              今日の共通イベント：{{ event.name }}。条件：{{
+                event.description
+              }}。納品の対象・数量は「納品」で確認できます。
+            </p>
+            <nav v-if="!actionScreen" class="action-menu">
               <button
                 v-for="(label, id) in {
-                  field: '採集・研究',
+                  gather: '採集',
+                  research: '研究',
                   event: '納品',
-                  trade: '取引',
+                  shop: '購買部',
+                  trade: '魔女間取引',
                   duel: '決闘',
                 }"
                 :key="id"
                 :class="{ active: tab === id }"
-                @click="
-                  tab = id;
-                  selected = [];
-                "
+                @click="openAction(id)"
               >
                 {{ label }}
               </button>
             </nav>
-            <template v-if="tab === 'field'"
+            <button v-if="actionScreen" @click="cancelAction">
+              キャンセルして戻る
+            </button>
+            <h3 v-if="actionScreen">{{ actionLabels[actionScreen] }}</h3>
+            <template v-if="actionScreen && tab === 'field'"
               ><label
                 >行動と同時に使う薬<select v-model="actionPotion">
                   <option :value="undefined">なし</option>
@@ -1140,7 +1458,7 @@ const nextLabel = computed(
                   </option>
                 </select></label
               >
-              <div class="action-card">
+              <div v-if="actionScreen === 'gather'" class="action-card">
                 <div>
                   <h3>森で採集</h3>
                   <p>
@@ -1174,12 +1492,25 @@ const nextLabel = computed(
                   採集 <small>1AP</small>
                 </button>
               </div>
-              <div v-for="k in STATS" :key="k" class="action-card">
+              <div
+                v-for="k in actionScreen === 'research' ? STATS : []"
+                :key="k"
+                class="action-card"
+              >
                 <div>
                   <h3>{{ LABELS[k] }}を研究</h3>
                   <p>
                     {{ RESEARCH[k].map(itemName).join(" ＋ ") }}
-                    各1個<br />成長：+{{
+                    各1個
+                    <span
+                      v-for="kind in RESEARCH[k]"
+                      :key="kind"
+                      class="material-count"
+                      >{{ itemName(kind) }}：必要1 / 使用可能{{
+                        inventory[kind]?.free ?? 0
+                      }}（所持{{ inventory[kind]?.total ?? 0 }}）</span
+                    >
+                    <br />成長：+{{
                       Math.max(
                         0,
                         1 +
@@ -1220,7 +1551,7 @@ const nextLabel = computed(
                 </button>
               </div></template
             >
-            <template v-if="tab === 'event'"
+            <template v-if="actionScreen && tab === 'event'"
               ><p class="reservation-limit">
                 {{
                   s.publicTurn.round === 1
@@ -1274,7 +1605,7 @@ const nextLabel = computed(
                 このイベントに納品できる未予約の品物がありません。必要条件・予約済みの数量も確認してください。
               </p>
             </template>
-            <template v-if="tab === 'trade'"
+            <template v-if="actionScreen && tab === 'shop'"
               ><h3>購買部 <span class="tag">1AP</span></h3>
               <p class="muted">任意の素材3個 → 指定素材1個</p>
               <GroupedItems
@@ -1305,7 +1636,8 @@ const nextLabel = computed(
               >
                 3個を交換
               </button>
-              <hr />
+            </template>
+            <template v-if="actionScreen && tab === 'trade'">
               <h3>魔女間取引 <span class="tag">成立・拒否とも0AP</span></h3>
               <label
                 >相手<select v-model="target">
@@ -1359,7 +1691,7 @@ const nextLabel = computed(
                 相手の所持品は非公開。AIは即時受諾／拒否します。片側0個の譲渡も可能です。
               </p></template
             >
-            <template v-if="tab === 'duel'"
+            <template v-if="actionScreen && tab === 'duel'"
               ><label
                 >対戦相手<select v-model="target">
                   <option
@@ -1393,7 +1725,7 @@ const nextLabel = computed(
             v-if="s.phase === 'magic' && !combat && !s.challenge"
             class="panel"
           >
-            <p class="eyebrow">PERSONAL MAGIC</p>
+            <p class="eyebrow">固有魔法</p>
             <h2>今夜、固有魔法を使いますか？</h2>
             <h3>{{ MAGICS[me.magic].name }}</h3>
             <p>{{ MAGICS[me.magic].description }}</p>
@@ -1403,11 +1735,20 @@ const nextLabel = computed(
                   {{ p.name }}
                 </option>
               </select></label
+            ><label v-if="me.magic === 'illusion'" class="checkbox-row"
+              ><input
+                v-model="illusionPlanned"
+                type="checkbox"
+                :disabled="me.activeMagic"
+              />幻惑を使用する</label
             ><button
-              :disabled="!can({ type: 'magic', player: 0, target })"
+              :disabled="
+                !can({ type: 'magic', player: 0, target }) ||
+                (me.magic === 'illusion' && !illusionPlanned)
+              "
               @click="act({ type: 'magic', player: 0, target })"
             >
-              魔法を確定 <small>CD {{ MAGICS[me.magic].cd }}日</small>
+              魔法を確定 <small>再使用まで {{ MAGICS[me.magic].cd }}日</small>
             </button>
             <p v-if="me.activeMagic" class="mint">使用を確定しました。</p>
             <p class="muted">使用せずに次へ進むこともできます。</p>
@@ -1430,10 +1771,10 @@ const nextLabel = computed(
             </button>
             <p class="muted">使用者の匿名投票で決定。同票は抽選します。</p>
           </section>
-          <section v-if="s.phase === 'night'" class="panel">
-            <p class="eyebrow">AFTER DARK</p>
+          <section v-if="s.phase === 'night'" class="panel night-panel">
+            <p class="eyebrow">秘匿行動</p>
             <h2>秘密の行動をひとつ。</h2>
-            <div class="night-options">
+            <div v-if="!actionScreen || me.night" class="night-options">
               <button
                 v-for="n in [
                   'raid',
@@ -1447,6 +1788,7 @@ const nextLabel = computed(
                 :class="{ chosen: night === n }"
                 :disabled="!!me.night"
                 @click="
+                  openAction(n);
                   night = n;
                   nightPotion = undefined;
                   if (target === 0) target = 1;
@@ -1455,110 +1797,176 @@ const nextLabel = computed(
                 {{ LABELS[n] }}
               </button>
             </div>
-            <p class="muted">
-              {{
-                {
-                  raid: "対象と秘匿決闘。連夜の襲撃も可能です。",
-                  curse: `対象の翌公開最初のAP行動に −${level(me.stats.attack)}。`,
-                  guard: `襲撃された戦闘の初回判定に +${level(me.stats.defense)}。`,
-                  rest: `今夜の全決闘に勝つか、決闘なしなら翌日の採集・研究 +${CONFIG.rest[level(me.stats.defense) - 1]}。`,
-                  brew: "素材・レシピ条件の範囲で複数の薬を作成。この夜の他の秘匿行動は選択できません。",
-                  scout:
-                    "相手の夜行動が襲撃・警戒ならFP−1。それ以外はアイテム確認。",
-                }[night]
-              }}
-            </p>
-            <label v-if="['raid', 'curse', 'scout'].includes(night)"
-              >対象<select
-                v-model="target"
-                aria-label="対象"
-                :disabled="!!me.night"
-              >
-                <option
-                  v-for="p in s.players.slice(1)"
-                  :key="p.id"
-                  :value="p.id"
-                >
-                  {{ p.name }}
-                </option>
-              </select></label
-            ><label v-if="night === 'brew'"
-              >レシピ<select
-                v-model="nightRecipe"
-                aria-label="レシピ"
-                :disabled="!!me.night"
-              >
-                <option v-for="r in brewCandidates" :key="r.id" :value="r.id">
-                  {{ r.name }}（{{ r.materials.map(itemName).join("＋") }}）
-                </option>
-              </select></label
-            >
-            <div v-if="night === 'brew'">
-              <button
-                :disabled="
-                  !!me.night ||
-                  !brewCandidates.some((r) => r.id === nightRecipe)
-                "
-                @click="nightPlan.push(nightRecipe)"
-              >
-                作成予定に追加
-              </button>
-              <p v-for="(id, i) in nightPlan" :key="i">
-                {{ itemName(id) }}
-                <button :disabled="!!me.night" @click="nightPlan.splice(i, 1)">
-                  削除
-                </button>
-              </p>
-              <p>作成予定 {{ nightPlan.length }} 個（固定上限なし）</p>
-              <p v-if="!me.night && !brewCandidates.length">
-                現在の所持素材で追加作成可能なレシピはありません。
-              </p>
-            </div>
-            <label v-if="['guard', 'scout'].includes(night)"
-              >同時に使う薬<select v-model="nightPotion" :disabled="!!me.night">
-                <option :value="undefined">なし</option>
-                <option
-                  v-for="i in available(me).filter(
-                    (i) => recipe(i.kind)?.effect === night,
-                  )"
-                  :key="i.id"
-                  :value="i.id"
-                >
-                  {{ itemName(i.kind) }}
-                </option>
-              </select></label
-            ><button
-              class="primary"
-              :disabled="
-                !can({
-                  type: 'night',
-                  player: 0,
-                  choice: {
-                    kind: night,
-                    target,
-                    recipes: night === 'brew' ? [...nightPlan] : undefined,
-                    potion: nightPotion,
-                  },
-                })
-              "
-              @click="
-                act({
-                  type: 'night',
-                  player: 0,
-                  choice: {
-                    kind: night,
-                    target,
-                    recipes: night === 'brew' ? [...nightPlan] : undefined,
-                    potion: nightPotion,
-                  },
-                })
-              "
-            >
-              {{ me.night ? "行動を確定しました" : "秘匿行動を確定" }}
+            <button v-if="actionScreen && !me.night" @click="cancelAction">
+              キャンセルして戻る
             </button>
-            <p v-if="me.night" class="operation-reason">
-              この夜の行動は確定済みです。別の行動は選択できません。
-            </p>
+            <template v-if="actionScreen || me.night">
+              <h3>{{ LABELS[night] }} · 消費APなし</h3>
+              <p class="muted">
+                {{
+                  {
+                    raid: "対象と秘匿決闘。連夜の襲撃も可能です。",
+                    curse: `対象の翌公開最初のAP行動に −${level(me.stats.attack)}。`,
+                    guard: `襲撃された戦闘の初回判定に +${level(me.stats.defense)}。`,
+                    rest: `今夜の全決闘に勝つか、決闘なしなら翌日の採集・研究 +${CONFIG.rest[level(me.stats.defense) - 1]}。`,
+                    brew: "素材・レシピ条件の範囲で複数の薬を作成。この夜の他の秘匿行動は選択できません。",
+                    scout:
+                      "相手の夜行動が襲撃・警戒ならFP−1。それ以外はアイテム確認。",
+                  }[night]
+                }}
+              </p>
+              <label v-if="['raid', 'curse', 'scout'].includes(night)"
+                >対象<select
+                  v-model="target"
+                  aria-label="対象"
+                  :disabled="!!me.night"
+                >
+                  <option
+                    v-for="p in s.players.slice(1)"
+                    :key="p.id"
+                    :value="p.id"
+                  >
+                    {{ p.name }}
+                  </option>
+                </select></label
+              ><label v-if="night === 'brew'"
+                >レシピ<select
+                  v-model="nightRecipe"
+                  aria-label="レシピ"
+                  :disabled="!!me.night"
+                >
+                  <option v-for="r in RECIPES" :key="r.id" :value="r.id">
+                    {{ r.name }}（{{ r.materials.map(itemName).join("＋") }}）
+                  </option>
+                </select></label
+              >
+              <div v-if="night === 'brew'">
+                <section
+                  v-if="recipe(nightRecipe)"
+                  class="recipe-preview"
+                  aria-label="選択した薬の詳細"
+                >
+                  <h3>{{ recipe(nightRecipe)!.name }}</h3>
+                  <p>{{ potionDescription(nightRecipe) }}</p>
+                  <p
+                    v-for="kind in [...new Set(recipe(nightRecipe)!.materials)]"
+                    :key="kind"
+                    class="material-count"
+                  >
+                    {{ itemName(kind) }}：1個作成に必要{{
+                      recipe(nightRecipe)!.materials.filter((m) => m === kind)
+                        .length
+                    }}個 / 現在の所持数{{ inventory[kind]?.total ?? 0 }}個
+                  </p>
+                </section>
+                <table class="brew-materials">
+                  <caption>
+                    素材の所持数と作成予定
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th>素材</th>
+                      <th>所持数</th>
+                      <th>予定消費数</th>
+                      <th>追加使用可能数</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="m in brewMaterials"
+                      :key="m.kind"
+                      :data-material="m.kind"
+                    >
+                      <th>{{ itemName(m.kind) }}</th>
+                      <td>{{ m.owned }}</td>
+                      <td>{{ m.planned }}</td>
+                      <td>
+                        {{ m.available
+                        }}<small v-if="m.reserved"
+                          >（予約中{{ m.reserved }}個を除く）</small
+                        >
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p>
+                  追加使用可能数は所持数から作成予定の消費数を引いた数です。予約中の素材がある場合は、その分も除きます。
+                </p>
+                <p v-if="brewReason" role="status" class="operation-reason">
+                  {{ brewReason }}
+                </p>
+                <button
+                  :disabled="
+                    !!me.night ||
+                    !brewCandidates.some((r) => r.id === nightRecipe)
+                  "
+                  @click="nightPlan.push(nightRecipe)"
+                >
+                  作成予定に追加
+                </button>
+                <p v-for="(id, i) in nightPlan" :key="i">
+                  {{ itemName(id) }}
+                  <button
+                    :disabled="!!me.night"
+                    @click="nightPlan.splice(i, 1)"
+                  >
+                    削除
+                  </button>
+                </p>
+                <p>作成予定 {{ nightPlan.length }} 個（固定上限なし）</p>
+                <p v-if="!me.night && !brewCandidates.length">
+                  現在の所持素材で追加作成可能なレシピはありません。
+                </p>
+              </div>
+              <label v-if="['guard', 'scout'].includes(night)"
+                >同時に使う薬<select
+                  v-model="nightPotion"
+                  :disabled="!!me.night"
+                >
+                  <option :value="undefined">なし</option>
+                  <option
+                    v-for="i in available(me).filter(
+                      (i) => recipe(i.kind)?.effect === night,
+                    )"
+                    :key="i.id"
+                    :value="i.id"
+                  >
+                    {{ itemName(i.kind) }}
+                  </option>
+                </select></label
+              ><button
+                class="primary"
+                :disabled="
+                  !can({
+                    type: 'night',
+                    player: 0,
+                    choice: {
+                      kind: night,
+                      target,
+                      recipes: night === 'brew' ? [...nightPlan] : undefined,
+                      potion: nightPotion,
+                    },
+                  })
+                "
+                @click="
+                  act({
+                    type: 'night',
+                    player: 0,
+                    choice: {
+                      kind: night,
+                      target,
+                      recipes: night === 'brew' ? [...nightPlan] : undefined,
+                      potion: nightPotion,
+                    },
+                  })
+                "
+              >
+                {{ me.night ? "行動を確定しました" : "秘匿行動を確定" }}
+              </button>
+              <p v-if="me.night" class="operation-reason">
+                この夜の行動は確定済みです。別の行動は選択できません。
+              </p>
+            </template>
             <p class="muted">未選択で進めると休息します。</p>
           </section>
           <section
@@ -1583,18 +1991,20 @@ const nextLabel = computed(
             <p>
               {{
                 s.phase === "dawn"
-                  ? "右の個人通知で結果を確認し、次の日へ進みましょう。"
+                  ? "下の1日のまとめを確認し、次の日へ進みましょう。"
                   : "下の進行ボタンで結果を確定します。"
               }}
             </p>
             <p v-if="s.phase === 'dawn'">
-              本日のHO：<strong>{{
+              今日の課題：<strong>{{
                 me.dailyGoal.achieved ? "達成 ✓" : "未達成"
               }}</strong>
             </p>
           </section>
           <section
-            v-if="s.phase !== 'ended' && !combat && !s.challenge"
+            v-if="
+              s.phase !== 'ended' && !combat && !s.challenge && !actionScreen
+            "
             class="panel progression"
           >
             <div>
@@ -1623,18 +2033,21 @@ const nextLabel = computed(
               {{ nextLabel }} →
             </button>
           </section>
-          <details v-if="s.phase !== 'public'" class="panel event-archive">
+          <details
+            v-if="s.phase !== 'public' && !combat"
+            class="panel event-archive"
+          >
             <summary>共通イベントの履歴</summary>
             <article
               v-for="l in s.logs.filter((l) => l.type === 'eventResult')"
               :key="l.seq"
             >
-              <h3>第{{ l.day }}日：{{ l.text }}</h3>
+              <h3>第{{ l.day }}日：{{ uiText(l.text) }}</h3>
               <p>{{ EVENTS[Number(l.data?.event) - 1]?.description }}</p>
             </article>
           </details>
           <details
-            v-if="publicHistory.length"
+            v-if="publicHistory.length && !combat && !actionScreen"
             class="panel public-history"
             :open="s.phase === 'public' && !combat"
           >
@@ -1647,8 +2060,8 @@ const nextLabel = computed(
               >
                 {{
                   l.type === "win"
-                    ? `${s.players[l.actor!].name}：${l.text}`
-                    : l.text
+                    ? `${s.players[l.actor!].name}：${uiText(l.text)}`
+                    : uiText(l.text)
                 }}
                 <small v-if="l.type === 'turnEnd'">
                   · 残AP {{ l.data?.remainingAP }}</small
@@ -1665,15 +2078,20 @@ const nextLabel = computed(
             "
             class="panel results-summary"
           >
-            <h2>本日の結果</h2>
+            <h2>夜の結果・1日のまとめ</h2>
             <p>
-              日次HO「{{ goalDescription(me.dailyGoal, false).name }}」：{{
+              今日の課題「{{ goalDescription(me.dailyGoal, false).name }}」：{{
                 hoProgress?.status
-              }}<span v-if="me.dailyGoal.achieved"> · 日次HO達成！ FP+1</span>
+              }}<span v-if="me.dailyGoal.achieved">
+                · 今日の課題達成！ FP+1</span
+              >
             </p>
-            <p v-for="l in personalResults" :key="l.seq">{{ l.text }}</p>
+            <p v-for="l in personalResults" :key="l.seq">
+              {{ uiText(l.text) }}
+            </p>
+            <p v-for="l in nightResults" :key="l.seq">{{ uiText(l.text) }}</p>
           </section>
-          <details v-if="history.length" class="panel">
+          <details v-if="history.length && !combat" class="panel">
             <summary>対戦の履歴（秘匿決闘は本人参加分のみ）</summary>
             <article v-for="c in history" :key="c.id" :data-combat-id="c.id">
               <h3>
@@ -1696,11 +2114,12 @@ const nextLabel = computed(
             </article>
           </details>
         </main>
-        <aside class="right-column">
-          <section class="panel journal">
+        <aside v-if="!combat && !actionScreen" class="right-column">
+          <details class="panel journal">
+            <summary>研究日誌を開く</summary>
             <div class="section-heading">
               <h2>研究日誌</h2>
-              <small>LIVE LOG</small>
+              <small>行動と結果の記録</small>
             </div>
             <p class="muted">
               実行順の公開履歴とあなたへの個人通知。全日分を保持します。
@@ -1721,10 +2140,10 @@ const nextLabel = computed(
                   <span>DAY {{ l.day }} · {{ LABELS[l.phase] }}</span
                   ><small v-if="l.audience !== 'public'">個人通知</small>
                 </div>
-                <p>{{ l.text }}</p>
+                <p>{{ uiText(l.text) }}</p>
               </article>
             </div>
-          </section>
+          </details>
           <section
             v-for="t in s.trades.filter((t) => t.from === 0)"
             :key="t.id"
@@ -1785,7 +2204,7 @@ const nextLabel = computed(
               毎日2巡、手番ごとに1APで採集・研究・購買部を利用します。公開決闘は1AP、勝者に1FP。取引・仮納品・模擬戦は0AP。錬金は夜だけです。
             </p>
             <p>
-              イベント3失敗で全員敗北。8日を終え、長期HO達成で卒業。卒業者だけを最終FPで順位付けし、最高FPが首席。同点は同率、未卒業者は順位なしです。
+              イベント3失敗で全員敗北。8日を終え、卒業課題達成で卒業。卒業者だけを最終FPで順位付けし、最高FPが首席。同点は同率、未卒業者は順位なしです。
             </p>
             <p>
               夜は固有魔法と秘匿行動。休息は翌日の育成を助け、襲撃・呪詛・偵察はライバルへの干渉です。
@@ -1827,7 +2246,117 @@ const nextLabel = computed(
         </details>
       </section>
     </template>
-    <BlockingDialog v-if="incomingTrade" title="取引への返答が必要です">
+    <BlockingDialog
+      v-if="menu && me"
+      :title="menu === 'inventory' ? '持ち物' : '課題'"
+    >
+      <nav class="tabs" v-if="menu === 'inventory'">
+        <button @click="menuTab = 'materials'">素材</button
+        ><button @click="menuTab = 'potions'">薬</button>
+      </nav>
+      <nav class="tabs" v-else>
+        <button @click="menuTab = 'daily'">今日の課題</button
+        ><button @click="menuTab = 'graduation'">卒業課題</button>
+      </nav>
+      <template v-if="menu === 'inventory'">
+        <p v-if="!me.inventory.length">所持品なし</p>
+        <article
+          v-for="(count, kind) in Object.fromEntries(
+            Object.entries(inventory).filter(
+              ([kind]) => isMaterial(kind) === (menuTab === 'materials'),
+            ),
+          )"
+          :key="kind"
+        >
+          <h3>{{ itemName(String(kind)) }} × {{ count.total }}</h3>
+          <p v-if="count.free !== count.total">
+            使用可能{{ count.free }} / 予約中{{ count.total - count.free }}
+          </p>
+          <p v-if="menuTab === 'potions'">
+            {{ potionDescription(String(kind)) }}
+          </p>
+        </article>
+        <details v-if="menuTab === 'potions'" class="panel">
+          <summary>薬を使用する・補正を確認</summary>
+          <p class="muted">休息 +{{ me.rest }} / 呪詛 −{{ me.curse }}</p>
+          <div
+            v-for="i in me.inventory.filter(
+              (i) => ['purify', 'talent'].includes(i.kind) && !i.lock,
+            )"
+            :key="i.id"
+            class="potion-use"
+          >
+            <template v-if="i.kind === 'talent'"
+              ><select v-model="changeMagic">
+                <option v-for="(m, k) in MAGICS" :key="k" :value="k">
+                  {{ m.name }}
+                </option>
+              </select></template
+            ><button
+              :disabled="
+                !can({
+                  type: 'usePotion',
+                  player: 0,
+                  item: i.id,
+                  magic: changeMagic,
+                })
+              "
+              @click="
+                act({
+                  type: 'usePotion',
+                  player: 0,
+                  item: i.id,
+                  magic: changeMagic,
+                })
+              "
+            >
+              {{ itemName(i.kind) }}を使う
+            </button>
+          </div>
+        </details>
+      </template>
+      <template v-else>
+        <h3>
+          {{
+            goalDescription(
+              menuTab === "graduation" ? me.longGoal : me.dailyGoal,
+              menuTab === "graduation",
+            ).name
+          }}
+        </h3>
+        <p>
+          達成条件：{{
+            goalDescription(
+              menuTab === "graduation" ? me.longGoal : me.dailyGoal,
+              menuTab === "graduation",
+            ).condition
+          }}
+        </p>
+        <template v-if="menuTab === 'daily' && hoProgress"
+          ><p>
+            {{ hoProgress.status }}：{{ hoProgress.current }} /
+            {{ hoProgress.total }}
+          </p>
+          <p>{{ hoProgress.detail }}</p></template
+        >
+        <template v-else
+          ><h4>確認できる進捗</h4>
+          <p v-for="line in graduationProgress(s)" :key="line">{{ line }}</p>
+          <p>
+            {{
+              me.longGoal.achieved
+                ? "達成記録あり"
+                : "8日目終了時に判定します。途中の確定判定はありません。"
+            }}
+          </p>
+        </template>
+      </template>
+      <template #actions><button @click="menu = ''">閉じる</button></template>
+    </BlockingDialog>
+    <BlockingDialog
+      v-if="showGameDialogs && incomingTrade"
+      title="取引への返答が必要です"
+    >
       <p>
         未決の取引があるため、手番進行と公開行動を停止しています。受諾・拒否するまで表示します。
       </p>
@@ -1884,11 +2413,20 @@ const nextLabel = computed(
       </template>
     </BlockingDialog>
     <BlockingDialog
-      v-if="secretResult"
+      v-if="
+        showGameDialogs && secretResult && (!myCombat || battleStep === 'end')
+      "
       :title="
         secretResult.kind === 'public' ? '公開決闘の結果' : '秘匿決闘の結果'
       "
     >
+      <div class="battle-header">
+        <strong
+          >戦闘終了 · {{ secretResult.rounds.length }} / 最大5ラウンド</strong
+        ><span v-for="(id, side) in secretResult.participants" :key="id"
+          >{{ s.players[id].name }} HP {{ secretResult.hp[side] }}</span
+        >
+      </div>
       <h3>
         {{
           secretResult.winner === null
@@ -1907,28 +2445,38 @@ const nextLabel = computed(
         }}
         · 最終HP {{ secretResult.hp.join(" / ") }}
       </p>
-      <CombatRounds
-        :combat="secretResult"
-        :names="secretResult.participants.map((id) => s.players[id].name)"
-      />
+      <p>{{ combatReason(secretResult) }}</p>
+      <p v-if="secretResult.winner !== null && secretResult.kind === 'public'">
+        {{ s.players[secretResult.winner!].name }}の名声（FP）：{{
+          s.players[secretResult.winner!].fp - 1
+        }}
+        → {{ s.players[secretResult.winner!].fp }}
+      </p>
+      <details>
+        <summary>各ラウンドの判定履歴</summary>
+        <CombatRounds
+          :combat="secretResult"
+          :names="secretResult.participants.map((id) => s.players[id].name)"
+        />
+      </details>
       <p v-if="secretResult.kind === 'secret'">
-        当事者だけへの結果です。OKの後に勝者の報酬選択・処理へ進みます。
+        当事者だけへの結果です。確認後に勝者の報酬選択・処理へ進みます。
       </p>
       <p v-else>
         {{
           secretResult.winner === null
             ? "引き分け：双方FP変動なし"
             : `${s.players[secretResult.winner!].name} FP+1、敗者FP変動なし`
-        }}。能力移転はありません。OKで公開フェーズへ戻ります。
+        }}。能力移転はありません。確認して公開フェーズへ戻ります。
       </p>
       <template #actions>
         <button class="primary" @click="act({ type: 'combatAck', player: 0 })">
-          OK
+          確認した
         </button>
       </template>
     </BlockingDialog>
     <BlockingDialog
-      v-if="eventResult && event && progress"
+      v-if="showGameDialogs && eventResult && event && progress"
       title="共通イベントの結果"
     >
       <h3>{{ event.name }}：{{ s.event.success ? "成功" : "失敗" }}</h3>
@@ -1956,6 +2504,23 @@ const nextLabel = computed(
             .join("、")
         }}
       </p>
+      <p v-if="s.event.success && event.mock">
+        模擬戦参加者は素材を2個ずつ獲得しました。
+      </p>
+      <p v-if="!s.event.success">
+        失敗ペナルティ：研究所の失敗回数 +1。通算3回の失敗で直ちに全員敗北です。
+      </p>
+      <p v-else>
+        成功報酬：{{
+          event.most
+            ? "最多納品者"
+            : event.mock && !event.materials
+              ? "模擬戦参加者に素材2個"
+              : "条件を満たした貢献者"
+        }}{{
+          event.fp ? `に名声（FP）+${event.fp}` : ""
+        }}。実際の付与は以下の結果を確認してください。
+      </p>
       <p>
         {{
           s.event.success
@@ -1970,19 +2535,37 @@ const nextLabel = computed(
         )"
         :key="l.seq"
       >
-        {{ l.text }}
+        {{ uiText(l.text) }}
       </p>
       <p v-if="s.result?.reason === 'collapse'">
         イベント3回失敗により研究所が崩壊しました。全員敗北です。
       </p>
       <template #actions
         ><button class="primary" @click="act({ type: 'eventAck', player: 0 })">
-          OK
+          確認した
         </button></template
       >
     </BlockingDialog>
-    <BlockingDialog v-if="s?.publicOutcome" title="公開決闘の結果">
+    <BlockingDialog
+      v-if="showGameDialogs && s?.publicOutcome"
+      title="公開決闘の結果"
+    >
       <h3>{{ s.players[s.publicOutcome.to].name }}が降参</h3>
+      <p>
+        アイテム合計：{{ s.players[s.publicOutcome.from].name }}
+        {{
+          s.players[s.publicOutcome.from].inventory.length -
+          s.publicOutcome.items.length
+        }}
+        → {{ s.players[s.publicOutcome.from].inventory.length }}個、{{
+          s.players[s.publicOutcome.to].name
+        }}
+        {{
+          s.players[s.publicOutcome.to].inventory.length +
+          s.publicOutcome.items.length
+        }}
+        → {{ s.players[s.publicOutcome.to].inventory.length }}個
+      </p>
       <p>
         {{ s.players[s.publicOutcome.from].name }}が{{
           s.publicOutcome.items.map(itemName).join("・")
@@ -1993,7 +2576,7 @@ const nextLabel = computed(
           class="primary"
           @click="act({ type: 'publicOutcomeAck', player: 0 })"
         >
-          OK
+          確認した
         </button></template
       >
     </BlockingDialog>

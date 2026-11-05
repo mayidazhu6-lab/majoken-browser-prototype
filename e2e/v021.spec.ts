@@ -1,3 +1,4 @@
+import { settleScreens, expectGoalProgress } from "./helpers";
 import { selectItems } from "./helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { createGame, currentPlayer, dispatch } from "../src/domain/reducer";
@@ -22,6 +23,7 @@ async function load(page: Page, s: GameState) {
     buffer: Buffer.from(serialize(s)),
   });
   await expect(page.locator(".alert.error")).toHaveCount(0);
+  await settleScreens(page);
 }
 function findResults() {
   const found: Record<string, GameState> = {};
@@ -91,7 +93,7 @@ for (const outcome of ["win", "loss", "draw"] as const)
     const dialog = page.getByRole("dialog", { name: "秘匿決闘の結果" });
     await expect(dialog).toBeVisible();
     await expect(
-      dialog.getByRole("button", { name: "OK", exact: true }),
+      dialog.getByRole("button", { name: "確認した", exact: true }),
     ).toBeInViewport();
     await expect(dialog.getByRole("heading", { level: 3 })).toHaveText(
       outcome === "win"
@@ -113,7 +115,7 @@ for (const outcome of ["win", "loss", "draw"] as const)
     expect(sides).toEqual(c.participants);
     for (const side of [0, 1]) {
       const cell = dialog.locator(
-        `tbody tr:first-child td[data-side="${side}"]`,
+        `tbody tr:nth-child(2) td[data-side="${side}"]`,
       );
       await expect(cell).toContainText(`判定 ${c.rounds[0].values[side]}`);
       await expect(cell).toContainText(
@@ -129,9 +131,10 @@ for (const outcome of ["win", "loss", "draw"] as const)
     });
     await page.reload();
     await page.getByRole("button", { name: "続きから", exact: true }).click();
+    await settleScreens(page);
     await expect(dialog).toBeVisible();
     expect(await state(page)).toEqual(s);
-    await dialog.getByRole("button", { name: "OK", exact: true }).click();
+    await dialog.getByRole("button", { name: "確認した", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     if (outcome === "win") {
       expect((await state(page)).phase).toBe("rewards");
@@ -170,12 +173,16 @@ test("納品UIは第1巡の合算上限と取消回復を表示し、2個予約�
   for (const input of await picker.all()) await input.fill("0");
   await selectItems(panel, s, [s.players[0].inventory[0].id]);
   await panel.getByRole("button", { name: "仮納品する", exact: true }).click();
+  await settleScreens(page);
+  await page.getByRole("button", { name: "納品", exact: true }).click();
   await expect(panel.locator(".reservation-limit")).toContainText(
     "予約済み1、残り0",
   );
   await panel
     .getByRole("button", { name: "自分の予約をすべて撤回", exact: true })
     .click();
+  await settleScreens(page);
+  await page.getByRole("button", { name: "納品", exact: true }).click();
   await expect(panel.locator(".reservation-limit")).toContainText(
     "予約済み0、残り1",
   );
@@ -197,6 +204,7 @@ test("納品UIは第1巡の合算上限と取消回復を表示し、2個予約�
   )
     s = dispatch(s, simulationAction(s));
   await load(page, s);
+  await page.getByRole("button", { name: "納品", exact: true }).click();
   await expect(panel.locator(".reservation-limit")).toContainText(
     "個人上限なし",
   );
@@ -215,6 +223,7 @@ test("能力5→6のLv表示・次の閾値・レベル通知は一度だけ表�
   await expect(page.locator('.level-guide [data-stat="attack"]')).toContainText(
     "次のLvまであと1（能力値6）",
   );
+  await page.getByRole("button", { name: "研究", exact: true }).click();
   await page
     .locator(".action-card")
     .filter({
@@ -222,6 +231,7 @@ test("能力5→6のLv表示・次の閾値・レベル通知は一度だけ表�
     })
     .getByRole("button")
     .click();
+  await settleScreens(page);
   await expect(page.locator('.level-guide [data-stat="attack"]')).toContainText(
     "Lv2",
   );
@@ -235,6 +245,7 @@ test("能力5→6のLv表示・次の閾値・レベル通知は一度だけ表�
   ).toHaveCount(1);
   await page.getByRole("button", { name: "保存", exact: true }).click();
   await page.getByRole("button", { name: "続きから", exact: true }).click();
+  await settleScreens(page);
   await expect(
     page
       .locator(".journal .log-entry")
@@ -249,7 +260,7 @@ test("日次HOは1/2→達成見込み→達成確定、フェーズに応じて
   expect(s.players[0].dailyGoal.id).toBe(9);
   await page.goto("/");
   await load(page, s);
-  await expect(page.locator(".daily-ho-progress")).toHaveText(/未達成.*0\/2/);
+  await expectGoalProgress(page, /未達成.*0 \/ 2/);
   for (const target of [1, 2]) {
     const id = s.players[0].inventory[0].id;
     s = dispatch(s, {
@@ -260,8 +271,9 @@ test("日次HOは1/2→達成見込み→達成確定、フェーズに応じて
       request: {},
     });
     await load(page, s);
-    await expect(page.locator(".daily-ho-progress")).toHaveText(
-      target === 1 ? /未達成.*1\/2/ : /達成見込み.*2\/2/,
+    await expectGoalProgress(
+      page,
+      target === 1 ? /未達成.*1 \/ 2/ : /達成見込み.*2 \/ 2/,
     );
   }
   for (let n = 0; s.phase !== "magic" && n < 100; n++)
@@ -279,8 +291,8 @@ test("日次HOは1/2→達成見込み→達成確定、フェーズに応じて
     s = dispatch(s, simulationAction(s));
   expect(s.phase).toBe("dawn");
   await load(page, s);
-  await expect(page.locator(".daily-ho-progress")).toHaveText(/達成確定.*2\/2/);
+  await expect(page.locator(".results-summary")).toContainText("達成確定");
   await expect(page.locator(".results-summary")).toContainText(
-    "日次HO達成！ FP+1",
+    "今日の課題達成！ FP+1",
   );
 });

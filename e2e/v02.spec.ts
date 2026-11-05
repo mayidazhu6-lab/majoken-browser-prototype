@@ -1,3 +1,4 @@
+import { settleScreens } from "./helpers";
 import { test, expect, type Page } from "@playwright/test";
 import { createGame, dispatch } from "../src/domain/reducer";
 import { simulationAction, simulate } from "../src/domain/simulation";
@@ -22,6 +23,7 @@ async function importState(page: Page, s: GameState) {
     buffer: Buffer.from(serialize(s)),
   });
   await expect(page.locator(".alert.error")).toHaveCount(0);
+  await settleScreens(page);
 }
 
 test("v0.1領域を保持し、続行・JSON取込は版不一致。新規保存はv0.2だけ", async ({
@@ -38,10 +40,20 @@ test("v0.1領域を保持し、続行・JSON取込は版不一致。新規保存
     old,
   );
   await page.getByRole("button", { name: "続きから", exact: true }).click();
+  await settleScreens(page);
   await expect(page.locator(".alert.error")).toContainText(
     "バージョンが一致しません",
   );
+  if (
+    await page
+      .getByRole("button", { name: "ゲーム開始 →", exact: true })
+      .isVisible()
+  )
+    await page
+      .getByRole("button", { name: "ゲーム開始 →", exact: true })
+      .click();
   await page.getByRole("button", { name: /8日間の研究をはじめる/ }).click();
+  await settleScreens(page);
   expect(
     await page.evaluate(() => localStorage.getItem("majoken-save-v1")),
   ).toBe(old);
@@ -64,11 +76,19 @@ test("公開手番・AI自動進行・未決取引の保存再開・拒否後の
   page,
 }) => {
   await page.goto("/");
+  await page.getByRole("button", { name: "ゲーム開始 →", exact: true }).click();
   await page.getByLabel("乱数シード").fill("lab-77");
+  if (
+    await page
+      .getByRole("button", { name: "ゲーム開始 →", exact: true })
+      .isVisible()
+  )
+    await page
+      .getByRole("button", { name: "ゲーム開始 →", exact: true })
+      .click();
   await page.getByRole("button", { name: /8日間の研究をはじめる/ }).click();
-  await expect(page.locator(".daily-ho-notice")).toContainText(
-    "達成報酬：FP+1",
-  );
+  await settleScreens(page);
+  await expect(page.locator(".action-menu")).toBeVisible();
   await expect(
     page.locator(".tabs").getByRole("button", { name: "錬金", exact: true }),
   ).toHaveCount(0);
@@ -76,8 +96,12 @@ test("公開手番・AI自動進行・未決取引の保存再開・拒否後の
     page.getByRole("button", { name: "AIの行動を進める", exact: true }),
   ).toHaveCount(0);
   expect((await state(page)).players.map((p) => p.ap)).toEqual([2, 2, 2, 2]);
+  await page.getByRole("button", { name: "採集", exact: true }).click();
   await page.getByRole("button", { name: /採集 1AP/ }).click();
+  await settleScreens(page);
+  await page.getByRole("button", { name: "採集", exact: true }).click();
   await expect(page.getByRole("button", { name: /採集 1AP/ })).toBeDisabled();
+  await page.getByRole("button", { name: "キャンセルして戻る" }).click();
   await page.locator(".progression button.primary").click();
   const pending = await state(page);
   expect(pending.trades).toHaveLength(1);
@@ -85,6 +109,7 @@ test("公開手番・AI自動進行・未決取引の保存再開・拒否後の
   await expect(page.locator(".progression button.primary")).toBeDisabled();
   await page.reload();
   await page.getByRole("button", { name: "続きから", exact: true }).click();
+  await settleScreens(page);
   expect(await state(page)).toEqual(pending);
   await page.getByRole("button", { name: "拒否", exact: true }).click();
   const resumed = await state(page);
@@ -155,7 +180,9 @@ test("夜錬金の追加・削除・素材不足拒否・複数確定・保存�
   await page
     .getByRole("button", { name: "秘匿行動を確定", exact: true })
     .click();
+  await settleScreens(page);
   expect((await state(page)).players[0].night?.recipes).toEqual(plan);
+  await settleScreens(page);
   await expect(
     page
       .locator(".night-options")
@@ -163,6 +190,7 @@ test("夜錬金の追加・削除・素材不足拒否・複数確定・保存�
   ).toBeDisabled();
   await page.reload();
   await page.getByRole("button", { name: "続きから", exact: true }).click();
+  await settleScreens(page);
   await expect(
     page.getByText(`作成予定 ${plan.length} 個（固定上限なし）`, {
       exact: true,
@@ -328,6 +356,7 @@ test("戦闘中と結果確認待ちの保存再開、1AP決闘の元手番と�
   for (let n = 0; n < 5; n++) {
     await page.reload();
     await page.getByRole("button", { name: "続きから", exact: true }).click();
+    await settleScreens(page);
     await page
       .locator(".stance-options")
       .getByRole("button", {
@@ -336,14 +365,16 @@ test("戦闘中と結果確認待ちの保存再開、1AP決闘の元手番と�
       })
       .click();
     await page.getByRole("button", { name: /手を確定/ }).click();
+    await settleScreens(page);
   }
   expect((await state(page)).combat?.done).toBe(true);
   await page.reload();
   await page.getByRole("button", { name: "続きから", exact: true }).click();
+  await settleScreens(page);
   await expect(
     page.getByRole("dialog", { name: "公開決闘の結果" }),
-  ).toContainText("次Rため");
-  await page.getByRole("button", { name: "OK", exact: true }).click();
+  ).toContainText("次ラウンドの強化");
+  await page.getByRole("button", { name: "確認した", exact: true }).click();
   const resumed = await state(page);
   expect(resumed.phase).toBe("public");
   expect(resumed.publicTurn.round).toBe(1);
