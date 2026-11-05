@@ -208,3 +208,51 @@ describe("予知の候補と投票", () => {
     ).toThrow("第8日は使用不可");
   });
 });
+
+it("E06の不足4点を公開能力で1・2・1点に分けられるなら、長期HOの決闘より先に予約する", () => {
+  const s = aiTurn(6, 2);
+  s.publicTurn.round = 2;
+  for (const [id, capacity] of [
+    [1, 1],
+    [2, 2],
+    [3, 1],
+  ]) {
+    s.players[id].stats = { attack: capacity + 1, defense: 1, insight: 1 };
+    s.players[id].ap = 1;
+    s.players[id].ai = true;
+    s.players[id].longGoal = {
+      id: 5,
+      targets: [id === 1 ? 2 : 1],
+      achieved: false,
+    };
+  }
+  const next = dispatch(s, { type: "aiPublic" });
+  expect(reasons(next)[0].data).toMatchObject({
+    primary: "event",
+    action: "reserve",
+    viableEvent: true,
+  });
+  expect(
+    next.logs
+      .filter((l) => l.type === "reserve")
+      .slice(0, 3)
+      .map((l) => l.data?.units),
+  ).toEqual([1, 2, 1]);
+  expect(next.event.success).toBe(true);
+  expect(next.failed).toBe(2);
+});
+
+it("残り手番がない魔女の納品余力は合算しない", () => {
+  const s = aiTurn(6, 2);
+  s.publicTurn.round = 2;
+  s.publicTurn.index = 3;
+  s.players[1].ai = false;
+  const p = s.players[3];
+  p.ai = true;
+  p.stats = { attack: 2, defense: 1, insight: 1 };
+  p.longGoal = { id: 5, targets: [0], achieved: false };
+  const next = dispatch(s, { type: "aiPublic" });
+  expect(
+    next.logs.find((l) => l.actor === 3 && l.type === "aiReason")?.data,
+  ).toMatchObject({ primary: "long", viableEvent: false });
+});

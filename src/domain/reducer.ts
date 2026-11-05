@@ -15,6 +15,7 @@ import {
   hasNightRules,
   hasFinalGoalRules,
   hasStrategyRules,
+  hasSharedCrisisPlanning,
   V20_MAGICS,
   V20_LABELS,
   V20_RESEARCH,
@@ -79,6 +80,8 @@ import {
   registerNight,
   rewardOptions,
   publicModifiers,
+  publicResearchCost,
+  publicResearchGrowth,
   unlockNightRecipes,
   usable,
 } from "./night";
@@ -1057,12 +1060,10 @@ function researchMaterials(
   stat: Stat,
   material?: string,
 ) {
-  const base = (isV20(s) ? V20_RESEARCH : RESEARCH)[stat];
-  if (!base) return null;
-  const mod = hasNightRules(s) ? publicModifiers(p).research : 0;
-  if (!mod) return materialIds(p, base);
-  if (!material || !base.includes(material)) return null;
-  return materialIds(p, mod > 0 ? [...base, material] : [material]);
+  const cost = hasNightRules(s)
+    ? publicResearchCost(p, stat, material)
+    : (isV20(s) ? V20_RESEARCH : RESEARCH)[stat];
+  return cost ? materialIds(p, cost) : null;
 }
 function legalResearch(s: GameState, p: Player) {
   return STATS.flatMap((stat) =>
@@ -1511,12 +1512,13 @@ function apply(s: GameState, a: Action) {
       const ids = researchMaterials(s, p, a.stat, a.material);
       assert(ids, "研究素材不足、予約中、または支払う素材が未選択です");
       const modern = hasNightRules(s);
-      const bonus = modern
-        ? publicPotion(s, p, "scholarship")
-        : used(s, p, a.potion, "research");
+      const bonus = modern ? 0 : used(s, p, a.potion, "research");
+      if (modern) publicPotion(s, p, "scholarship");
       consume(p, ids);
       const curse = ap(s, p);
-      const growth = Math.max(0, 1 + bonus + (modern ? 0 : p.rest - curse));
+      const growth = modern
+        ? publicResearchGrowth(p)
+        : Math.max(0, 1 + bonus + p.rest - curse);
       const beforeValue = p.stats[a.stat];
       p.stats[a.stat] += growth;
       log(
@@ -1999,6 +2001,26 @@ function endTurn(s: GameState, p: Player) {
   t.aiTradeAttempted = false;
   t.aiMockAttempted = false;
 }
+/** Future 0AP capacity uses only public permanent stats and existing reservations. */
+function remainingStatDonation(s: GameState, actor: number) {
+  const turn = s.publicTurn;
+  const remaining =
+    turn.round === 1 ? turn.order : turn.order.slice(turn.index + 1);
+  return remaining
+    .filter((id) => id !== actor)
+    .reduce(
+      (total, id) =>
+        total +
+        STATS.reduce((points, stat) => {
+          const reserved = s.event.reservations
+            .filter((r) => r.player === id)
+            .reduce((sum, r) => sum + (r.stats[stat] ?? 0), 0);
+          return points + Math.max(0, s.players[id].stats[stat] - reserved - 1);
+        }, 0),
+      0,
+    );
+}
+
 function strategicPublicAction(s: GameState, p: Player): Action {
   const t = s.publicTurn;
   const e = EVENTS[s.event.id - 1];
@@ -2021,6 +2043,14 @@ function strategicPublicAction(s: GameState, p: Player): Action {
   const readyDonation = e.potions
     ? progress.potions + ids.length >= e.potions
     : materialsAndPoints;
+  const sharedStatPath =
+    hasSharedCrisisPlanning(s) &&
+    s.failed === 2 &&
+    !!e.stats &&
+    !pointsReady &&
+    (points > 0 || (!e.either && ids.length > 0)) &&
+    (e.either || materialsReady) &&
+    progress.stats + points + remainingStatDonation(s, p.id) >= e.stats;
   const mockReady = !e.mock || s.event.mock.length === 2;
   const partner = s.players.find((q) => q.ai && q.id !== p.id);
   const candidates: StrategyCandidate[] = [
@@ -2137,7 +2167,9 @@ function strategicPublicAction(s: GameState, p: Player): Action {
     p,
     candidates,
     !progress.success &&
-      (actionPath || (!e.actions && readyDonation && (mockReady || !!partner))),
+      (actionPath ||
+        sharedStatPath ||
+        (!e.actions && readyDonation && (mockReady || !!partner))),
   );
 }
 

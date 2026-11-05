@@ -10,6 +10,8 @@ import {
   NIGHT_RECIPES,
   nightRecipe as modernRecipe,
   publicModifiers,
+  publicResearchCost,
+  publicResearchGrowth,
   rewardOptions,
   usable,
 } from "./domain/night";
@@ -328,10 +330,11 @@ const reserveReason = computed(() =>
       }),
 );
 const showGameDialogs = computed(
-  () => !briefing.value && !actionResult.value.length,
+  () => !store.pending && !briefing.value && !actionResult.value.length,
 );
 const blockingModal = computed(
   () =>
+    !!store.pending ||
     !!menu.value ||
     (showGameDialogs.value &&
       ((!!secretResult.value &&
@@ -424,6 +427,13 @@ const nightDraft = computed<Action>(() => ({
     recipes: [...nightPlan.value],
   },
 }));
+function researchCost(stat: Stat) {
+  const cost = publicResearchCost(me.value, stat, researchPayment.value[stat]);
+  if (!cost) return null;
+  return [...new Set(cost)].map(
+    (kind) => [kind, cost.filter((item) => item === kind).length] as const,
+  );
+}
 const modifiers = computed(() =>
   me.value ? publicModifiers(me.value) : { gather: 0, research: 0, shop: 0 },
 );
@@ -742,10 +752,6 @@ watch(
         /></label>
       </div>
     </header>
-    <div v-if="store.pending" role="alert" class="alert error">
-      保存に失敗しました。保存が完了するまで進行できません。
-      <button @click="store.save()">保存を再試行</button>
-    </div>
     <div v-if="store.error && !store.pending" role="alert" class="alert error">
       {{ uiText(store.error) }}<button @click="store.error = ''">閉じる</button>
     </div>
@@ -1842,35 +1848,23 @@ watch(
               >
                 <div>
                   <h3>{{ LABELS[k] }}を研究</h3>
-                  <p>
-                    {{ V20_RESEARCH[k].map(itemName).join(" ＋ ") }}
-                    各1個
+                  <p v-if="researchCost(k)">
                     <span
-                      v-for="kind in V20_RESEARCH[k]"
+                      v-for="[kind, needed] in researchCost(k)"
                       :key="kind"
                       class="material-count"
-                      >{{ itemName(kind) }}：必要1 / 使用可能{{
-                        inventory[kind]?.free ?? 0
-                      }}（所持{{ inventory[kind]?.total ?? 0 }}）</span
                     >
-                    <br />成長：+{{
-                      Math.max(
-                        0,
-                        1 +
-                          me.rest -
-                          me.curse +
-                          (recipe(
-                            me.inventory.find((i) => i.id === actionPotion)
-                              ?.kind ?? "",
-                          )?.effect === "research"
-                            ? recipe(
-                                me.inventory.find((i) => i.id === actionPotion)!
-                                  .kind,
-                              )!.power
-                            : 0),
-                      )
-                    }}
+                      {{ itemName(kind) }}：必要{{ needed }} / 使用可能{{
+                        inventory[kind]?.free ?? 0
+                      }}
+                    </span>
                   </p>
+                  <p v-else>
+                    {{
+                      modifiers.research > 0 ? "追加素材" : "支払う素材"
+                    }}を選ぶと必要数を表示します。
+                  </p>
+                  <p>成長：+{{ publicResearchGrowth(me) }}</p>
                 </div>
                 <label v-if="modernNight && modifiers.research"
                   >{{ modifiers.research > 0 ? "追加素材" : "支払う素材" }}
@@ -2672,7 +2666,7 @@ watch(
               毎日2巡、手番ごとに1APで採集・研究・購買部を利用します。公開決闘は1AP、勝者に1FP。取引・仮納品・模擬戦は0AP。錬金は夜だけです。
             </p>
             <p>
-              イベント3失敗で全員敗北。8日を終え、卒業課題達成で卒業。卒業者だけを最終FPで順位付けし、最高FPが首席。同点は同率、未卒業者は順位なしです。
+              イベント3失敗で全員敗北。8日を終え、卒業課題達成で卒業。卒業者だけを最終FPで順位付けします。FPが同点なら日次課題の達成数を比較し、それも同じなら同率です。最高順位が複数なら共同首席です。
             </p>
             <p>
               夜は固有魔法と秘匿行動。休息は翌日の育成を助け、襲撃・呪詛・偵察はライバルへの干渉です。
@@ -2714,8 +2708,14 @@ watch(
         </details>
       </section>
     </template>
+    <BlockingDialog v-if="store.pending" title="保存に失敗しました">
+      <p>保存が完了するまで進行できません。確定済みの操作を再保存します。</p>
+      <template #actions>
+        <button class="primary" @click="store.save()">保存を再試行</button>
+      </template>
+    </BlockingDialog>
     <BlockingDialog
-      v-if="menu && me"
+      v-if="menu && me && !store.pending"
       :title="menu === 'inventory' ? '持ち物' : '課題'"
     >
       <nav class="tabs" v-if="menu === 'inventory'">

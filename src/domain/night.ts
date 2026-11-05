@@ -1,8 +1,8 @@
-import { LABELS, level } from "./config";
+import { LABELS, level, V20_RESEARCH } from "./config";
 import { fp, log } from "./core";
 import { ELEMENT_POTIONS } from "./elementCombat";
 import { addItem, available, consume, materialIds } from "./items";
-import type { GameState, Night, NightBattle, Player } from "./types";
+import type { GameState, Night, NightBattle, Player, Stat } from "./types";
 
 export const NIGHT_RECIPES = [
   { id: "abundance", name: "豊穣の薬", materials: ["herb", "herb"], level: 1 },
@@ -315,3 +315,18 @@ export function publicModifiers(p: Player) {
       Number(!!p.publicPotions?.includes("bargaining")),
   };
 }
+
+export function publicResearchCost(
+  p: Player,
+  stat: Stat,
+  material?: string,
+): readonly string[] | null {
+  const base = V20_RESEARCH[stat];
+  const adjustment = publicModifiers(p).research;
+  if (!adjustment) return base;
+  if (!material || !base.includes(material)) return null;
+  return adjustment > 0 ? [...base, material] : [material];
+}
+
+export const publicResearchGrowth = (p: Player) =>
+  1 + Number(!!p.publicPotions?.includes("scholarship"));
