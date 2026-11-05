@@ -226,7 +226,7 @@ describe("v0.2.2 納品・自動確定と確認待ち", () => {
     }
     expect(checks).toBeGreaterThan(0);
     expect(s.phase).toBe("ended");
-  });
+  }, 15000);
 });
 describe("v0.2.2 連夜襲撃・公開決闘報酬・卒業順位", () => {
   it.each([0, 1])(

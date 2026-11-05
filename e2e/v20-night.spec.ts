@@ -8,7 +8,7 @@ test("秘匿決闘の入力確定後と強奪の選択前後に再開する", as
   };
   await page.goto("/");
   await page.getByRole("button", { name: /ゲーム開始/ }).click();
-  await page.getByLabel(/乱数シード/).fill("night-1");
+  await page.getByLabel(/乱数シード/).fill("night-2");
   await page.getByRole("button", { name: /公開行動の試遊をはじめる/ }).click();
   await settleScreens(page);
   for (let i = 0; i < 2; i++) {

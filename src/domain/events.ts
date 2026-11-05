@@ -117,13 +117,21 @@ export const EVENTS: EventDefinition[] = [
     fp: 2,
   },
 ];
-export function drawEvent(s: GameState, day: number, excluded: number[] = []) {
-  const pool = EVENTS.filter(
+export function eligibleEvents(
+  s: GameState,
+  day: number,
+  excluded: number[] = [],
+) {
+  return EVENTS.filter(
     (e) =>
       !s.usedEvents.includes(e.id) &&
       !excluded.includes(e.id) &&
       (day !== 1 || !e.potions || s.rulesVersion === LEGACY_RULES_VERSION),
   );
+}
+export function drawEvent(s: GameState, day: number, excluded: number[] = []) {
+  const pool = eligibleEvents(s, day, excluded);
+  if (!pool.length) throw Error("抽選候補がありません");
   const weights = day <= 4 ? [45, 45, 10] : [5, 45, 50];
   const ds = ["Easy", "Normal", "Hard"];
   const valid = ds.map((d, i) => ({

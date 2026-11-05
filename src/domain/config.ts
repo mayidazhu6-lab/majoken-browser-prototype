@@ -3,9 +3,12 @@ export const LEGACY_RULES_VERSION = "browser-0.2.2+decisions-5";
 export const V20_PUBLIC_RULES_VERSION = "browser-2.0-public";
 export const V20_COMBAT_RULES_VERSION = "browser-2.0-combat";
 export const V20_NIGHT_RULES_VERSION = "browser-2.0-night";
-export const V20_RULES_VERSION = "browser-2.0-goals";
-export const hasFinalGoalRules = (s: { rulesVersion: string }) =>
+export const V20_GOALS_RULES_VERSION = "browser-2.0-goals";
+export const V20_RULES_VERSION = "browser-2.0-strategy";
+export const hasStrategyRules = (s: { rulesVersion: string }) =>
   s.rulesVersion === V20_RULES_VERSION;
+export const hasFinalGoalRules = (s: { rulesVersion: string }) =>
+  hasStrategyRules(s) || s.rulesVersion === V20_GOALS_RULES_VERSION;
 export const hasNightRules = (s: { rulesVersion: string }) =>
   hasFinalGoalRules(s) || s.rulesVersion === V20_NIGHT_RULES_VERSION;
 export const hasElementCombat = (s: { rulesVersion: string }) =>
@@ -134,6 +137,7 @@ export const supportedRulesVersion = (version: string) =>
   version === CONFIG.rulesVersion ||
   version === LEGACY_RULES_VERSION ||
   version === V20_RULES_VERSION ||
+  version === V20_GOALS_RULES_VERSION ||
   version === V20_NIGHT_RULES_VERSION ||
   version === V20_COMBAT_RULES_VERSION ||
   version === V20_PUBLIC_RULES_VERSION;

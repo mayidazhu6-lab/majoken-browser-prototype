@@ -14,6 +14,7 @@ import {
   hasElementCombat,
   hasNightRules,
   hasFinalGoalRules,
+  hasStrategyRules,
   V20_MAGICS,
   V20_LABELS,
   V20_RESEARCH,
@@ -47,6 +48,7 @@ import {
   startEvent,
   withdraw,
   drawEvent,
+  eligibleEvents,
 } from "./events";
 import { dailyAchieved, dealGoals, longAchieved, goalDescription } from "./ho";
 import {
@@ -80,6 +82,8 @@ import {
   unlockNightRecipes,
   usable,
 } from "./night";
+
+import { selectStrategy, type StrategyCandidate } from "./strategy";
 
 export function createGame(
   setup: Setup,
@@ -751,9 +755,11 @@ function magic(s: GameState, p: Player, target?: number) {
   if (m === "foresight") {
     if (!s.foresight.length) {
       const candidates: number[] = [];
-      const count = hasNightRules(s)
-        ? Math.min(3, EVENTS.length - s.usedEvents.length)
-        : 3;
+      const count = hasStrategyRules(s)
+        ? Math.min(3, eligibleEvents(s, s.day + 1).length)
+        : hasNightRules(s)
+          ? Math.min(3, EVENTS.length - s.usedEvents.length)
+          : 3;
       assert(count > 0, "翌日のイベント候補がありません");
       for (let i = 0; i < count; i++)
         candidates.push(drawEvent(s, s.day + 1, candidates));
@@ -1150,7 +1156,7 @@ function advance(s: GameState) {
         end(s, "collapse");
       } else if (!isV20(s) || hasNightRules(s)) {
         s.phase = "magic";
-        for (const p of s.players.filter((p) => p.ai))
+        for (const p of s.players.filter((p) => p.ai && !hasStrategyRules(s)))
           if (
             p.availableDay <= s.day &&
             (!["foresight", "alchemy"].includes(p.magic) || s.day < 8)
@@ -1166,6 +1172,18 @@ function advance(s: GameState) {
       }
       break;
     case "magic":
+      if (hasStrategyRules(s)) {
+        for (const p of s.players.filter(
+          (p) => p.ai && !p.activeMagic && p.availableDay <= s.day,
+        )) {
+          if (
+            p.magic === "foresight" &&
+            (s.day === 8 || !eligibleEvents(s, s.day + 1).length)
+          )
+            continue;
+          magic(s, p, p.id);
+        }
+      }
       if (hasNightRules(s) && s.foresight.length === 1) {
         s.nextEvent = s.foresight[0];
         enterNight(s);
@@ -1178,12 +1196,14 @@ function advance(s: GameState) {
             p.ai &&
             (hasNightRules(s) || (p.activeMagic && p.magic === "foresight")),
         )) {
-          const id = [...s.foresight].sort(
-            (a, b) =>
-              ["Easy", "Normal", "Hard"].indexOf(EVENTS[a - 1].difficulty) -
-              ["Easy", "Normal", "Hard"].indexOf(EVENTS[b - 1].difficulty),
-          )[0];
-          s.votes[p.id] = id;
+          const difficulty = (id: number) =>
+            ["Easy", "Normal", "Hard"].indexOf(EVENTS[id - 1].difficulty);
+          const best = Math.min(...s.foresight.map(difficulty));
+          const choices = s.foresight.filter((id) => difficulty(id) === best);
+          s.votes[p.id] =
+            hasStrategyRules(s) && choices.length > 1
+              ? pick(s, choices, "AI予知投票の同順位抽選")
+              : choices[0];
         }
       } else enterNight(s);
       break;
@@ -1193,19 +1213,24 @@ function advance(s: GameState) {
       );
       if (hasNightRules(s))
         assert(s.votes[0] !== undefined, "予知の候補に投票してください");
+      if (hasStrategyRules(s))
+        assert(
+          voters.every((p) => s.foresight.includes(s.votes[p.id])),
+          "全員の投票を確定してください",
+        );
       const votes = voters.map(
         (p) => s.votes[p.id] ?? pick(s, s.foresight, "予知無投票補完"),
       );
       const max = Math.max(
         ...s.foresight.map((id) => votes.filter((v) => v === id).length),
       );
-      s.nextEvent = pick(
-        s,
-        s.foresight.filter(
-          (id) => votes.filter((v) => v === id).length === max,
-        ),
-        "予知集計",
+      const leaders = s.foresight.filter(
+        (id) => votes.filter((v) => v === id).length === max,
       );
+      s.nextEvent =
+        hasStrategyRules(s) && leaders.length === 1
+          ? leaders[0]
+          : pick(s, leaders, "予知集計");
       enterNight(s);
       break;
     }
@@ -1257,6 +1282,38 @@ function enterNight(s: GameState) {
         19: "scout",
         21: "rest",
       };
+      if (hasStrategyRules(s)) {
+        const recipe = p.recipes.find((id) =>
+          materialIds(p, nightRecipe(id)!.materials),
+        );
+        const options: StrategyCandidate[] = [];
+        for (const kind of [
+          "rest",
+          "guard",
+          "scout",
+          "curse",
+          "raid",
+        ] as const) {
+          if (kind === "raid" && p.lastRaid === s.day - 1) continue;
+          const targets =
+            kind === "rest" || kind === "guard"
+              ? [undefined]
+              : s.publicTurn.order.filter((id) => id !== p.id);
+          for (const target of targets)
+            for (const recipes of recipe ? [[], [recipe]] : [[]])
+              options.push({
+                action: {
+                  type: "night",
+                  player: p.id,
+                  choice: { kind, target, recipes },
+                },
+                cost: recipes.length * 2,
+              });
+        }
+        const action = selectStrategy(s, p, options, false);
+        if (action.type === "night") chooseNight(s, p, action.choice);
+        continue;
+      }
       const kind = long[p.longGoal.id] ?? daily[p.dailyGoal.id] ?? "rest";
       const target =
         p.longGoal.targets[0] ?? s.publicTurn.order.find((id) => id !== p.id)!;
@@ -1882,7 +1939,7 @@ export function aiView(s: GameState, id: number) {
     publicLogs: s.logs.filter((l) => l.audience === "public"),
   };
 }
-function autoReserve(s: GameState, p: Player) {
+function reservationProposal(s: GameState, p: Player) {
   const v = aiView(s, p.id),
     e = v.eventDefinition,
     pr = v.progress;
@@ -1907,6 +1964,10 @@ function autoReserve(s: GameState, p: Player) {
       }
     }
   }
+  return { ids, stats };
+}
+function autoReserve(s: GameState, p: Player) {
+  const { ids, stats } = reservationProposal(s, p);
   if (ids.length || Object.values(stats).some((n) => n))
     reserve(s, p, ids, stats);
 }
@@ -1938,9 +1999,151 @@ function endTurn(s: GameState, p: Player) {
   t.aiTradeAttempted = false;
   t.aiMockAttempted = false;
 }
+function strategicPublicAction(s: GameState, p: Player): Action {
+  const t = s.publicTurn;
+  const e = EVENTS[s.event.id - 1];
+  const progress = eventProgress(s);
+  const { ids, stats } = reservationProposal(s, p);
+  const points = Object.values(stats).reduce((total, n) => total + n, 0);
+  const requiredReady = Object.entries(e.required ?? {}).every(
+    ([kind, n]) =>
+      (progress.counts[kind] ?? 0) +
+        p.inventory.filter((i) => i.kind === kind && ids.includes(i.id))
+          .length >=
+      n,
+  );
+  const materialsReady =
+    progress.materials + ids.length >= (e.materials ?? 0) && requiredReady;
+  const pointsReady = progress.stats + points >= (e.stats ?? 0);
+  const materialsAndPoints = e.either
+    ? materialsReady || pointsReady
+    : materialsReady && pointsReady;
+  const readyDonation = e.potions
+    ? progress.potions + ids.length >= e.potions
+    : materialsAndPoints;
+  const mockReady = !e.mock || s.event.mock.length === 2;
+  const partner = s.players.find((q) => q.ai && q.id !== p.id);
+  const candidates: StrategyCandidate[] = [
+    { action: { type: "endTurn", player: p.id } },
+  ];
+  const alreadyContributed =
+    s.logs.some(
+      (l) => l.day === s.day && l.actor === p.id && e.actions?.includes(l.type),
+    ) ||
+    s.event.reservations.some((r) => r.player === p.id) ||
+    s.event.mock.includes(p.id);
+
+  if (!progress.success && (ids.length || points)) {
+    candidates.push({
+      action: { type: "reserve", player: p.id, items: ids, stats },
+      event: 1,
+      completesEvent: readyDonation && mockReady,
+      cost: ids.length + points,
+    });
+  }
+  if (!progress.success && !mockReady && partner && !t.aiMockAttempted) {
+    const itemsReadyNow = progress.materials >= (e.materials ?? 0);
+    candidates.push({
+      action: { type: "duel", player: p.id, target: partner.id, mock: true },
+      event: 1,
+      completesEvent: itemsReadyNow,
+    });
+  }
+  const need = (e.count ?? 0) - progress.actions;
+  const actionEvent = (type: "gather" | "research") =>
+    !progress.success && e.actions?.includes(type)
+      ? { event: 1, completesEvent: need === 1 }
+      : progress.success && !alreadyContributed && e.actions?.includes(type)
+        ? { event: 1 }
+        : {};
+  let actionPath = false;
+  if (p.ap > 0 && !t.acted) {
+    candidates.push({
+      action: { type: "gather", player: p.id },
+      cost: 1,
+      ...actionEvent("gather"),
+    });
+    const research = legalResearch(s, p);
+    const researchPath = research.filter((choice) => {
+      if (need <= 1) return true;
+      if (
+        need > 2 ||
+        p.ap < 2 ||
+        t.round !== 1 ||
+        p.commands[0]?.kind === "gather"
+      )
+        return false;
+      const remaining = structuredClone(p);
+      consume(
+        remaining,
+        researchMaterials(s, p, choice.stat, choice.material)!,
+      );
+      remaining.ap--;
+      return legalResearch(s, remaining).length > 0;
+    });
+    for (const choice of research) {
+      const preservesPath =
+        !e.actions ||
+        e.actions.includes("gather") ||
+        s.failed !== 2 ||
+        !researchPath.length ||
+        researchPath.includes(choice);
+      candidates.push({
+        action: { type: "research", player: p.id, ...choice },
+        cost: 1 + researchMaterials(s, p, choice.stat, choice.material)!.length,
+        ...(preservesPath ? actionEvent("research") : {}),
+      });
+    }
+    // E03 can be reached through remaining public gather slots without knowing any inventory.
+    if (e.actions?.includes("gather")) {
+      const slots = s.players.reduce(
+        (sum, q) =>
+          sum +
+          Math.min(
+            q.ap,
+            (t.round === 1 ? 1 : 0) + Number(t.order.indexOf(q.id) >= t.index),
+          ),
+        0,
+      );
+      actionPath = need <= slots;
+    } else if (e.actions?.includes("research")) {
+      actionPath = researchPath.length > 0;
+    }
+    for (const target of s.players.filter((q) => q.id !== p.id))
+      candidates.push({
+        action: { type: "duel", player: p.id, target: target.id },
+        cost: 1,
+      });
+  }
+  if (!t.aiTradeAttempted) {
+    const pool = available(p);
+    for (const target of s.players.filter((q) => q.id !== p.id)) {
+      const item = pool.find((i) => p.longGoal.id !== 8 || !isMaterial(i.kind));
+      if (item)
+        candidates.push({
+          action: {
+            type: "trade",
+            player: p.id,
+            target: target.id,
+            offer: [item.id],
+            request: {},
+          },
+          cost: 1,
+        });
+    }
+  }
+  return selectStrategy(
+    s,
+    p,
+    candidates,
+    !progress.success &&
+      (actionPath || (!e.actions && readyDonation && (mockReady || !!partner))),
+  );
+}
+
 function runPublicAI(s: GameState) {
   // Each iteration advances a finite turn or stops at a human decision.
-  for (let steps = 0; steps < 20; steps++) {
+  for (let steps = 0; steps < (hasStrategyRules(s) ? 80 : 20); steps++) {
     if (
       s.phase !== "public" ||
       s.combat ||
@@ -1962,6 +2165,27 @@ function runPublicAI(s: GameState) {
       continue;
     }
     if (!p.ai) return;
+    if (hasStrategyRules(s)) {
+      if (p.commands.length && !t.acted) {
+        const choice =
+          p.commands[0].kind === "research"
+            ? legalResearch(s, p)[0]
+            : undefined;
+        forced(
+          s,
+          p,
+          choice ? "research" : "gather",
+          choice?.stat,
+          choice?.material,
+        );
+      } else {
+        const action = strategicPublicAction(s, p);
+        if (action.type === "trade") t.aiTradeAttempted = true;
+        if (action.type === "duel" && action.mock) t.aiMockAttempted = true;
+        apply(s, action);
+      }
+      continue;
+    }
     autoReserve(s, p);
     if (t.acted) {
       endTurn(s, p);

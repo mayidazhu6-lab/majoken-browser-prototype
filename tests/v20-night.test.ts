@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { V20_RULES_VERSION } from "../src/domain/config";
+import { V20_GOALS_RULES_VERSION } from "../src/domain/config";
 import { addItem } from "../src/domain/items";
 import {
   chooseNight,
@@ -19,7 +19,7 @@ const create = (seed = "night-1") =>
       magic: "barrier",
       stats: { attack: 3, defense: 3, insight: 3 },
     },
-    V20_RULES_VERSION,
+    V20_GOALS_RULES_VERSION,
   );
 
 it("resumes the locked round and pending reward without repeating HP, items or results", () => {

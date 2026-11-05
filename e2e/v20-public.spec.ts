@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 import { settleScreens } from "./helpers";
 
 for (const [seed, expected] of [
-  ["v20-smoke-0", "成功"],
-  ["v20-smoke-3", "失敗"],
+  ["v20-smoke-1", "成功"],
+  ["v20-smoke-20", "失敗"],
 ]) {
   test(`v2.0で公開2巡を完了し、イベント${expected}から再開できる`, async ({
     page,
