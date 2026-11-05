@@ -1,5 +1,5 @@
 import type { EventDefinition, GameState, Player, Stat } from "./types";
-import { MATERIALS, STATS } from "./config";
+import { MATERIALS, STATS, LEGACY_RULES_VERSION } from "./config";
 import { isMaterial, addItem, available } from "./items";
 import { pick, random } from "./rng";
 import { fp, log } from "./core";
@@ -113,7 +113,10 @@ export const EVENTS: EventDefinition[] = [
 ];
 export function drawEvent(s: GameState, day: number, excluded: number[] = []) {
   const pool = EVENTS.filter(
-    (e) => !s.usedEvents.includes(e.id) && !excluded.includes(e.id),
+    (e) =>
+      !s.usedEvents.includes(e.id) &&
+      !excluded.includes(e.id) &&
+      (day !== 1 || !e.potions || s.rulesVersion === LEGACY_RULES_VERSION),
   );
   const weights = day <= 4 ? [45, 45, 10] : [5, 45, 50];
   const ds = ["Easy", "Normal", "Hard"];

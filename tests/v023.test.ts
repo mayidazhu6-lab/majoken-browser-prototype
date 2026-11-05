@@ -9,6 +9,7 @@ import {
 import { isMaterial } from "../src/domain/items";
 import { simulationAction } from "../src/domain/simulation";
 import { deserialize, serialize } from "../src/domain/persistence";
+import { LEGACY_RULES_VERSION } from "../src/domain/config";
 import type { Stance } from "../src/domain/types";
 const setup = {
   name: "検証",
@@ -63,10 +64,13 @@ describe("v0.2.3 stored combat presentation", () => {
   });
 });
 describe("reported rules investigations (no rule changes)", () => {
-  it("day 1 potion delivery can be drawn, with no potion source before the public deadline", () => {
-    let s = createGame(setup);
+  it("legacy day 1 potion delivery could be drawn, with no potion source before the public deadline", () => {
+    let s = createGame(setup, LEGACY_RULES_VERSION);
     for (let n = 0; s.event.id !== 7 && n < 1000; n++)
-      s = createGame({ ...setup, seed: `day-one-potion-${n}` });
+      s = createGame(
+        { ...setup, seed: `day-one-potion-${n}` },
+        LEGACY_RULES_VERSION,
+      );
     expect(s.event.id).toBe(7);
     expect(s.day).toBe(1);
     expect(
@@ -90,7 +94,7 @@ describe("reported rules investigations (no rule changes)", () => {
     expect(roundReason(c.rounds[0])).toContain("カウンター");
   });
   it("v022 game saves remain replay-compatible, optional presentation ignored by domain", () => {
-    let s = createGame(setup);
+    let s = createGame(setup, LEGACY_RULES_VERSION);
     s = dispatch(s, simulationAction(s));
     const raw = {
       ...JSON.parse(serialize(s)),

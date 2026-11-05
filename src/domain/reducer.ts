@@ -10,6 +10,7 @@ import type {
 } from "./types";
 import {
   CONFIG,
+  supportedRulesVersion,
   LABELS,
   MAGICS,
   MATERIALS,
@@ -51,7 +52,11 @@ import {
 } from "./combat";
 import { fp, log } from "./core";
 import { AI_POLICY, weightedAction } from "./ai";
-export function createGame(setup: Setup): GameState {
+export function createGame(
+  setup: Setup,
+  rulesVersion: string = CONFIG.rulesVersion,
+): GameState {
+  assert(supportedRulesVersion(rulesVersion), "状態のバージョンが一致しません");
   if (
     !setup.name.trim() ||
     !setup.seed ||
@@ -67,7 +72,7 @@ export function createGame(setup: Setup): GameState {
     throw Error("名前・seed・能力合計10（各2〜6）を確認してください");
   const s: GameState = {
     version: 2,
-    rulesVersion: CONFIG.rulesVersion,
+    rulesVersion,
     setup: structuredClone(setup),
     seed: setup.seed,
     rng: hashSeed(setup.seed),
@@ -144,7 +149,7 @@ export function createGame(setup: Setup): GameState {
   dealGoals(s, true);
   dealGoals(s);
   startEvent(s);
-  log(s, "audit", `ルール ${CONFIG.rulesVersion} / HO除外なし`, {
+  log(s, "audit", `ルール ${s.rulesVersion} / HO除外なし`, {
     audience: "dev",
   });
   return s;
@@ -1601,7 +1606,7 @@ export function dispatch(state: GameState, action: Action): GameState {
 }
 export function assertInvariants(s: GameState) {
   assert(
-    s.version === 2 && s.rulesVersion === CONFIG.rulesVersion,
+    s.version === 2 && supportedRulesVersion(s.rulesVersion),
     "状態のバージョンが一致しません",
   );
   assert(s.players.length === 4, "4席であること");

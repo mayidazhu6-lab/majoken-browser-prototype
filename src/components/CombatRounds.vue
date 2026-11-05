@@ -2,7 +2,7 @@
 import type { Combat } from "../domain/types";
 import { CONFIG, LABELS } from "../domain/config";
 import { recipe } from "../domain/items";
-import { roundReason } from "../ui/combatPresentation";
+import { roundReason, revealedActions } from "../ui/combatPresentation";
 defineProps<{ combat: Combat; names: string[]; onlyLast?: boolean }>();
 </script>
 <template>
@@ -24,6 +24,17 @@ defineProps<{ combat: Combat; names: string[]; onlyLast?: boolean }>();
           ><tr v-if="!onlyLast || index === combat.rounds.length - 1">
             <td colspan="3">
               <strong>第{{ index + 1 }}ラウンド：判定の理由</strong>
+              <p
+                v-if="
+                  round.original.some((v, side) => v !== round.choices[side])
+                "
+                class="illusion-result"
+                role="status"
+              >
+                第{{ index + 1 }}ラウンドに幻惑が発動：{{
+                  revealedActions(round, names)
+                }}。変更後の行動で判定しました。
+              </p>
               <p>{{ roundReason(round) }}</p>
             </td>
           </tr>

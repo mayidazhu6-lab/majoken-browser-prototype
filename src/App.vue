@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from "vue";
 import { combatReason, revealedActions } from "./ui/combatPresentation";
+import { plannedMaterials, potionDescription } from "./ui/alchemy";
 import TaskBriefing from "./components/TaskBriefing.vue";
 import BlockingDialog from "./components/BlockingDialog.vue";
 import GroupedItems from "./components/GroupedItems.vue";
@@ -133,6 +134,8 @@ function openAction(id: string) {
   actionScreen.value = id;
   if (["gather", "research"].includes(id)) tab.value = "field";
   else tab.value = id;
+  if (id === "brew")
+    nightRecipe.value = brewCandidates.value[0]?.id ?? RECIPES[0].id;
 }
 function restoreView() {
   cancelAction();
@@ -249,9 +252,20 @@ const brewCandidates = computed(() => {
     (r) => canRecipe(copy, r.id, s.value.day) && materialIds(copy, r.materials),
   );
 });
-watch(brewCandidates, (candidates) => {
-  if (!candidates.some((r) => r.id === nightRecipe.value))
-    nightRecipe.value = candidates[0]?.id ?? "";
+const brewMaterials = computed(() =>
+  me.value ? plannedMaterials(me.value, nightPlan.value) : [],
+);
+const brewReason = computed(() => {
+  if (!me.value || !recipe(nightRecipe.value))
+    return "レシピを選択してください。";
+  if (me.value.night) return "この夜の行動は確定済みです。";
+  if (!canRecipe(me.value, nightRecipe.value, s.value.day))
+    return recipe(nightRecipe.value)?.tier === "combat"
+      ? "作成には洞察Lv3が必要です。"
+      : "未解放のレシピです。";
+  return brewCandidates.value.some((r) => r.id === nightRecipe.value)
+    ? ""
+    : "作成予定分を除く素材が不足しています。";
 });
 watch(tab, () => {
   selected.value = [];
@@ -515,21 +529,6 @@ watch(
   },
   { flush: "post" },
 );
-function potionDescription(kind: string) {
-  const r = recipe(kind);
-  if (!r) return "";
-  return {
-    gather: `採集の獲得数 +${r.power}`,
-    research: `研究の成長 +${r.power}`,
-    cleanse: "呪詛を解除",
-    guard: `警戒の防御補正 +${r.power}`,
-    scout: `偵察の確認数 +${r.power}`,
-    attack: `戦闘の攻撃補正 +${r.power}`,
-    defense: `戦闘の防御補正 +${r.power}`,
-    charge: `戦闘のためる補正 +${r.power}`,
-    change: "固有魔法を変更",
-  }[r.effect];
-}
 function download() {
   if (!s.value) return;
   const url = URL.createObjectURL(
@@ -1836,29 +1835,65 @@ watch(
                   aria-label="レシピ"
                   :disabled="!!me.night"
                 >
-                  <option v-for="r in brewCandidates" :key="r.id" :value="r.id">
+                  <option v-for="r in RECIPES" :key="r.id" :value="r.id">
                     {{ r.name }}（{{ r.materials.map(itemName).join("＋") }}）
                   </option>
                 </select></label
               >
               <div v-if="night === 'brew'">
-                <p
-                  v-for="kind in [
-                    ...new Set(recipe(nightRecipe)?.materials ?? []),
-                  ]"
-                  :key="kind"
-                  class="material-count"
+                <section
+                  v-if="recipe(nightRecipe)"
+                  class="recipe-preview"
+                  aria-label="選択した薬の詳細"
                 >
-                  {{ itemName(kind) }}：1個作成に必要{{
-                    recipe(nightRecipe)?.materials.filter((m) => m === kind)
-                      .length
-                  }}
-                  / 使用可能{{ inventory[kind]?.free ?? 0 }}（所持{{
-                    inventory[kind]?.total ?? 0
-                  }}）
+                  <h3>{{ recipe(nightRecipe)!.name }}</h3>
+                  <p>{{ potionDescription(nightRecipe) }}</p>
+                  <p
+                    v-for="kind in [...new Set(recipe(nightRecipe)!.materials)]"
+                    :key="kind"
+                    class="material-count"
+                  >
+                    {{ itemName(kind) }}：1個作成に必要{{
+                      recipe(nightRecipe)!.materials.filter((m) => m === kind)
+                        .length
+                    }}個 / 現在の所持数{{ inventory[kind]?.total ?? 0 }}個
+                  </p>
+                </section>
+                <table class="brew-materials">
+                  <caption>
+                    素材の所持数と作成予定
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th>素材</th>
+                      <th>所持数</th>
+                      <th>予定消費数</th>
+                      <th>追加使用可能数</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="m in brewMaterials"
+                      :key="m.kind"
+                      :data-material="m.kind"
+                    >
+                      <th>{{ itemName(m.kind) }}</th>
+                      <td>{{ m.owned }}</td>
+                      <td>{{ m.planned }}</td>
+                      <td>
+                        {{ m.available
+                        }}<small v-if="m.reserved"
+                          >（予約中{{ m.reserved }}個を除く）</small
+                        >
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p>
+                  追加使用可能数は所持数から作成予定の消費数を引いた数です。予約中の素材がある場合は、その分も除きます。
                 </p>
-                <p v-if="nightPlan.length">
-                  作成予定分も含め、素材が足りるレシピのみ追加できます。
+                <p v-if="brewReason" role="status" class="operation-reason">
+                  {{ brewReason }}
                 </p>
                 <button
                   :disabled="
