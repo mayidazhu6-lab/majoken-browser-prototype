@@ -152,6 +152,7 @@ export interface Trade {
   from: number;
   to: number;
   offer: number[];
+  offeredKinds?: Record<string, number>;
   request: Record<string, number>;
 }
 export interface Result {

@@ -1,5 +1,5 @@
 import type { GameState, Log, Player } from "./types";
-import { CONFIG } from "./config";
+import { CONFIG, isV20 } from "./config";
 import { RECIPES } from "./items";
 import { pick } from "./rng";
 export function log(
@@ -28,6 +28,7 @@ export function fp(s: GameState, p: Player, amount: number, source: string) {
     kind: source,
     audience: ["scout", "ho"].includes(source) ? [p.id] : "public",
   });
+  if (isV20(s)) return;
   for (const t of CONFIG.thresholds) {
     if (p.peakFp < t || p.unlocks.includes(t)) continue;
     p.unlocks.push(t);

@@ -10,6 +10,10 @@ import type {
 } from "./types";
 import {
   CONFIG,
+  isV20,
+  V20_MAGICS,
+  V20_LABELS,
+  V20_RESEARCH,
   supportedRulesVersion,
   LABELS,
   MAGICS,
@@ -57,19 +61,25 @@ export function createGame(
   rulesVersion: string = CONFIG.rulesVersion,
 ): GameState {
   assert(supportedRulesVersion(rulesVersion), "状態のバージョンが一致しません");
+  const v20 = isV20({ rulesVersion });
+  const maxStat = v20 ? 5 : 6;
+  const totalStats = v20 ? 9 : 10;
   if (
     !setup.name.trim() ||
     !setup.seed ||
     !MAGICS[setup.magic] ||
+    (v20 && !V20_MAGICS.some((magic) => magic === setup.magic)) ||
     STATS.some(
       (k) =>
         !Number.isInteger(setup.stats[k]) ||
         setup.stats[k] < 2 ||
-        setup.stats[k] > 6,
+        setup.stats[k] > maxStat,
     ) ||
-    STATS.reduce((n, k) => n + setup.stats[k], 0) !== 10
+    STATS.reduce((n, k) => n + setup.stats[k], 0) !== totalStats
   )
-    throw Error("名前・seed・能力合計10（各2〜6）を確認してください");
+    throw Error(
+      `名前・seed・能力合計${totalStats}（各2〜${maxStat}）を確認してください`,
+    );
   const s: GameState = {
     version: 2,
     rulesVersion,
@@ -126,7 +136,11 @@ export function createGame(
       magic:
         i === 0
           ? setup.magic
-          : pick(s, Object.keys(MAGICS) as Magic[], "AI固有魔法"),
+          : pick(
+              s,
+              v20 ? [...V20_MAGICS] : (Object.keys(MAGICS) as Magic[]),
+              "AI固有魔法",
+            ),
       availableDay: 1,
       activeMagic: false,
       longGoal: { id: 1, targets: [], achieved: false },
@@ -142,10 +156,16 @@ export function createGame(
       commands: [],
       changedMagic: false,
     };
-    if (i) for (let n = 0; n < 4; n++) p.stats[pick(s, STATS, "AI初期配分")]++;
-    for (let n = 0; n < 3; n++) addItem(s, p, pick(s, MATERIALS, "初期素材"));
+    if (i)
+      for (let n = 0; n < totalStats - 6; n++)
+        p.stats[pick(s, STATS, "AI初期配分")]++;
+    if (!v20)
+      for (let n = 0; n < 3; n++) addItem(s, p, pick(s, MATERIALS, "初期素材"));
     s.players.push(p);
   }
+  if (v20)
+    for (const p of s.players)
+      for (let n = 0; n < 3; n++) addItem(s, p, pick(s, MATERIALS, "初期素材"));
   dealGoals(s, true);
   dealGoals(s);
   startEvent(s);
@@ -166,7 +186,7 @@ function publicAction(s: GameState, p: Player, cost = 1) {
     s.publicTurn.round <= 2 && s.publicTurn.order[s.publicTurn.index] === p.id,
     "自分の手番ではありません",
   );
-  assert(!s.trades.length, "取引への返答を完了してください");
+  assert(isV20(s) || !s.trades.length, "取引への返答を完了してください");
   assert(
     cost === 0 || (s.publicTurn.round <= 2 && !s.publicTurn.acted),
     "この手番の通常行動は終了しています",
@@ -306,23 +326,42 @@ function replyTrade(s: GameState, p: Player, id: number, accept: boolean) {
     if (ids.length !== count) enough = false;
     requested.push(...ids);
   }
+  const offeredIds = t.offeredKinds
+    ? Object.entries(t.offeredKinds).flatMap(([kind, count]) =>
+        available(a)
+          .filter((i) => i.kind === kind)
+          .slice(0, count)
+          .map((i) => i.id),
+      )
+    : t.offer;
   const valid =
-    t.offer.every((id) =>
-      a.inventory.some((i) => i.id === id && i.lock === `trade:${t.id}`),
-    ) && enough;
+    offeredIds.length === t.offer.length &&
+    offeredIds.every((id) =>
+      a.inventory.some(
+        (i) =>
+          i.id === id &&
+          (t.offeredKinds ? !i.lock : i.lock === `trade:${t.id}`),
+      ),
+    ) &&
+    enough;
   s.trades = s.trades.filter((t) => t.id !== id);
   a.inventory.forEach((i) => {
     if (i.lock === `trade:${t.id}`) delete i.lock;
   });
   if (!accept || !valid) {
-    log(s, "tradeRejected", "取引は成立しませんでした", {
-      actor: a.id,
-      target: p.id,
-      audience: [a.id, p.id],
-    });
+    log(
+      s,
+      "tradeRejected",
+      isV20(s) && accept ? "条件を満たせず失効" : "取引は成立しませんでした",
+      {
+        actor: a.id,
+        target: p.id,
+        audience: [a.id, p.id],
+      },
+    );
     return;
   }
-  const offered = t.offer.map(
+  const offered = offeredIds.map(
     (id) => a.inventory.find((i) => i.id === id)!.kind,
   );
   const receivedKinds = requested.map(
@@ -330,7 +369,7 @@ function replyTrade(s: GameState, p: Player, id: number, accept: boolean) {
   );
   const describeItems = (kinds: string[]) =>
     kinds.map((k) => LABELS[k] ?? recipe(k)?.name ?? k).join("・") || "なし";
-  transfer(s, a, p, t.offer, "trade");
+  transfer(s, a, p, offeredIds, "trade");
   transfer(s, p, a, requested!, "trade");
   for (const [x, y, sent, received] of [
     [a, p, t.offer.length, requested!.length],
@@ -867,7 +906,9 @@ function advance(s: GameState) {
   switch (s.phase) {
     case "public":
       assert(
-        s.publicTurn.round === 4 && !s.trades.length,
+        s.publicTurn.round === 4 &&
+          (isV20(s) || !s.trades.length) &&
+          !s.event.resolved,
         "全員の公開2巡を完了してください",
       );
       cancelTrades(s);
@@ -876,8 +917,11 @@ function advance(s: GameState) {
         p.rest = 0;
         p.curse = 0;
       }
-      if (s.failed >= 3) end(s, "collapse");
-      else {
+      if (s.failed >= 3) {
+        if (isV20(s))
+          log(s, "dailyHOSkipped", "当日の日次HO：判定なし・報酬なし");
+        end(s, "collapse");
+      } else if (!isV20(s)) {
         s.phase = "magic";
         for (const p of s.players.filter((p) => p.ai))
           if (
@@ -1048,6 +1092,8 @@ function enterNight(s: GameState) {
   }
 }
 function apply(s: GameState, a: Action) {
+  if (isV20(s) && s.event.resolved && a.type !== "eventAck")
+    throw Error("今回の試遊範囲は協力イベントの結果までです");
   if (s.event.resolved && !s.event.acknowledged && a.type !== "eventAck")
     throw Error("共通イベントの結果を確認してください");
   if (s.publicOutcome && a.type !== "publicOutcomeAck")
@@ -1112,7 +1158,7 @@ function apply(s: GameState, a: Action) {
     case "research": {
       publicAction(s, p);
       assert(STATS.includes(a.stat), "能力が不正");
-      const ids = materialIds(p, RESEARCH[a.stat]);
+      const ids = materialIds(p, (isV20(s) ? V20_RESEARCH : RESEARCH)[a.stat]);
       assert(ids, "研究素材不足または予約中");
       const bonus = used(s, p, a.potion, "research");
       consume(p, ids);
@@ -1120,11 +1166,16 @@ function apply(s: GameState, a: Action) {
       const growth = Math.max(0, 1 + p.rest + bonus - curse);
       const beforeValue = p.stats[a.stat];
       p.stats[a.stat] += growth;
-      log(s, "research", `${p.name}が${LABELS[a.stat]}を研究 +${growth}`, {
-        actor: p.id,
-        kind: a.stat,
-        amount: growth,
-      });
+      log(
+        s,
+        "research",
+        `${p.name}が${(isV20(s) ? V20_LABELS : LABELS)[a.stat]}を研究 +${growth}`,
+        {
+          actor: p.id,
+          kind: a.stat,
+          amount: growth,
+        },
+      );
       levelNotice(s, p, a.stat, beforeValue);
       break;
     }
@@ -1165,11 +1216,14 @@ function apply(s: GameState, a: Action) {
       assert(s.publicTurn.round <= 2, "公開2巡の終了後は取引申請できません");
       const key = `${s.publicTurn.round}:${p.id}:${a.target}`;
       assert(
-        (s.publicTurn.tradeAttempts[key] ?? 0) < 2,
+        isV20(s) || (s.publicTurn.tradeAttempts[key] ?? 0) < 2,
         "同じ相手への申請は1巡2回までです",
       );
       assert(a.target !== p.id && s.players[a.target], "取引対象が不正");
-      assert(!s.trades.some((t) => t.from === p.id), "送信中の取引があります");
+      assert(
+        isV20(s) || !s.trades.some((t) => t.from === p.id),
+        "送信中の取引があります",
+      );
       assert(
         Object.entries(a.request).every(
           ([k, n]) =>
@@ -1187,19 +1241,29 @@ function apply(s: GameState, a: Action) {
           a.offer.every((id) => available(p).some((i) => i.id === id)),
         "提供品不足",
       );
-      s.publicTurn.tradeAttempts[key] =
-        (s.publicTurn.tradeAttempts[key] ?? 0) + 1;
+      if (!isV20(s))
+        s.publicTurn.tradeAttempts[key] =
+          (s.publicTurn.tradeAttempts[key] ?? 0) + 1;
       const id = s.nextTrade++;
-      const t = {
+      const t: GameState["trades"][number] = {
         id,
         from: p.id,
         to: a.target,
         offer: [...a.offer],
         request: { ...a.request },
       };
-      a.offer.forEach(
-        (id) => (p.inventory.find((i) => i.id === id)!.lock = `trade:${t.id}`),
-      );
+      if (isV20(s)) {
+        t.offeredKinds = {};
+        for (const id of a.offer) {
+          const kind = p.inventory.find((i) => i.id === id)!.kind;
+          t.offeredKinds[kind] = (t.offeredKinds[kind] ?? 0) + 1;
+        }
+      } else {
+        a.offer.forEach(
+          (id) =>
+            (p.inventory.find((i) => i.id === id)!.lock = `trade:${t.id}`),
+        );
+      }
       s.trades.push(t);
       const q = s.players[a.target];
       if (q.ai) {
@@ -1242,12 +1306,13 @@ function apply(s: GameState, a: Action) {
       break;
     }
     case "duel":
+      assert(!isV20(s), "v2.0の決闘・模擬戦は次の実装段階です");
       publicAction(s, p, a.mock ? 0 : 1);
       assert(s.publicTurn.round <= 2, "決闘は通常行動の巡目で実行してください");
       assert(a.target !== p.id && s.players[a.target], "対戦対象が不正");
       if (a.mock)
         assert(
-          EVENTS[s.event.id - 1].mock && !s.event.mock.length,
+          !isV20(s) && EVENTS[s.event.id - 1].mock && !s.event.mock.length,
           "模擬戦は対象イベント1回のみ",
         );
       else ap(s, p, 1);
@@ -1465,7 +1530,7 @@ function runPublicAI(s: GameState) {
       s.phase !== "public" ||
       s.combat ||
       s.challenge ||
-      s.trades.length ||
+      (!isV20(s) && s.trades.length) ||
       s.publicOutcome ||
       s.players.some((p) => p.pendingRecipe)
     )
@@ -1488,7 +1553,9 @@ function runPublicAI(s: GameState) {
       continue;
     }
     if (p.commands.length) {
-      const stat = STATS.find((k) => materialIds(p, RESEARCH[k]));
+      const stat = STATS.find((k) =>
+        materialIds(p, (isV20(s) ? V20_RESEARCH : RESEARCH)[k]),
+      );
       forced(s, p, stat ? "research" : "gather", stat);
       t.acted = true;
       autoReserve(s, p);
@@ -1528,10 +1595,12 @@ function runPublicAI(s: GameState) {
           offer: [item.id],
           request: {},
         });
-        if (s.trades.length) return;
+        if (!isV20(s) && s.trades.length) return;
       }
     }
-    const stat = STATS.find((k) => materialIds(p, RESEARCH[k]));
+    const stat = STATS.find((k) =>
+      materialIds(p, (isV20(s) ? V20_RESEARCH : RESEARCH)[k]),
+    );
     const duelGoal =
       (AI_POLICY.goalDuelDaily as readonly number[]).includes(p.dailyGoal.id) ||
       (AI_POLICY.goalDuelLong as readonly number[]).includes(p.longGoal.id);
@@ -1555,6 +1624,7 @@ function runPublicAI(s: GameState) {
         reason: "公開能力の育成",
       });
     if (
+      !isV20(s) &&
       duelGoal &&
       t.round <= 2 &&
       p.ap >= 1 &&
@@ -1634,14 +1704,16 @@ export function assertInvariants(s: GameState) {
     "手番状態が不正です",
   );
   assert(
-    s.trades.length <= 1 &&
-      s.trades.every((trade) => trade.from === currentPlayer(s)),
+    isV20(s) ||
+      (s.trades.length <= 1 &&
+        s.trades.every((trade) => trade.from === currentPlayer(s))),
     "未決取引と手番が一致しません",
   );
   assert(
-    Object.values(t.tradeAttempts).every(
-      (n) => Number.isInteger(n) && n >= 0 && n <= 2,
-    ),
+    isV20(s) ||
+      Object.values(t.tradeAttempts).every(
+        (n) => Number.isInteger(n) && n >= 0 && n <= 2,
+      ),
     "取引申請回数が不正です",
   );
   assert(s.day >= 1 && s.day <= 8, "日数が不正");

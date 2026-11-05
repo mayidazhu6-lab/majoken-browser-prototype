@@ -10,21 +10,18 @@ import CombatRounds from "./components/CombatRounds.vue";
 import { useGameStore } from "./stores/game";
 import {
   CONFIG,
-  LABELS,
+  LABELS as LEGACY_LABELS,
+  V20_LABELS,
+  V20_MAGICS,
+  V20_RESEARCH,
+  V20_RULES_VERSION,
   MAGICS,
   MATERIALS,
-  RESEARCH,
   STATS,
   level,
   nextLevel,
-  levelEffect,
 } from "./domain/config";
-import {
-  EVENTS,
-  eventProgress,
-  reservationRoom,
-  reservationUnits,
-} from "./domain/events";
+import { EVENTS, eventProgress, reservationUnits } from "./domain/events";
 import {
   available,
   recipe,
@@ -70,6 +67,10 @@ function dailyProgress(...args: Parameters<typeof describeDailyProgress>) {
     detail: uiText(progress.detail),
   };
 }
+const LABELS: Record<string, string> = { ...LEGACY_LABELS, ...V20_LABELS };
+const setupMagics = Object.fromEntries(
+  V20_MAGICS.map((id) => [id, MAGICS[id]]),
+) as Pick<typeof MAGICS, (typeof V20_MAGICS)[number]>;
 const store = useGameStore();
 const s = computed(() => store.state!);
 const me = computed(() => s.value?.players[0]!);
@@ -77,7 +78,7 @@ const setup = ref<Setup>({
   name: "アリア",
   seed: "witches-2026",
   magic: "barrier",
-  stats: { attack: 4, defense: 3, insight: 3 },
+  stats: { attack: 3, defense: 3, insight: 3 },
 });
 const debug = ref(false),
   tab = ref("field"),
@@ -228,7 +229,9 @@ const publicHistory = computed(
     ) ?? [],
 );
 const combat = computed(() => s.value?.combat ?? mockResult.value);
-const incomingTrade = computed(() => s.value?.trades.find((t) => t.to === 0));
+const incomingTrades = computed(
+  () => s.value?.trades.filter((t) => t.to === 0) ?? [],
+);
 const secretResult = computed(() =>
   (combat.value?.kind === "public" || combat.value?.kind === "secret") &&
   combat.value.done &&
@@ -311,9 +314,8 @@ const blockingModal = computed(
   () =>
     !!menu.value ||
     (showGameDialogs.value &&
-      (!!incomingTrade.value ||
-        (!!secretResult.value &&
-          (!myCombat.value || battleStep.value === "end")) ||
+      ((!!secretResult.value &&
+        (!myCombat.value || battleStep.value === "end")) ||
         !!eventResult.value ||
         !!s.value?.publicOutcome)),
 );
@@ -321,8 +323,6 @@ const hoProgress = computed(() =>
   s.value ? dailyProgress(s.value, me.value) : undefined,
 );
 const interruptReason = computed(() => {
-  if (incomingTrade.value)
-    return "取引への返答待ちです。中央のダイアログで受諾・拒否してください。";
   if (secretResult.value)
     return `${secretResult.value.kind === "public" ? "公開" : "秘匿"}決闘の結果確認待ちです。内容を確認して確認したを押してください。`;
   if (combat.value)
@@ -393,6 +393,11 @@ const history = computed(
       .reverse() ?? [],
 );
 const itemName = (kind: string) => LABELS[kind] ?? recipe(kind)?.name ?? kind;
+const describeTrade = (items: Record<string, number>) =>
+  Object.entries(items)
+    .filter(([, count]) => count > 0)
+    .map(([kind, count]) => `${itemName(kind)} ×${count}`)
+    .join("・") || "なし";
 function act(a: Action) {
   const previous = s.value;
   const seq = previous?.logs.at(-1)?.seq ?? 0;
@@ -459,6 +464,7 @@ function act(a: Action) {
 }
 function actionError(a: Action) {
   if (!s.value) return "研究を開始してください";
+  if (store.pending) return "保存の再試行が必要です";
   try {
     dispatch(s.value, JSON.parse(JSON.stringify(a)));
     return "";
@@ -484,7 +490,7 @@ function restorePresentation(json?: string) {
   try {
     const view = json
       ? JSON.parse(json).presentation
-      : JSON.parse(localStorage.getItem("majoken-ui-v023") ?? "null");
+      : JSON.parse(localStorage.getItem("majoken-ui-rules-2.0") ?? "null");
     if (
       view?.version !== 1 ||
       view.key !== JSON.stringify([s.value?.setup, s.value?.actions])
@@ -522,7 +528,10 @@ watch(
   () => {
     if (!s.value) return;
     try {
-      localStorage.setItem("majoken-ui-v023", JSON.stringify(presentation()));
+      localStorage.setItem(
+        "majoken-ui-rules-2.0",
+        JSON.stringify(presentation()),
+      );
     } catch {
       /* Game save and JSON export remain available. */
     }
@@ -652,7 +661,7 @@ watch(
         ></a
       >
       <div class="top-actions">
-        <span class="version">試遊版 v0.2.3</span
+        <span class="version">v2.0 開発版 · 公開行動</span
         ><button @click="loadSave()">続きから</button
         ><template v-if="s"
           ><button @click="store.save()">保存</button
@@ -666,7 +675,11 @@ watch(
         /></label>
       </div>
     </header>
-    <div v-if="store.error" role="alert" class="alert error">
+    <div v-if="store.pending" role="alert" class="alert error">
+      保存に失敗しました。保存が完了するまで進行できません。
+      <button @click="store.save()">保存を再試行</button>
+    </div>
+    <div v-if="store.error && !store.pending" role="alert" class="alert error">
       {{ uiText(store.error) }}<button @click="store.error = ''">閉じる</button>
     </div>
     <div v-if="store.notice" role="status" class="alert">
@@ -682,7 +695,7 @@ watch(
           >
         </h1>
         <p class="lead">
-          研究所を守る8日間。<br />3人のAI魔女と協力しながら、<br />あなただけの秘密の研究を完成させよう。
+          研究所を守る8日間。<br />この開発版では、3人のAI魔女との公開2巡と協力イベントの結果まで試遊できます。
         </p>
         <button class="primary start-button" @click="creation = true">
           ゲーム開始 →
@@ -709,7 +722,7 @@ watch(
         <div class="field-label">固有魔法</div>
         <div class="magic-options">
           <button
-            v-for="(m, id) in MAGICS"
+            v-for="(m, id) in setupMagics"
             :key="id"
             :class="{ chosen: setup.magic === id }"
             @click="setup.magic = id"
@@ -721,7 +734,7 @@ watch(
         <p class="magic-description">{{ MAGICS[setup.magic].description }}</p>
         <div class="field-label">
           能力の配分
-          <span :class="total === 10 ? 'mint' : 'pink'">{{ total }} / 10</span>
+          <span :class="total === 9 ? 'mint' : 'pink'">{{ total }} / 9</span>
         </div>
         <div class="stat-inputs">
           <label v-for="k in STATS" :key="k"
@@ -730,16 +743,16 @@ watch(
               v-model.number="setup.stats[k]"
               type="number"
               min="2"
-              max="6"
+              max="5"
           /></label>
         </div>
-        <p class="muted">各能力2＋自由4ポイント。能力6でLv2、9でLv3。</p>
+        <p class="muted">各能力2＋自由3ポイント。能力6でLv2、9でLv3。</p>
         <button
           class="primary start-button"
-          :disabled="total !== 10 || !setup.name.trim() || !setup.seed"
+          :disabled="total !== 9 || !setup.name.trim() || !setup.seed"
           @click="startGame"
         >
-          8日間の研究をはじめる <span>→</span>
+          公開行動の試遊をはじめる <span>→</span>
         </button>
         <p class="center muted">あなた1人＋AI3人・時間制限なし</p>
       </section>
@@ -769,7 +782,7 @@ watch(
         </div>
       </div>
       <section
-        v-if="s.phase === 'public' && !combat"
+        v-if="s.phase === 'public' && !s.event.resolved && !combat"
         class="panel persistent-turn"
         role="status"
       >
@@ -785,8 +798,41 @@ watch(
           {{ interruptReason }}
         </p>
       </section>
+      <section
+        v-if="s.event.resolved && s.event.acknowledged && !s.result"
+        class="panel persistent-turn"
+        role="status"
+      >
+        <strong>今回の試遊範囲はここまで</strong>
+        <span
+          >協力イベントは{{
+            s.event.success ? "成功" : "失敗"
+          }}しました。夜間処理は次の実装段階です。</span
+        >
+      </section>
+
+      <section v-for="trade in incomingTrades" :key="trade.id" class="panel">
+        <h3>{{ s.players[trade.from].name }}からの取引提案</h3>
+        <p>提供：{{ describeTrade(trade.offeredKinds ?? {}) }}</p>
+        <p>要求：{{ describeTrade(trade.request) }}</p>
+        <button
+          @click="
+            act({ type: 'tradeReply', player: 0, id: trade.id, accept: true })
+          "
+        >
+          受諾
+        </button>
+        <button
+          @click="
+            act({ type: 'tradeReply', player: 0, id: trade.id, accept: false })
+          "
+        >
+          拒否
+        </button>
+      </section>
       <nav
         v-if="
+          !s.event.resolved &&
           !briefing &&
           !combat &&
           ['public', 'magic', 'night', 'vote'].includes(s.phase)
@@ -873,7 +919,17 @@ watch(
                 <small v-if="p.id === 0" class="muted"
                   >AP {{ "●".repeat(p.ap) }}{{ "○".repeat(2 - p.ap) }}</small
                 >
-                <small>アイテム合計 {{ p.inventory.length }} 個</small>
+                <small
+                  >素材
+                  {{
+                    p.inventory.filter((item) => isMaterial(item.kind)).length
+                  }}
+                  個 · 薬
+                  {{
+                    p.inventory.filter((item) => !isMaterial(item.kind)).length
+                  }}
+                  個</small
+                >
               </div>
             </article>
           </section>
@@ -886,7 +942,7 @@ watch(
                 nextLevel(me.stats[k]) === null
                   ? "最高Lvです"
                   : `次のLvまであと${nextLevel(me.stats[k])! - me.stats[k]}（能力値${nextLevel(me.stats[k])}）`
-              }}<br />{{ levelEffect(k, level(me.stats[k])) }}
+              }}
             </p>
           </details>
         </aside>
@@ -1405,7 +1461,12 @@ watch(
             </p>
           </section>
           <section
-            v-if="s.phase === 'public' && !combat && !s.challenge"
+            v-if="
+              s.phase === 'public' &&
+              !s.event.resolved &&
+              !combat &&
+              !s.challenge
+            "
             class="panel actions-panel"
           >
             <div class="section-heading">
@@ -1420,6 +1481,9 @@ watch(
                 event.description
               }}。納品の対象・数量は「納品」で確認できます。
             </p>
+            <p v-if="event?.mock">
+              模擬戦は次の実装段階です。この開発版では、このイベントの模擬戦条件は達成できません。
+            </p>
             <nav v-if="!actionScreen" class="action-menu">
               <button
                 v-for="(label, id) in {
@@ -1428,7 +1492,6 @@ watch(
                   event: '納品',
                   shop: '購買部',
                   trade: '魔女間取引',
-                  duel: '決闘',
                 }"
                 :key="id"
                 :class="{ active: tab === id }"
@@ -1500,10 +1563,10 @@ watch(
                 <div>
                   <h3>{{ LABELS[k] }}を研究</h3>
                   <p>
-                    {{ RESEARCH[k].map(itemName).join(" ＋ ") }}
+                    {{ V20_RESEARCH[k].map(itemName).join(" ＋ ") }}
                     各1個
                     <span
-                      v-for="kind in RESEARCH[k]"
+                      v-for="kind in V20_RESEARCH[k]"
                       :key="kind"
                       class="material-count"
                       >{{ itemName(kind) }}：必要1 / 使用可能{{
@@ -1554,9 +1617,7 @@ watch(
             <template v-if="actionScreen && tab === 'event'"
               ><p class="reservation-limit">
                 {{
-                  s.publicTurn.round === 1
-                    ? `第1巡：1人1個まで（素材・薬・能力1ポイントを合算）。予約済み${reservationUnits(s, me)}、残り${reservationRoom(s, me)}。取消で枠が回復します。`
-                    : "第2巡：個人上限なし。残りの納品枠へ先着順で予約できます。"
+                  `予約済み ${reservationUnits(s, me)}。超過分は結果確定時に返却します。`
                 }}
               </p>
               <p>納品は0AP。成功時のみ消費し、失敗時は返却します。</p>
@@ -1679,16 +1740,14 @@ watch(
               </details>
               <button
                 :disabled="
-                  currentPlayer(s) !== 0 ||
-                  !!s.trades.length ||
-                  me.pendingRecipe
+                  currentPlayer(s) !== 0 || !!store.pending || me.pendingRecipe
                 "
                 @click="offer"
               >
                 固定条件で提案
               </button>
               <p class="muted">
-                相手の所持品は非公開。AIは即時受諾／拒否します。片側0個の譲渡も可能です。
+                所持品の内訳は非公開です。提案では品を予約せず、承諾時に確認します。片側0個の譲渡も可能です。
               </p></template
             >
             <template v-if="actionScreen && tab === 'duel'"
@@ -2003,7 +2062,11 @@ watch(
           </section>
           <section
             v-if="
-              s.phase !== 'ended' && !combat && !s.challenge && !actionScreen
+              s.phase !== 'ended' &&
+              !s.event.resolved &&
+              !combat &&
+              !s.challenge &&
+              !actionScreen
             "
             class="panel progression"
           >
@@ -2023,7 +2086,7 @@ watch(
                 me.pendingRecipe ||
                 !!s.combat ||
                 !!s.challenge ||
-                !!s.trades.length ||
+                !!store.pending ||
                 (s.phase === 'public' &&
                   s.publicTurn.round <= 2 &&
                   currentPlayer(s) !== 0)
@@ -2153,18 +2216,7 @@ watch(
               取引提案：{{ s.players[t.from].name }} →
               {{ s.players[t.to].name }}
             </h3>
-            <p>
-              提供：{{
-                t.offer
-                  .map((id) =>
-                    itemName(
-                      s.players[t.from].inventory.find((i) => i.id === id)
-                        ?.kind ?? "",
-                    ),
-                  )
-                  .join("・") || "なし"
-              }}
-            </p>
+            <p>提供：{{ describeTrade(t.offeredKinds ?? {}) }}</p>
             <p>
               要求：{{
                 Object.entries(t.request)
@@ -2354,65 +2406,6 @@ watch(
       <template #actions><button @click="menu = ''">閉じる</button></template>
     </BlockingDialog>
     <BlockingDialog
-      v-if="showGameDialogs && incomingTrade"
-      title="取引への返答が必要です"
-    >
-      <p>
-        未決の取引があるため、手番進行と公開行動を停止しています。受諾・拒否するまで表示します。
-      </p>
-      <h3>
-        取引提案：{{ s.players[incomingTrade.from].name }} → {{ me.name }}
-      </h3>
-      <p>
-        提供：{{
-          incomingTrade.offer
-            .map((id) =>
-              itemName(
-                s.players[incomingTrade!.from].inventory.find(
-                  (i) => i.id === id,
-                )?.kind ?? "",
-              ),
-            )
-            .join("・") || "なし"
-        }}
-      </p>
-      <p>
-        要求：{{
-          Object.entries(incomingTrade.request)
-            .map(([k, n]) => `${itemName(k)} ×${n}`)
-            .join("・") || "なし"
-        }}
-      </p>
-      <p>成立・拒否とも0AP。内容は当事者だけに表示します。</p>
-      <template #actions>
-        <button
-          class="primary"
-          @click="
-            act({
-              type: 'tradeReply',
-              player: 0,
-              id: incomingTrade.id,
-              accept: true,
-            })
-          "
-        >
-          受諾
-        </button>
-        <button
-          @click="
-            act({
-              type: 'tradeReply',
-              player: 0,
-              id: incomingTrade.id,
-              accept: false,
-            })
-          "
-        >
-          拒否
-        </button>
-      </template>
-    </BlockingDialog>
-    <BlockingDialog
       v-if="
         showGameDialogs && secretResult && (!myCombat || battleStep === 'end')
       "
@@ -2494,7 +2487,7 @@ watch(
       <p v-if="event.actions">
         成立行動 {{ progress.actions }}/{{ event.count }}
       </p>
-      <p v-if="event.mock">
+      <p v-if="event?.mock">
         模擬戦：{{ s.event.mock.length === 2 ? "完了" : "未完了" }}
       </p>
       <p v-if="event.required">
@@ -2538,7 +2531,7 @@ watch(
         {{ uiText(l.text) }}
       </p>
       <p v-if="s.result?.reason === 'collapse'">
-        イベント3回失敗により研究所が崩壊しました。全員敗北です。
+        イベント3回失敗により研究所が崩壊しました。全員敗北です。当日の日次HOは判定なし・報酬なしです。
       </p>
       <template #actions
         ><button class="primary" @click="act({ type: 'eventAck', player: 0 })">
@@ -2583,7 +2576,7 @@ watch(
     <footer>
       <span>✧ 魔女たちの共同研究</span
       ><span
-        >ローカル試遊版 · ルール {{ CONFIG.rulesVersion }} ·
+        >ローカル試遊版 · ルール {{ s?.rulesVersion ?? V20_RULES_VERSION }} ·
         公開前の検証用</span
       >
     </footer>

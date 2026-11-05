@@ -1,5 +1,11 @@
-import type { EventDefinition, GameState, Player, Stat } from "./types";
-import { MATERIALS, STATS, LEGACY_RULES_VERSION } from "./config";
+import type {
+  EventDefinition,
+  GameState,
+  Player,
+  Reservation,
+  Stat,
+} from "./types";
+import { MATERIALS, STATS, LEGACY_RULES_VERSION, isV20 } from "./config";
 import { isMaterial, addItem, available } from "./items";
 import { pick, random } from "./rng";
 import { fp, log } from "./core";
@@ -142,7 +148,11 @@ export function startEvent(s: GameState) {
   s.usedEvents.push(id);
   s.event = {
     id,
-    specified: pick(s, MATERIALS.slice(0, 5), "異界門指定素材"),
+    specified: isV20(s)
+      ? id === 11
+        ? pick(s, MATERIALS, "異界門指定素材")
+        : "obsidian"
+      : pick(s, MATERIALS.slice(0, 5), "異界門指定素材"),
     reservations: [],
     mock: [],
     resolved: false,
@@ -168,14 +178,16 @@ export function eventProgress(s: GameState) {
   const actions = s.logs.filter(
     (l) => l.day === s.day && e.actions?.includes(l.type),
   ).length;
+  const enough = (n: number, required: number) =>
+    isV20(s) ? n >= required : n === required;
   const materialOk =
-    materials.length === (e.materials ?? 0) &&
+    enough(materials.length, e.materials ?? 0) &&
     Object.entries(e.required ?? {}).every(([k, v]) => (counts[k] ?? 0) >= v);
-  const statOk = stats === (e.stats ?? 0);
+  const statOk = enough(stats, e.stats ?? 0);
   const other =
     (!e.mock || s.event.mock.length === 2) &&
     (!e.actions || actions >= (e.count ?? 0)) &&
-    (!e.potions || potions === e.potions);
+    (!e.potions || enough(potions, e.potions));
   const success =
     other &&
     (e.either
@@ -206,7 +218,7 @@ export function reservationUnits(s: GameState, p: Player) {
     );
 }
 export function reservationRoom(s: GameState, p: Player) {
-  return s.phase === "public" && s.publicTurn.round === 1
+  return !isV20(s) && s.phase === "public" && s.publicTurn.round === 1
     ? Math.max(0, 1 - reservationUnits(s, p))
     : Infinity;
 }
@@ -252,19 +264,20 @@ export function reserve(
       throw Error("能力下限は1です");
   }
   if (
-    before.materials + items.filter((i) => isMaterial(i.kind)).length >
+    !isV20(s) &&
+    (before.materials + items.filter((i) => isMaterial(i.kind)).length >
       (e.materials ?? 0) ||
-    before.potions + items.filter((i) => !isMaterial(i.kind)).length >
-      (e.potions ?? 0) ||
-    before.stats + ns > (e.stats ?? 0)
+      before.potions + items.filter((i) => !isMaterial(i.kind)).length >
+        (e.potions ?? 0) ||
+      before.stats + ns > (e.stats ?? 0))
   )
     throw Error("必要数を超える納品です");
   items.forEach((i) => (i.lock = "event"));
   s.event.reservations.push({ player: p.id, items: ids, stats });
   if (e.either && !s.event.route) {
     const now = eventProgress(s);
-    if (now.materials === e.materials) s.event.route = "materials";
-    else if (now.stats === e.stats) s.event.route = "stats";
+    if (now.materials >= (e.materials ?? Infinity)) s.event.route = "materials";
+    else if (now.stats >= (e.stats ?? Infinity)) s.event.route = "stats";
   }
   const progress = eventProgress(s);
   log(
@@ -288,7 +301,16 @@ export function withdraw(s: GameState, p: Player) {
   });
   s.event.reservations = s.event.reservations.filter((r) => r.player !== p.id);
   const e = EVENTS[s.event.id - 1];
-  if (e.either) {
+  if (e.either && isV20(s)) {
+    const pr = eventProgress(s);
+    const materials = pr.materials >= e.materials!;
+    const stats = pr.stats >= e.stats!;
+    if (
+      !(s.event.route === "materials" && materials) &&
+      !(s.event.route === "stats" && stats)
+    )
+      s.event.route = materials ? "materials" : stats ? "stats" : undefined;
+  } else if (e.either) {
     const pr = eventProgress(s);
     if (
       (s.event.route === "materials" && pr.materials !== e.materials) ||
@@ -298,6 +320,40 @@ export function withdraw(s: GameState, p: Player) {
   }
   log(s, "withdraw", `${p.name}が納品予約を撤回`, { actor: p.id });
 }
+function adoptedReservations(s: GameState, e: EventDefinition): Reservation[] {
+  const reservations = s.event.reservations;
+  const items = reservations.flatMap((r) =>
+    r.items.map((id) =>
+      s.players[r.player].inventory.find((i) => i.id === id)!,
+    ),
+  );
+  const adopted = new Set<number>();
+  const itemLimit =
+    e.either && s.event.route === "stats" ? 0 : (e.materials ?? e.potions ?? 0);
+  for (const [kind, count] of Object.entries(e.required ?? {}))
+    for (const item of items.filter((i) => i.kind === kind).slice(0, count))
+      adopted.add(item.id);
+  for (const item of items) {
+    if (adopted.size >= itemLimit) break;
+    adopted.add(item.id);
+  }
+  let remaining =
+    e.either && s.event.route === "materials" ? 0 : (e.stats ?? 0);
+  return reservations.map((r) => {
+    const stats: Partial<Record<Stat, number>> = {};
+    for (const kind of STATS) {
+      const amount = Math.min(remaining, r.stats[kind] ?? 0);
+      if (amount) stats[kind] = amount;
+      remaining -= amount;
+    }
+    return {
+      player: r.player,
+      items: r.items.filter((id) => adopted.has(id)),
+      stats,
+    };
+  });
+}
+
 export function resolveEvent(s: GameState) {
   if (s.event.resolved) throw Error("イベント判定済み");
   const e = EVENTS[s.event.id - 1];
@@ -308,7 +364,9 @@ export function resolveEvent(s: GameState) {
   s.event.resolved = true;
   if (!success) s.failed++;
   const donations = new Map<number, number>();
-  for (const r of s.event.reservations) {
+  for (const r of isV20(s) && success
+    ? adoptedReservations(s, e)
+    : s.event.reservations) {
     const p = s.players[r.player];
     const ids = r.items.filter(
       (id) => !e.either || s.event.route === "materials",
@@ -381,7 +439,10 @@ export function donationItems(s: GameState, p: Player): number[] {
   if (e.potions)
     return pool
       .filter((i) => !isMaterial(i.kind))
-      .slice(0, Math.min(e.potions - pr.potions, reservationRoom(s, p)))
+      .slice(
+        0,
+        Math.max(0, Math.min(e.potions - pr.potions, reservationRoom(s, p))),
+      )
       .map((i) => i.id);
   if (!e.materials) return [];
   const eligible = pool.filter(

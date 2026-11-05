@@ -23,7 +23,7 @@ export function deserialize(json: string): GameState {
     !supportedRulesVersion(data.state?.rulesVersion)
   )
     throw Error(
-      "保存データのバージョンが一致しません。v0.2.2またはv0.2.3の対応ルールの保存データを選択してください",
+      "保存データのバージョンが一致しません。対応するルール版の保存データを選択してください",
     );
   const s = data.state as GameState;
   assertInvariants(s);
