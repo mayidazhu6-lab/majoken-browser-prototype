@@ -131,6 +131,29 @@ export interface Round {
   hp: [number, number];
   potions: [string | null, string | null];
 }
+export interface ElementRound {
+  sides: [
+    {
+      element: Stat;
+      affinity: number;
+      levelBonus: number;
+      potionBonus: number;
+      calculated: number;
+      dealt: number;
+      potion?: string;
+    },
+    {
+      element: Stat;
+      affinity: number;
+      levelBonus: number;
+      potionBonus: number;
+      calculated: number;
+      dealt: number;
+      potion?: string;
+    },
+  ];
+  hp: [number, number];
+}
 export interface Combat {
   id: number;
   participants: [number, number];
@@ -140,6 +163,7 @@ export interface Combat {
   previous: [Stance | null, Stance | null];
   brought: [Item[], Item[]];
   rounds: Round[];
+  elemental?: { ready: [boolean, boolean]; rounds: ElementRound[] };
   winner?: number | null;
   done: boolean;
   resultAcknowledged: boolean;
@@ -198,7 +222,12 @@ export interface GameState {
   nextTrade: number;
   combat?: Combat;
   publicOutcome?: { from: number; to: number; items: string[] };
-  challenge?: { from: number; to: number; mock: boolean };
+  challenge?: {
+    from: number;
+    to: number;
+    mock: boolean;
+    surrenderItem?: number;
+  };
   combatHistory: Combat[];
   duelQueue: [number, number][];
   trades: Trade[];
@@ -234,7 +263,9 @@ export type Action =
   | { type: "tradeCancel"; player: number; id: number }
   | { type: "duel"; player: number; target: number; mock?: boolean }
   | { type: "challengeReply"; player: number; fight: boolean; items?: number[] }
+  | { type: "surrenderReply"; player: number; accept: boolean }
   | { type: "loadout"; player: number; items: number[] }
+  | { type: "elementRound"; player: number; element: Stat; potion?: number }
   | { type: "round"; player: number; stance: Stance; potion?: number }
   | { type: "combatAck"; player: number }
   | { type: "reward"; player: number; kind: "item" | "command"; stat?: Stat }

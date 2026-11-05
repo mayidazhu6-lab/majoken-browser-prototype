@@ -99,7 +99,11 @@ export function dailyAchieved(s: GameState, p: Player, g: Goal = p.dailyGoal) {
     case 21:
       return pub.some((c) => {
         const i = c.participants.indexOf(p.id);
-        return c.rounds.some((r) => r.damage[i] > r.damage[1 - i]);
+        return c.elemental
+          ? c.elemental.rounds.some(
+              (r) => r.sides[1 - i].dealt > r.sides[i].dealt,
+            )
+          : c.rounds.some((r) => r.damage[i] > r.damage[1 - i]);
       });
     case 22:
       return has("loot", (l) => (l.amount ?? 0) > 0) || has("command");
@@ -108,11 +112,12 @@ export function dailyAchieved(s: GameState, p: Player, g: Goal = p.dailyGoal) {
     case 24:
       return battles.some((c) => {
         const i = c.participants.indexOf(p.id);
-        return c.rounds.some(
-          (r, n) =>
-            n >= 2 &&
-            r.original[i] === c.rounds[n - 1].original[i] &&
-            r.original[i] === c.rounds[n - 2].original[i],
+        const choices = c.elemental
+          ? c.elemental.rounds.map((r) => r.sides[i].element)
+          : c.rounds.map((r) => r.original[i]);
+        return choices.some(
+          (choice, n) =>
+            n >= 2 && choice === choices[n - 1] && choice === choices[n - 2],
         );
       });
     default:
@@ -241,7 +246,11 @@ export function dailyProgress(s: GameState, p: Player) {
     case 21:
       met = pub.some((c) => {
         const side = c.participants.indexOf(p.id);
-        return c.rounds.some((r) => r.damage[side] > r.damage[1 - side]);
+        return c.elemental
+          ? c.elemental.rounds.some(
+              (r) => r.sides[1 - side].dealt > r.sides[side].dealt,
+            )
+          : c.rounds.some((r) => r.damage[side] > r.damage[1 - side]);
       });
       current = Number(met);
       break;
@@ -259,8 +268,10 @@ export function dailyProgress(s: GameState, p: Player) {
         const side = c.participants.indexOf(p.id);
         let streak = 0,
           previous: string | undefined;
-        for (const r of c.rounds) {
-          const choice = r.original[side];
+        const choices = c.elemental
+          ? c.elemental.rounds.map((r) => r.sides[side].element)
+          : c.rounds.map((r) => r.original[side]);
+        for (const choice of choices) {
           streak = choice === previous ? streak + 1 : 1;
           current = Math.max(current, streak);
           previous = choice;

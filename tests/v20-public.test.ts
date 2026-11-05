@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { V20_RULES_VERSION } from "../src/domain/config";
+import { V20_PUBLIC_RULES_VERSION } from "../src/domain/config";
 import { reserve, resolveEvent, withdraw } from "../src/domain/events";
 import { addItem } from "../src/domain/items";
 import { deserialize, serialize } from "../src/domain/persistence";
@@ -14,7 +14,7 @@ const setup: Setup = {
   magic: "barrier",
   stats: { attack: 3, defense: 3, insight: 3 },
 };
-const newGame = () => createGame(setup, V20_RULES_VERSION);
+const newGame = () => createGame(setup, V20_PUBLIC_RULES_VERSION);
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -161,7 +161,7 @@ describe("v2.0 public milestone", () => {
     expect(store.error).toContain("ルール版");
     store.start(setup);
     const initial = store.state;
-    const oldSave = values.get("majoken-save-rules-2.0");
+    const oldSave = values.get("majoken-save-rules-2.0-combat");
     reject = true;
     store.act({ type: "gather", player: 0 });
     const candidate = store.pending;
@@ -169,7 +169,7 @@ describe("v2.0 public milestone", () => {
     expect(store.state).toBe(initial);
     store.act({ type: "endTurn", player: 0 });
     expect(store.pending).toBe(candidate);
-    expect(values.get("majoken-save-rules-2.0")).toBe(oldSave);
+    expect(values.get("majoken-save-rules-2.0-combat")).toBe(oldSave);
     reject = false;
     store.save();
     expect(store.state).toBe(candidate);

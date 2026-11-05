@@ -1,13 +1,49 @@
 <script setup lang="ts">
 import type { Combat } from "../domain/types";
-import { CONFIG, LABELS } from "../domain/config";
+import { CONFIG, LABELS, V20_LABELS } from "../domain/config";
+import { elementPotion } from "../domain/elementCombat";
 import { recipe } from "../domain/items";
 import { roundReason, revealedActions } from "../ui/combatPresentation";
 defineProps<{ combat: Combat; names: string[]; onlyLast?: boolean }>();
 </script>
 <template>
   <div class="combat-rounds">
-    <table>
+    <table v-if="combat.elemental">
+      <caption>
+        属性戦闘の判定
+      </caption>
+      <thead>
+        <tr>
+          <th>R</th>
+          <th v-for="(name, side) in names" :key="side">{{ name }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="(round, index) in combat.elemental.rounds" :key="index">
+          <th>{{ index + 1 }}</th>
+          <td v-for="(effect, side) in round.sides" :key="side">
+            <strong
+              >{{ V20_LABELS[effect.element] }} · 与ダメージ
+              {{ effect.dealt }}</strong
+            >
+            <p>
+              基本2 ＋ Lv補正{{ effect.levelBonus }} ＋ 相性{{
+                effect.affinity
+              }}
+              ＋ 薬{{ effect.potionBonus }} ＝ {{ effect.calculated }}
+            </p>
+            <p>
+              使用薬
+              {{
+                effect.potion ? elementPotion(effect.potion)?.name : "なし"
+              }}
+              · 残HP {{ round.hp[side] }}
+            </p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <table v-else>
       <caption>
         左：仕掛けた魔女 / 右：仕掛けられた魔女
       </caption>

@@ -2,11 +2,15 @@ import { defineStore } from "pinia";
 import { shallowRef, ref } from "vue";
 import type { Action, GameState, Setup } from "../domain/types";
 import { createGame, dispatch } from "../domain/reducer";
-import { isV20, V20_RULES_VERSION } from "../domain/config";
+import { hasElementCombat, V20_RULES_VERSION } from "../domain/config";
 import { deserialize, serialize } from "../domain/persistence";
 
-const KEY = "majoken-save-rules-2.0";
-const LEGACY_KEYS = ["majoken-save-v2", "majoken-save-v1"];
+const KEY = "majoken-save-rules-2.0-combat";
+const LEGACY_KEYS = [
+  "majoken-save-rules-2.0",
+  "majoken-save-v2",
+  "majoken-save-v1",
+];
 
 export const useGameStore = defineStore("game", () => {
   const state = shallowRef<GameState>();
@@ -64,7 +68,8 @@ export const useGameStore = defineStore("game", () => {
             ? legacyError
             : "保存データがありません",
         );
-      if (!isV20(JSON.parse(raw)?.state ?? {})) throw Error(legacyError);
+      if (!hasElementCombat(JSON.parse(raw)?.state ?? {}))
+        throw Error(legacyError);
       const loaded = deserialize(raw);
       if (json && !commit(loaded)) return;
       state.value = loaded;

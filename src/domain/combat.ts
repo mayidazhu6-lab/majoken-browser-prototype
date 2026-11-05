@@ -1,8 +1,9 @@
 import type { Combat, GameState, Item, Player, Stance } from "./types";
-import { CONFIG, level } from "./config";
+import { CONFIG, hasElementCombat, level } from "./config";
 import { recipe } from "./items";
 import { pick } from "./rng";
 import { log } from "./core";
+import { ELEMENT_HP } from "./elementCombat";
 export const STANCES: Stance[] = ["attack", "defend", "charge"];
 /** Ownership is unrestricted; only eligible, unlocked items enter combat. */
 export function automaticLoadout(p: Player) {
@@ -46,6 +47,10 @@ export function startCombat(
         : -1,
     initiator: a,
   };
+  if (hasElementCombat(s) && kind !== "secret") {
+    c.hp = [ELEMENT_HP, ELEMENT_HP];
+    c.elemental = { ready: [kind === "mock", kind === "mock"], rounds: [] };
+  }
   s.combat = c;
   log(
     s,

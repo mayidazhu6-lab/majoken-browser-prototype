@@ -11,6 +11,7 @@ import type {
 import {
   CONFIG,
   isV20,
+  hasElementCombat,
   V20_MAGICS,
   V20_LABELS,
   V20_RESEARCH,
@@ -55,6 +56,14 @@ import {
   startCombat,
 } from "./combat";
 import { fp, log } from "./core";
+import {
+  chooseElement,
+  elementLoadout,
+  elementPotion,
+  elementPotionFor,
+  prepareElementAI,
+  resolveElementRound,
+} from "./elementCombat";
 import { AI_POLICY, weightedAction } from "./ai";
 export function createGame(
   setup: Setup,
@@ -368,7 +377,16 @@ function replyTrade(s: GameState, p: Player, id: number, accept: boolean) {
     (id) => p.inventory.find((i) => i.id === id)!.kind,
   );
   const describeItems = (kinds: string[]) =>
-    kinds.map((k) => LABELS[k] ?? recipe(k)?.name ?? k).join("・") || "なし";
+    kinds
+      .map(
+        (k) =>
+          (isV20(s) ? V20_LABELS[k] : undefined) ??
+          LABELS[k] ??
+          elementPotion(k)?.name ??
+          recipe(k)?.name ??
+          k,
+      )
+      .join("・") || "なし";
   transfer(s, a, p, offeredIds, "trade");
   transfer(s, p, a, requested!, "trade");
   for (const [x, y, sent, received] of [
@@ -387,6 +405,29 @@ function replyTrade(s: GameState, p: Player, id: number, accept: boolean) {
         audience: [a.id, p.id],
       },
     );
+}
+function replySurrender(s: GameState, accept: boolean) {
+  const challenge = s.challenge;
+  assert(challenge?.surrenderItem !== undefined, "降参品の提示がありません");
+  const from = s.players[challenge.from],
+    to = s.players[challenge.to];
+  if (accept) {
+    const item = available(to).find(
+      (candidate) => candidate.id === challenge.surrenderItem,
+    );
+    assert(item, "降参品を渡せません");
+    transfer(s, to, from, [item.id], "surrender");
+    s.publicOutcome = { from: from.id, to: to.id, items: [item.kind] };
+    log(s, "surrender", "降参品を渡して挑戦を終了", {
+      actor: to.id,
+      target: from.id,
+      audience: [to.id, from.id],
+    });
+  } else {
+    startCombat(s, from.id, to.id, "public");
+    autoCombats(s);
+  }
+  s.challenge = undefined;
 }
 function finishCombat(s: GameState) {
   const c = s.combat!;
@@ -408,10 +449,10 @@ function finishCombat(s: GameState) {
       );
     if (c.kind === "mock") {
       s.event.mock = [a, b];
-      s.combat = undefined;
-      return;
+      if (!c.elemental) s.combat = undefined;
+      if (!c.elemental) return;
     }
-    if (c.winner !== null) {
+    if (c.kind !== "mock" && c.winner !== null) {
       const w = s.players[c.winner!],
         loser = s.players[c.winner === a ? b : a];
       log(s, "win", "決闘勝利", {
@@ -429,11 +470,17 @@ function finishCombat(s: GameState) {
       if (c.kind === "public") fp(s, w, 1, "duel");
     }
   }
+  if (c.elemental && c.kind === "mock") {
+    if (c.resultAcknowledged || c.participants.every((id) => s.players[id].ai))
+      s.combat = undefined;
+    return;
+  }
   if (
     (c.kind === "public" ||
       (c.kind === "secret" &&
         c.participants.some((id) => !s.players[id].ai))) &&
-    !c.resultAcknowledged
+    !c.resultAcknowledged &&
+    (!c.elemental || c.participants.some((id) => !s.players[id].ai))
   )
     return;
   if (c.kind === "public") {
@@ -545,6 +592,18 @@ function autoCombats(s: GameState) {
     if (c.done) {
       finishCombat(s);
       if (s.combat?.done) return;
+      continue;
+    }
+    if (c.elemental) {
+      prepareElementAI(s, c);
+      const left = chooseElement(c, s, 0);
+      const right = chooseElement(c, s, 1);
+      resolveElementRound(
+        s,
+        [left, right],
+        [elementPotionFor(c, 0, left), elementPotionFor(c, 1, right)],
+      );
+      if (c.done) finishCombat(s);
       continue;
     }
     if (!c.rounds.length)
@@ -1126,9 +1185,14 @@ function apply(s: GameState, a: Action) {
   const p = s.players[a.player];
   assert(p, "席が不正");
   assert(s.phase !== "ended", "終了済みです");
-  if (s.challenge && a.type !== "challengeReply")
+  if (s.challenge && a.type !== "challengeReply" && a.type !== "surrenderReply")
     throw Error("挑戦への返答を完了してください");
-  if (s.combat && !["round", "loadout", "reward", "combatAck"].includes(a.type))
+  if (
+    s.combat &&
+    !["round", "elementRound", "loadout", "reward", "combatAck"].includes(
+      a.type,
+    )
+  )
     throw Error("戦闘中です");
   switch (a.type) {
     case "endTurn":
@@ -1227,7 +1291,9 @@ function apply(s: GameState, a: Action) {
       assert(
         Object.entries(a.request).every(
           ([k, n]) =>
-            (isMaterial(k) || recipe(k)) && Number.isSafeInteger(n) && n >= 0,
+            (isMaterial(k) || (isV20(s) ? elementPotion(k) : recipe(k))) &&
+            Number.isSafeInteger(n) &&
+            n >= 0,
         ),
         "要求数が不正",
       );
@@ -1306,17 +1372,20 @@ function apply(s: GameState, a: Action) {
       break;
     }
     case "duel":
-      assert(!isV20(s), "v2.0の決闘・模擬戦は次の実装段階です");
+      assert(
+        !isV20(s) || hasElementCombat(s),
+        "このルール版では決闘を開始できません",
+      );
       publicAction(s, p, a.mock ? 0 : 1);
       assert(s.publicTurn.round <= 2, "決闘は通常行動の巡目で実行してください");
       assert(a.target !== p.id && s.players[a.target], "対戦対象が不正");
       if (a.mock)
         assert(
-          !isV20(s) && EVENTS[s.event.id - 1].mock && !s.event.mock.length,
+          EVENTS[s.event.id - 1].mock && !s.event.mock.length,
           "模擬戦は対象イベント1回のみ",
         );
       else ap(s, p, 1);
-      cancelTrades(s);
+      if (!isV20(s)) cancelTrades(s);
       if (!s.players[a.target].ai) {
         s.challenge = { from: p.id, to: a.target, mock: !!a.mock };
       } else {
@@ -1326,12 +1395,23 @@ function apply(s: GameState, a: Action) {
       break;
     case "challengeReply": {
       const ch = s.challenge;
-      assert(ch && ch.to === p.id, "挑戦を受けていません");
+      assert(
+        ch && ch.to === p.id && ch.surrenderItem === undefined,
+        "挑戦を受けていません",
+      );
       if (a.fight) {
         s.challenge = undefined;
         startCombat(s, ch.from, ch.to, ch.mock ? "mock" : "public");
       } else if (ch.mock) {
         s.challenge = undefined;
+      } else if (isV20(s)) {
+        const ids = a.items ?? [];
+        assert(
+          ids.length === 1 && available(p).some((item) => item.id === ids[0]),
+          "未予約の素材か完成薬を1個提示してください",
+        );
+        ch.surrenderItem = ids[0];
+        if (s.players[ch.from].ai) replySurrender(s, true);
       } else {
         const ids = a.items ?? [];
         const items = ids.map((id) => available(p).find((i) => i.id === id));
@@ -1357,10 +1437,38 @@ function apply(s: GameState, a: Action) {
       }
       break;
     }
-    case "loadout":
-      loadout(s, p, a.items);
+    case "surrenderReply":
+      assert(
+        isV20(s) && s.challenge?.from === p.id,
+        "降参への返答ができません",
+      );
+      replySurrender(s, a.accept);
       break;
+    case "loadout":
+      if (s.combat?.elemental) elementLoadout(s, p, a.items);
+      else loadout(s, p, a.items);
+      break;
+    case "elementRound": {
+      const c = s.combat;
+      assert(c?.elemental && !c.done, "属性戦闘はありません");
+      const side = c.participants.indexOf(p.id);
+      assert(
+        side >= 0 && !p.ai && s.players[c.participants[1 - side]].ai,
+        "参加者ではありません",
+      );
+      prepareElementAI(s, c);
+      const other = chooseElement(c, s, 1 - side);
+      const potion = elementPotionFor(c, 1 - side, other);
+      resolveElementRound(
+        s,
+        side === 0 ? [a.element, other] : [other, a.element],
+        side === 0 ? [a.potion, potion] : [potion, a.potion],
+      );
+      if (c.done) finishCombat(s);
+      break;
+    }
     case "round":
+      assert(!s.combat?.elemental, "火・水・風から選択してください");
       combatRound(s, p, a);
       break;
     case "combatAck": {
@@ -1368,6 +1476,9 @@ function apply(s: GameState, a: Action) {
       assert(
         c?.done &&
           (c.kind === "public" ||
+            (c.kind === "mock" &&
+              c.elemental &&
+              c.participants.includes(p.id)) ||
             (c.kind === "secret" && c.participants.includes(p.id))) &&
           !p.ai &&
           !c.resultAcknowledged,
@@ -1562,18 +1673,19 @@ function runPublicAI(s: GameState) {
       continue;
     }
     if (
+      (!isV20(s) || (hasElementCombat(s) && s.publicTurn.round === 2)) &&
       EVENTS[s.event.id - 1].mock &&
       !s.event.mock.length &&
       !t.aiMockAttempted
     ) {
       t.aiMockAttempted = true;
-      startCombat(
-        s,
-        p.id,
-        s.players.find((q) => q.ai && q.id !== p.id)!.id,
-        "mock",
-      );
-      autoCombats(s);
+      const target = s.players.find((q) => q.ai && q.id !== p.id)!.id;
+      if (isV20(s))
+        apply(s, { type: "duel", player: p.id, target, mock: true });
+      else {
+        startCombat(s, p.id, target, "mock");
+        autoCombats(s);
+      }
       if (s.combat) return;
     }
     const tradeGoal =
@@ -1624,7 +1736,7 @@ function runPublicAI(s: GameState) {
         reason: "公開能力の育成",
       });
     if (
-      !isV20(s) &&
+      (!isV20(s) || hasElementCombat(s)) &&
       duelGoal &&
       t.round <= 2 &&
       p.ap >= 1 &&

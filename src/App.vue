@@ -5,6 +5,7 @@ import { plannedMaterials, potionDescription } from "./ui/alchemy";
 import TaskBriefing from "./components/TaskBriefing.vue";
 import BlockingDialog from "./components/BlockingDialog.vue";
 import GroupedItems from "./components/GroupedItems.vue";
+import { ELEMENT_POTIONS, elementPotion } from "./domain/elementCombat";
 import { legalStances } from "./domain/combat";
 import CombatRounds from "./components/CombatRounds.vue";
 import { useGameStore } from "./stores/game";
@@ -233,6 +234,7 @@ const incomingTrades = computed(
   () => s.value?.trades.filter((t) => t.to === 0) ?? [],
 );
 const secretResult = computed(() =>
+  !combat.value?.elemental &&
   (combat.value?.kind === "public" || combat.value?.kind === "secret") &&
   combat.value.done &&
   !combat.value.resultAcknowledged &&
@@ -386,13 +388,30 @@ watch(
 );
 const mySide = computed(() => combat.value?.participants.indexOf(0) ?? -1);
 const myCombat = computed(() => mySide.value >= 0);
+const selectedElement = ref<Stat>("attack");
+const elementalPotionChoices = computed(
+  () =>
+    combat.value?.brought[mySide.value]?.filter(
+      (item) => item.kind === ELEMENT_POTIONS[selectedElement.value].id,
+    ) ?? [],
+);
+watch([selectedElement, () => combat.value?.id], () => {
+  battlePotion.value = undefined;
+});
+watch(
+  () => combat.value?.id,
+  () => {
+    selectedElement.value = "attack";
+  },
+);
 const history = computed(
   () =>
     s.value?.combatHistory
       .filter((c) => c.kind !== "secret" || c.participants.includes(0))
       .reverse() ?? [],
 );
-const itemName = (kind: string) => LABELS[kind] ?? recipe(kind)?.name ?? kind;
+const itemName = (kind: string) =>
+  LABELS[kind] ?? elementPotion(kind)?.name ?? recipe(kind)?.name ?? kind;
 const describeTrade = (items: Record<string, number>) =>
   Object.entries(items)
     .filter(([, count]) => count > 0)
@@ -661,7 +680,7 @@ watch(
         ></a
       >
       <div class="top-actions">
-        <span class="version">v2.0 開発版 · 公開行動</span
+        <span class="version">v2.0 開発版 · 公開戦闘</span
         ><button @click="loadSave()">続きから</button
         ><template v-if="s"
           ><button @click="store.save()">保存</button
@@ -695,7 +714,7 @@ watch(
           >
         </h1>
         <p class="lead">
-          研究所を守る8日間。<br />この開発版では、3人のAI魔女との公開2巡と協力イベントの結果まで試遊できます。
+          研究所を守る8日間。<br />公開2巡と協力イベントの結果まで試遊できます。公開決闘とイベントの模擬戦も行えます。
         </p>
         <button class="primary start-button" @click="creation = true">
           ゲーム開始 →
@@ -1128,35 +1147,183 @@ watch(
                 s.challenge.mock ? "模擬戦" : "公開決闘"
               }}の挑戦
             </h2>
-            <p>対戦を受けるか、降参品を渡して終了できます。</p>
-            <GroupedItems v-model="selected" :items="available(me)" />
-            <button
-              class="primary"
-              @click="act({ type: 'challengeReply', player: 0, fight: true })"
-            >
-              対戦する</button
-            ><button
-              :disabled="
-                !can({
-                  type: 'challengeReply',
-                  player: 0,
-                  fight: false,
-                  items: selected,
-                })
-              "
-              @click="
-                act({
-                  type: 'challengeReply',
-                  player: 0,
-                  fight: false,
-                  items: selected,
-                })
-              "
-            >
-              {{ s.challenge.mock ? "辞退" : "素材2個 / 薬1個で降参" }}
-            </button>
+            <p>
+              {{
+                s.challenge.mock
+                  ? "模擬戦を受けるか辞退してください。"
+                  : "対戦を受けるか、降参品を1個提示できます。"
+              }}
+            </p>
+            <template v-if="s.challenge.surrenderItem !== undefined">
+              <p>
+                降参の提示：{{
+                  itemName(
+                    s.players[s.challenge.to].inventory.find(
+                      (item) => item.id === s.challenge!.surrenderItem,
+                    )?.kind ?? "",
+                  )
+                }}
+              </p>
+              <button
+                @click="
+                  act({ type: 'surrenderReply', player: 0, accept: true })
+                "
+              >
+                降参を受け入れる
+              </button>
+              <button
+                @click="
+                  act({ type: 'surrenderReply', player: 0, accept: false })
+                "
+              >
+                断って対戦する
+              </button>
+            </template>
+            <template v-else>
+              <GroupedItems
+                v-if="!s.challenge.mock"
+                v-model="selected"
+                :items="available(me)"
+              />
+              <button
+                class="primary"
+                @click="act({ type: 'challengeReply', player: 0, fight: true })"
+              >
+                対戦する</button
+              ><button
+                :disabled="
+                  !can({
+                    type: 'challengeReply',
+                    player: 0,
+                    fight: false,
+                    items: selected,
+                  })
+                "
+                @click="
+                  act({
+                    type: 'challengeReply',
+                    player: 0,
+                    fight: false,
+                    items: selected,
+                  })
+                "
+              >
+                {{ s.challenge.mock ? "辞退" : "素材か薬を1個提示して降参" }}
+              </button>
+            </template>
           </section>
-          <section v-if="combat && myCombat" class="panel combat-panel">
+          <section
+            v-if="combat?.elemental && myCombat"
+            class="panel combat-panel"
+          >
+            <h2>{{ combat.kind === "mock" ? "公開模擬戦" : "公開決闘" }}</h2>
+            <div class="battle-header" role="status">
+              <strong
+                >第{{
+                  Math.min(
+                    5,
+                    combat.elemental.rounds.length + Number(!combat.done),
+                  )
+                }}ラウンド / 最大5</strong
+              >
+              <span v-for="(id, side) in combat.participants" :key="id"
+                >{{ s.players[id].name }} HP {{ combat.hp[side] }}</span
+              >
+            </div>
+            <template v-if="!combat.elemental.ready[mySide]">
+              <h3>上位薬の持ち込み</h3>
+              <p>最大2個。確定時に消費し、未使用分も返却しません。</p>
+              <label
+                v-for="item in available(me).filter((i) =>
+                  elementPotion(i.kind),
+                )"
+                :key="item.id"
+                class="checkbox-row"
+              >
+                <input v-model="brought" type="checkbox" :value="item.id" />{{
+                  itemName(item.kind)
+                }}
+              </label>
+              <button
+                class="primary"
+                :disabled="!can({ type: 'loadout', player: 0, items: brought })"
+                @click="act({ type: 'loadout', player: 0, items: brought })"
+              >
+                {{ brought.length ? "持ち込みを確定" : "持ち込まずに進む" }}
+              </button>
+            </template>
+            <template v-else-if="!combat.done">
+              <p>
+                火は風、風は水、水は火に有利です。双方のダメージを同時に反映します。
+              </p>
+              <p v-if="combat.kind === 'mock'">
+                模擬戦では上位薬を使用しません。
+              </p>
+              <div class="stance-options">
+                <button
+                  v-for="element in STATS"
+                  :key="element"
+                  :aria-pressed="selectedElement === element"
+                  :class="{ chosen: selectedElement === element }"
+                  @click="selectedElement = element"
+                >
+                  {{ LABELS[element] }}
+                </button>
+              </div>
+              <label v-if="elementalPotionChoices.length"
+                >このラウンドの薬
+                <select v-model="battlePotion">
+                  <option :value="undefined">使わない</option>
+                  <option
+                    v-for="item in elementalPotionChoices"
+                    :key="item.id"
+                    :value="item.id"
+                  >
+                    {{ itemName(item.kind) }}
+                  </option>
+                </select>
+              </label>
+              <button
+                class="primary"
+                :disabled="!!store.pending"
+                @click="
+                  act({
+                    type: 'elementRound',
+                    player: 0,
+                    element: selectedElement,
+                    potion: battlePotion,
+                  })
+                "
+              >
+                属性と薬を確定
+              </button>
+            </template>
+            <CombatRounds
+              v-if="combat.elemental.rounds.length"
+              :combat="combat"
+              :names="combat.participants.map((id) => s.players[id].name)"
+            />
+            <template v-if="combat.done">
+              <p>{{ combatReason(combat) }}</p>
+              <h3>
+                {{
+                  combat.winner === null
+                    ? "引き分け"
+                    : s.players[combat.winner!].name + "の勝利"
+                }}
+              </h3>
+              <button
+                class="primary"
+                @click="act({ type: 'combatAck', player: 0 })"
+              >
+                確認した
+              </button>
+            </template>
+          </section>
+          <section
+            v-if="combat && !combat.elemental && myCombat"
+            class="panel combat-panel"
+          >
             <div class="battle-header" role="status">
               <strong
                 >第
@@ -1481,9 +1648,6 @@ watch(
                 event.description
               }}。納品の対象・数量は「納品」で確認できます。
             </p>
-            <p v-if="event?.mock">
-              模擬戦は次の実装段階です。この開発版では、このイベントの模擬戦条件は達成できません。
-            </p>
             <nav v-if="!actionScreen" class="action-menu">
               <button
                 v-for="(label, id) in {
@@ -1492,6 +1656,7 @@ watch(
                   event: '納品',
                   shop: '購買部',
                   trade: '魔女間取引',
+                  duel: '決闘',
                 }"
                 :key="id"
                 :class="{ active: tab === id }"
@@ -1717,7 +1882,10 @@ watch(
                   <span>品目</span><span>渡す</span><span>もらう</span>
                 </div>
                 <div
-                  v-for="kind in [...MATERIALS, ...RECIPES.map((r) => r.id)]"
+                  v-for="kind in [
+                    ...MATERIALS,
+                    ...Object.values(ELEMENT_POTIONS).map((r) => r.id),
+                  ]"
                   :key="kind"
                   class="trade-row"
                 >
