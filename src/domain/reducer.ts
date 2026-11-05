@@ -12,6 +12,7 @@ import {
   CONFIG,
   isV20,
   hasElementCombat,
+  hasNightRules,
   V20_MAGICS,
   V20_LABELS,
   V20_RESEARCH,
@@ -58,6 +59,7 @@ import {
 import { fp, log } from "./core";
 import {
   chooseElement,
+  ELEMENT_POTIONS,
   elementLoadout,
   elementPotion,
   elementPotionFor,
@@ -65,6 +67,19 @@ import {
   resolveElementRound,
 } from "./elementCombat";
 import { AI_POLICY, weightedAction } from "./ai";
+import {
+  autoPotion,
+  chooseNight,
+  finishNight,
+  giveNightReward,
+  nightRecipe,
+  registerNight,
+  rewardOptions,
+  publicModifiers,
+  unlockNightRecipes,
+  usable,
+} from "./night";
+
 export function createGame(
   setup: Setup,
   rulesVersion: string = CONFIG.rulesVersion,
@@ -170,6 +185,7 @@ export function createGame(
         p.stats[pick(s, STATS, "AI初期配分")]++;
     if (!v20)
       for (let n = 0; n < 3; n++) addItem(s, p, pick(s, MATERIALS, "初期素材"));
+    if (hasNightRules(s)) unlockNightRecipes(p);
     s.players.push(p);
   }
   if (v20)
@@ -211,12 +227,13 @@ function ap(s: GameState, p: Player, cost = 1) {
   const curse = p.curse;
   p.ap -= cost;
   if (cost) {
-    p.curse = 0;
+    if (!hasNightRules(s)) p.curse = 0;
     if (s.phase === "public") s.publicTurn.acted = true;
   }
   return curse;
 }
 function levelNotice(s: GameState, p: Player, stat: Stat, beforeValue: number) {
+  if (hasNightRules(s)) unlockNightRecipes(p);
   const before = level(beforeValue),
     after = level(p.stats[stat]);
   if (after > before)
@@ -382,7 +399,7 @@ function replyTrade(s: GameState, p: Player, id: number, accept: boolean) {
         (k) =>
           (isV20(s) ? V20_LABELS[k] : undefined) ??
           LABELS[k] ??
-          elementPotion(k)?.name ??
+          nightRecipe(k)?.name ??
           recipe(k)?.name ??
           k,
       )
@@ -458,10 +475,29 @@ function finishCombat(s: GameState) {
       log(s, "win", "決闘勝利", {
         actor: w.id,
         target: loser.id,
-        data: { kind: c.kind, initiator: c.initiator },
+        data: {
+          kind: c.kind,
+          initiator: c.initiator,
+          ...(hasNightRules(s) && c.kind === "secret"
+            ? {
+                initiated: s.nightWork!.battles[
+                  s.nightWork!.battle
+                ].raids.includes(w.id),
+              }
+            : {}),
+        },
         audience: aud,
       });
-      if (c.kind === "secret" && w.id !== c.initiator)
+      const nightBattle =
+        c.kind === "secret" && hasNightRules(s)
+          ? s.nightWork!.battles[s.nightWork!.battle]
+          : undefined;
+      const defended = nightBattle
+        ? nightBattle.raids.length
+          ? !nightBattle.raids.includes(w.id)
+          : nightBattle.scout !== w.id
+        : w.id !== c.initiator;
+      if (c.kind === "secret" && defended)
         log(s, "defensiveWin", "防衛勝利", {
           actor: w.id,
           target: loser.id,
@@ -469,6 +505,18 @@ function finishCombat(s: GameState) {
         });
       if (c.kind === "public") fp(s, w, 1, "duel");
     }
+  }
+  if (hasNightRules(s) && c.kind === "secret") {
+    const work = s.nightWork!;
+    work.battles[work.battle].winner = c.winner;
+    if (
+      c.resultAcknowledged ||
+      c.participants.every((id) => s.players[id].ai)
+    ) {
+      work.battle++;
+      s.combat = undefined;
+    }
+    return;
   }
   if (c.elemental && c.kind === "mock") {
     if (c.resultAcknowledged || c.participants.every((id) => s.players[id].ai))
@@ -602,6 +650,7 @@ function autoCombats(s: GameState) {
         s,
         [left, right],
         [elementPotionFor(c, 0, left), elementPotionFor(c, 1, right)],
+        [true, true],
       );
       if (c.done) finishCombat(s);
       continue;
@@ -631,6 +680,49 @@ function autoCombats(s: GameState) {
     if (c.done) finishCombat(s);
   }
 }
+function runNight(s: GameState) {
+  const work = s.nightWork!;
+  while (
+    s.phase === "duels" &&
+    !s.combat &&
+    work.battle < work.battles.length
+  ) {
+    const battle = work.battles[work.battle];
+    if (battle.automatic) {
+      work.battle++;
+      continue;
+    }
+    const [a, b] = battle.participants;
+    const c = startCombat(s, a, b, "secret");
+    const bonus = ([a, b] as const).map((id, side) => {
+      const p = s.players[id];
+      if (battle.raids.includes(id)) return level(p.stats.attack) - 1;
+      if (p.night?.kind !== "guard") return 0;
+      const guard = level(p.stats.defense) - 1;
+      return guard &&
+        !autoPotion(s, s.players[c.participants[1 - side]], "might")
+        ? guard
+        : 0;
+    }) as [number, number];
+    c.elemental!.bonus = bonus;
+    c.elemental!.spent = [false, false];
+    autoCombats(s);
+  }
+  if (s.phase === "duels" && !s.combat) s.phase = "rewards";
+  while (s.phase === "rewards" && work.reward < work.battles.length) {
+    const options = rewardOptions(s);
+    if (!options || (!options.items.length && !options.canCommand)) {
+      work.reward++;
+      continue;
+    }
+    if (!s.players[options.winner].ai) return;
+    if (options.items.length)
+      giveNightReward(s, options.winner, options.items[0].id);
+    else giveNightReward(s, options.winner, undefined, "gather");
+  }
+  if (s.phase === "rewards") finishNight(s);
+}
+
 function magic(s: GameState, p: Player, target?: number) {
   assert(
     s.phase === "magic" && p.availableDay <= s.day && !p.activeMagic,
@@ -658,7 +750,11 @@ function magic(s: GameState, p: Player, target?: number) {
   if (m === "foresight") {
     if (!s.foresight.length) {
       const candidates: number[] = [];
-      for (let i = 0; i < 3; i++)
+      const count = hasNightRules(s)
+        ? Math.min(3, EVENTS.length - s.usedEvents.length)
+        : 3;
+      assert(count > 0, "翌日のイベント候補がありません");
+      for (let i = 0; i < count; i++)
         candidates.push(drawEvent(s, s.day + 1, candidates));
       s.foresight = candidates;
     }
@@ -837,13 +933,16 @@ function nightResults(s: GameState) {
 }
 function evaluateHO(s: GameState) {
   const daily = s.players.map((p) => dailyAchieved(s, p));
+  if (hasNightRules(s) && s.day === 8)
+    s.finalComparison = s.players.map((p) => p.fp);
   const longs = s.players.map((p) => longAchieved(s, p));
   s.players.forEach((p, i) => {
     p.dailyGoal.achieved = daily[i];
     p.dailyHistory.push({ day: s.day, id: p.dailyGoal.id, achieved: daily[i] });
     p.longGoal.achieved =
       longs[i] ||
-      (![1, 6, 9, 17, 20, 22, 25, 18].includes(p.longGoal.id) &&
+      (!hasNightRules(s) &&
+        ![1, 6, 9, 17, 20, 22, 25, 18].includes(p.longGoal.id) &&
         p.longGoal.achieved);
   });
   s.players.forEach((p, i) => {
@@ -868,7 +967,13 @@ function end(s: GameState, reason: "completed" | "collapse") {
       ? s.players.filter((p) => p.longGoal.achieved).map((p) => p.id)
       : [];
   const topFP = Math.max(-Infinity, ...graduates.map((id) => s.players[id].fp));
-  const chiefs = graduates.filter((id) => s.players[id].fp === topFP);
+  const dailyCount = (id: number) =>
+    s.players[id].dailyHistory.filter((h) => h.achieved).length;
+  const finalists = graduates.filter((id) => s.players[id].fp === topFP);
+  const topDaily = Math.max(-Infinity, ...finalists.map(dailyCount));
+  const chiefs = hasNightRules(s)
+    ? finalists.filter((id) => dailyCount(id) === topDaily)
+    : finalists;
   s.result = {
     reason,
     graduates,
@@ -897,12 +1002,14 @@ function nextDay(s: GameState) {
   for (const p of s.players)
     if (p.temporaryRecipe?.day === s.day) p.temporaryRecipe = undefined;
   s.day++;
+  if (hasNightRules(s)) s.nightWork = undefined;
   s.phase = "public";
   s.barriers = [];
   s.foresight = [];
   s.votes = {};
   for (const p of s.players) {
     p.ap = 2;
+    if (hasNightRules(s)) p.publicPotions = [];
     p.night = undefined;
     p.activeMagic = false;
     if (p.nextMagic) {
@@ -924,11 +1031,45 @@ function nextDay(s: GameState) {
   dealGoals(s);
   startEvent(s);
 }
+function researchMaterials(
+  s: GameState,
+  p: Player,
+  stat: Stat,
+  material?: string,
+) {
+  const base = (isV20(s) ? V20_RESEARCH : RESEARCH)[stat];
+  if (!base) return null;
+  const mod = hasNightRules(s) ? publicModifiers(p).research : 0;
+  if (!mod) return materialIds(p, base);
+  if (!material || !base.includes(material)) return null;
+  return materialIds(p, mod > 0 ? [...base, material] : [material]);
+}
+function legalResearch(s: GameState, p: Player) {
+  return STATS.flatMap((stat) =>
+    (hasNightRules(s) && publicModifiers(p).research
+      ? V20_RESEARCH[stat]
+      : [undefined]
+    )
+      .filter((material) => researchMaterials(s, p, stat, material))
+      .map((material) => ({ stat, material })),
+  );
+}
+function publicPotion(s: GameState, p: Player, kind: string) {
+  if (!p.publicPotions?.includes(kind)) return 0;
+  log(s, "usePotion", `${nightRecipe(kind)!.name}の補正を適用`, {
+    actor: p.id,
+    kind,
+    audience: [p.id],
+  });
+  return 1;
+}
+
 function forced(
   s: GameState,
   p: Player,
   kind: "gather" | "research",
   stat?: Stat,
+  material?: string,
 ) {
   assert(
     kind === "gather" || kind === "research",
@@ -936,12 +1077,24 @@ function forced(
   );
   assert(p.commands.length, "命令がありません");
   const cmd = p.commands.shift()!;
+  if (hasNightRules(s)) {
+    const expected =
+      cmd.kind === "research" && legalResearch(s, p).length
+        ? "research"
+        : "gather";
+    assert(kind === expected, "指定された命令を実行してください");
+  }
   const remaining = p.commands;
   p.commands = [];
   apply(
     s,
     kind === "research"
-      ? { type: "research", player: p.id, stat: stat! }
+      ? {
+          type: "research",
+          player: p.id,
+          stat: stat!,
+          ...(material ? { material } : {}),
+        }
       : { type: "gather", player: p.id },
   );
   p.commands = remaining;
@@ -953,6 +1106,7 @@ function forced(
       actor: cmd.from,
       target: p.id,
       audience: [cmd.from, p.id],
+      ...(hasNightRules(s) ? { data: { qualifies: cmd.qualifies } } : {}),
     },
   );
 }
@@ -980,7 +1134,7 @@ function advance(s: GameState) {
         if (isV20(s))
           log(s, "dailyHOSkipped", "当日の日次HO：判定なし・報酬なし");
         end(s, "collapse");
-      } else if (!isV20(s)) {
+      } else if (!isV20(s) || hasNightRules(s)) {
         s.phase = "magic";
         for (const p of s.players.filter((p) => p.ai))
           if (
@@ -998,10 +1152,17 @@ function advance(s: GameState) {
       }
       break;
     case "magic":
+      if (hasNightRules(s) && s.foresight.length === 1) {
+        s.nextEvent = s.foresight[0];
+        enterNight(s);
+        break;
+      }
       if (s.foresight.length) {
         s.phase = "vote";
         for (const p of s.players.filter(
-          (p) => p.ai && p.activeMagic && p.magic === "foresight",
+          (p) =>
+            p.ai &&
+            (hasNightRules(s) || (p.activeMagic && p.magic === "foresight")),
         )) {
           const id = [...s.foresight].sort(
             (a, b) =>
@@ -1014,8 +1175,10 @@ function advance(s: GameState) {
       break;
     case "vote": {
       const voters = s.players.filter(
-        (p) => p.activeMagic && p.magic === "foresight",
+        (p) => hasNightRules(s) || (p.activeMagic && p.magic === "foresight"),
       );
+      if (hasNightRules(s))
+        assert(s.votes[0] !== undefined, "予知の候補に投票してください");
       const votes = voters.map(
         (p) => s.votes[p.id] ?? pick(s, s.foresight, "予知無投票補完"),
       );
@@ -1033,7 +1196,10 @@ function advance(s: GameState) {
       break;
     }
     case "night":
-      prepareNight(s);
+      if (hasNightRules(s)) {
+        registerNight(s);
+        runNight(s);
+      } else prepareNight(s);
       break;
     case "duels":
       while (s.duelQueue.length && !s.combat) {
@@ -1058,6 +1224,42 @@ function advance(s: GameState) {
 }
 function enterNight(s: GameState) {
   s.phase = "night";
+  if (hasNightRules(s)) {
+    for (const p of s.players.filter((player) => player.ai)) {
+      const daily: Record<number, Night["kind"]> = {
+        13: "scout",
+        14: "raid",
+        16: "raid",
+        17: "curse",
+        18: "guard",
+        22: "raid",
+      };
+      const long: Record<number, Night["kind"]> = {
+        7: "scout",
+        10: "raid",
+        11: "curse",
+        12: "scout",
+        16: "scout",
+        19: "scout",
+        21: "rest",
+      };
+      const kind = long[p.longGoal.id] ?? daily[p.dailyGoal.id] ?? "rest";
+      const target =
+        p.longGoal.targets[0] ?? s.publicTurn.order.find((id) => id !== p.id)!;
+      const recipes =
+        p.dailyGoal.id === 3
+          ? p.recipes
+              .filter((id) => materialIds(p, nightRecipe(id)!.materials))
+              .slice(0, 1)
+          : [];
+      chooseNight(s, p, {
+        kind: kind === "raid" && p.lastRaid === s.day - 1 ? "rest" : kind,
+        target,
+        recipes,
+      });
+    }
+    return;
+  }
   for (const p of s.players.filter((p) => p.ai)) {
     let kind: Night["kind"] = "rest";
     const daily: Record<number, Night["kind"]> = {
@@ -1151,7 +1353,12 @@ function enterNight(s: GameState) {
   }
 }
 function apply(s: GameState, a: Action) {
-  if (isV20(s) && s.event.resolved && a.type !== "eventAck")
+  if (
+    isV20(s) &&
+    !hasNightRules(s) &&
+    s.event.resolved &&
+    a.type !== "eventAck"
+  )
     throw Error("今回の試遊範囲は協力イベントの結果までです");
   if (s.event.resolved && !s.event.acknowledged && a.type !== "eventAck")
     throw Error("共通イベントの結果を確認してください");
@@ -1189,9 +1396,14 @@ function apply(s: GameState, a: Action) {
     throw Error("挑戦への返答を完了してください");
   if (
     s.combat &&
-    !["round", "elementRound", "loadout", "reward", "combatAck"].includes(
-      a.type,
-    )
+    ![
+      "round",
+      "elementRound",
+      "elementReply",
+      "loadout",
+      "reward",
+      "combatAck",
+    ].includes(a.type)
   )
     throw Error("戦闘中です");
   switch (a.type) {
@@ -1199,13 +1411,16 @@ function apply(s: GameState, a: Action) {
       endTurn(s, p);
       break;
     case "forced":
-      forced(s, p, a.kind, a.stat);
+      forced(s, p, a.kind, a.stat, a.material);
       break;
     case "gather": {
       publicAction(s, p);
-      const bonus = used(s, p, a.potion, "gather");
+      const modern = hasNightRules(s);
+      const adjustment = modern
+        ? publicModifiers(p).gather + publicPotion(s, p, "abundance")
+        : p.rest + used(s, p, a.potion, "gather");
       const curse = ap(s, p);
-      const n = Math.max(0, 2 + p.rest + bonus - curse);
+      const n = Math.max(0, 2 + adjustment - (modern ? 0 : curse));
       const items = [];
       for (let i = 0; i < n; i++)
         items.push(addItem(s, p, pick(s, MATERIALS, "採集素材")).kind);
@@ -1222,12 +1437,15 @@ function apply(s: GameState, a: Action) {
     case "research": {
       publicAction(s, p);
       assert(STATS.includes(a.stat), "能力が不正");
-      const ids = materialIds(p, (isV20(s) ? V20_RESEARCH : RESEARCH)[a.stat]);
-      assert(ids, "研究素材不足または予約中");
-      const bonus = used(s, p, a.potion, "research");
+      const ids = researchMaterials(s, p, a.stat, a.material);
+      assert(ids, "研究素材不足、予約中、または支払う素材が未選択です");
+      const modern = hasNightRules(s);
+      const bonus = modern
+        ? publicPotion(s, p, "scholarship")
+        : used(s, p, a.potion, "research");
       consume(p, ids);
       const curse = ap(s, p);
-      const growth = Math.max(0, 1 + p.rest + bonus - curse);
+      const growth = Math.max(0, 1 + bonus + (modern ? 0 : p.rest - curse));
       const beforeValue = p.stats[a.stat];
       p.stats[a.stat] += growth;
       log(
@@ -1256,19 +1474,28 @@ function apply(s: GameState, a: Action) {
     case "shop": {
       publicAction(s, p);
       assert(
-        a.items.length === 3 &&
+        a.items.length ===
+          (hasNightRules(s) ? 3 + publicModifiers(p).shop : 3) &&
           a.items.every((id) =>
             isMaterial(p.inventory.find((i) => i.id === id)?.kind ?? ""),
           ) &&
           MATERIALS.includes(a.receive),
-        "購買部は素材3→1",
+        hasNightRules(s)
+          ? `購買部に必要な素材は${3 + publicModifiers(p).shop}個です`
+          : "購買部は素材3→1",
       );
       consume(p, a.items);
+      if (hasNightRules(s)) publicPotion(s, p, "bargaining");
       ap(s, p);
       addItem(s, p, a.receive);
-      log(s, "shop", `${p.name}が購買部で素材3個を1個に交換（1AP）`, {
-        actor: p.id,
-      });
+      log(
+        s,
+        "shop",
+        `${p.name}が購買部で素材${a.items.length}個を1個に交換（1AP）`,
+        {
+          actor: p.id,
+        },
+      );
       log(s, "shopItems", `受領：${LABELS[a.receive]}`, {
         actor: p.id,
         audience: [p.id],
@@ -1291,7 +1518,12 @@ function apply(s: GameState, a: Action) {
       assert(
         Object.entries(a.request).every(
           ([k, n]) =>
-            (isMaterial(k) || (isV20(s) ? elementPotion(k) : recipe(k))) &&
+            (isMaterial(k) ||
+              (hasNightRules(s)
+                ? nightRecipe(k)
+                : isV20(s)
+                  ? elementPotion(k)
+                  : recipe(k))) &&
             Number.isSafeInteger(n) &&
             n >= 0,
         ),
@@ -1448,7 +1680,8 @@ function apply(s: GameState, a: Action) {
       if (s.combat?.elemental) elementLoadout(s, p, a.items);
       else loadout(s, p, a.items);
       break;
-    case "elementRound": {
+    case "elementRound":
+    case "elementReply": {
       const c = s.combat;
       assert(c?.elemental && !c.done, "属性戦闘はありません");
       const side = c.participants.indexOf(p.id);
@@ -1456,14 +1689,47 @@ function apply(s: GameState, a: Action) {
         side >= 0 && !p.ai && s.players[c.participants[1 - side]].ai,
         "参加者ではありません",
       );
+      if (
+        a.type === "elementRound" &&
+        hasNightRules(s) &&
+        c.kind === "secret"
+      ) {
+        assert(
+          c.elemental.ready[side] && !c.elemental.pending,
+          "入力を確定できません",
+        );
+        assert(
+          STATS.includes(a.element) &&
+            (a.potion === undefined ||
+              c.brought[side].some(
+                (i) =>
+                  i.id === a.potion && i.kind === ELEMENT_POTIONS[a.element].id,
+              )),
+          "属性と薬の組み合わせが不正です",
+        );
+        c.elemental.pending = {
+          player: p.id,
+          element: a.element,
+          ...(a.potion === undefined ? {} : { potion: a.potion }),
+          ...(a.bonus ? { bonus: true } : {}),
+        };
+        break;
+      }
+      const choice = a.type === "elementRound" ? a : c.elemental.pending;
+      assert(
+        choice && choice.player === p.id,
+        "ラウンドの確定入力がありません",
+      );
       prepareElementAI(s, c);
       const other = chooseElement(c, s, 1 - side);
       const potion = elementPotionFor(c, 1 - side, other);
       resolveElementRound(
         s,
-        side === 0 ? [a.element, other] : [other, a.element],
-        side === 0 ? [a.potion, potion] : [potion, a.potion],
+        side === 0 ? [choice.element, other] : [other, choice.element],
+        side === 0 ? [choice.potion, potion] : [potion, choice.potion],
+        side === 0 ? [!!choice.bonus, true] : [true, !!choice.bonus],
       );
+      delete c.elemental.pending;
       if (c.done) finishCombat(s);
       break;
     }
@@ -1493,9 +1759,16 @@ function apply(s: GameState, a: Action) {
         data: { combat: c.id },
       });
       finishCombat(s);
+      if (hasNightRules(s) && c.kind === "secret") runNight(s);
       break;
     }
+    case "nightReward":
+      assert(hasNightRules(s), "夜間報酬はありません");
+      giveNightReward(s, p.id, a.item, a.command);
+      runNight(s);
+      break;
     case "reward":
+      assert(!hasNightRules(s), "夜間報酬を選択してください");
       applyReward(s, p, a.kind, a.stat);
       break;
     case "magic":
@@ -1504,8 +1777,7 @@ function apply(s: GameState, a: Action) {
     case "vote":
       assert(
         s.phase === "vote" &&
-          p.activeMagic &&
-          p.magic === "foresight" &&
+          (hasNightRules(s) || (p.activeMagic && p.magic === "foresight")) &&
           s.foresight.includes(a.event) &&
           s.votes[p.id] === undefined,
         "投票不可",
@@ -1513,11 +1785,29 @@ function apply(s: GameState, a: Action) {
       s.votes[p.id] = a.event;
       break;
     case "night":
-      nightChoice(s, p, a.choice);
+      if (hasNightRules(s)) chooseNight(s, p, a.choice);
+      else nightChoice(s, p, a.choice);
       break;
     case "usePotion": {
       if (s.phase === "public") publicAction(s, p, 0);
       assert(s.phase === "public" || s.phase === "magic", "薬の使用フェーズ外");
+      if (hasNightRules(s)) {
+        assert(s.phase === "public", "公開行動用の薬です");
+        const item = usable(s, p).find((i) => i.id === a.item);
+        assert(
+          item && nightRecipe(item.kind)?.level === 1,
+          "使用できる通常薬がありません",
+        );
+        const active = (p.publicPotions ??= []);
+        assert(!active.includes(item.kind), "同じ薬の効果がすでに有効です");
+        consume(p, [item.id]);
+        active.push(item.kind);
+        log(s, "publicPotion", `${nightRecipe(item.kind)!.name}を使用`, {
+          actor: p.id,
+          audience: [p.id],
+        });
+        break;
+      }
       const i = p.inventory.find((i) => i.id === a.item && !i.lock);
       assert(i, "薬がありません");
       if (i.kind === "purify") {
@@ -1664,10 +1954,17 @@ function runPublicAI(s: GameState) {
       continue;
     }
     if (p.commands.length) {
-      const stat = STATS.find((k) =>
-        materialIds(p, (isV20(s) ? V20_RESEARCH : RESEARCH)[k]),
+      const choice =
+        !hasNightRules(s) || p.commands[0].kind === "research"
+          ? legalResearch(s, p)[0]
+          : undefined;
+      forced(
+        s,
+        p,
+        choice ? "research" : "gather",
+        choice?.stat,
+        choice?.material,
       );
-      forced(s, p, stat ? "research" : "gather", stat);
       t.acted = true;
       autoReserve(s, p);
       continue;
@@ -1710,9 +2007,8 @@ function runPublicAI(s: GameState) {
         if (!isV20(s) && s.trades.length) return;
       }
     }
-    const stat = STATS.find((k) =>
-      materialIds(p, (isV20(s) ? V20_RESEARCH : RESEARCH)[k]),
-    );
+    const researchChoice = legalResearch(s, p)[0];
+    const stat = researchChoice?.stat;
     const duelGoal =
       (AI_POLICY.goalDuelDaily as readonly number[]).includes(p.dailyGoal.id) ||
       (AI_POLICY.goalDuelLong as readonly number[]).includes(p.longGoal.id);
@@ -1728,7 +2024,14 @@ function runPublicAI(s: GameState) {
       s.failed >= 2 ? CONFIG.aiCrisisCooperation : CONFIG.aiCooperation;
     if (stat)
       candidates.push({
-        action: { type: "research", player: p.id, stat },
+        action: {
+          type: "research",
+          player: p.id,
+          stat,
+          ...(researchChoice?.material
+            ? { material: researchChoice.material }
+            : {}),
+        },
         weight:
           e.actions?.includes("research") && !eventProgress(s).success
             ? cooperation

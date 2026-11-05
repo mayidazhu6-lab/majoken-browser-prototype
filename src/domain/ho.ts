@@ -1,7 +1,7 @@
 import goals from "./goals.json" with { type: "json" };
 import type { GameState, Goal, Player, Log } from "./types";
 import { sample, pick } from "./rng";
-import { STATS } from "./config";
+import { STATS, hasNightRules } from "./config";
 import { eventProgress, EVENTS } from "./events";
 export const LONG_GOALS = goals.long;
 export const DAILY_GOALS = goals.daily;
@@ -51,6 +51,8 @@ export function dailyAchieved(s: GameState, p: Player, g: Goal = p.dailyGoal) {
     case 1:
       return has("research", (l) => (l.amount ?? 0) > 0);
     case 2:
+      if (hasNightRules(s))
+        return has("gather") && (has("research") || has("brew"));
       return ls.some(
         (l, i) =>
           l.type === "gather" &&
@@ -81,10 +83,20 @@ export function dailyAchieved(s: GameState, p: Player, g: Goal = p.dailyGoal) {
     case 13:
       return has("scout", (l) => (l.amount ?? 0) > 0);
     case 14:
-      return has("loot", (l) => (l.amount ?? 0) > 0);
+      return has(
+        "loot",
+        (l) =>
+          (l.amount ?? 0) > 0 &&
+          (!hasNightRules(s) || l.data?.initiated === true),
+      );
     case 15:
       return has("rest");
     case 16:
+      if (hasNightRules(s))
+        return has(
+          "win",
+          (l) => l.data?.kind === "secret" && l.data?.initiated === true,
+        );
       return battles.some(
         (c) => c.kind === "secret" && c.initiator === p.id && c.winner === p.id,
       );
@@ -325,9 +337,11 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
   const most = (values: number[], v: number, strict = true) =>
     values.every((x) => (strict ? v > x : v >= x));
   const others = s.players.filter((x) => x.id !== p.id);
+  const comparison = (player: Player) =>
+    s.finalComparison?.[player.id] ?? player.fp;
   switch (g.id) {
     case 1:
-      return p.fp >= q.fp + 2;
+      return comparison(p) >= comparison(q) + 2;
     case 2:
       return ts("trade", target).length >= 2 && wins(target) >= 1;
     case 3:
@@ -350,7 +364,13 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
     case 9:
       return p.inventory.length > q.inventory.length;
     case 10:
-      return new Set(ts("commandExecuted").map((l) => l.target)).size >= 2;
+      return (
+        new Set(
+          ts("commandExecuted")
+            .filter((l) => !hasNightRules(s) || l.data?.qualifies === true)
+            .map((l) => l.target),
+        ).size >= 2
+      );
     case 11:
       return ts("curseHit", target).length > 0 && wins(target) >= 1;
     case 12:
@@ -386,6 +406,21 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
           ),
         ),
       );
+      if (hasNightRules(s))
+        return (
+          a ||
+          others.some(
+            (q) =>
+              scouts(q.id).filter((l) =>
+                ts("win", q.id).some(
+                  (v) =>
+                    v.data?.kind === "public" &&
+                    v.data?.initiator === p.id &&
+                    v.seq < l.seq,
+                ),
+              ).length >= 3,
+          )
+        );
       const b =
         others.reduce(
           (sum, q) =>
@@ -415,14 +450,20 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
                 c.participants.includes(t) &&
                 c.winner !== null &&
                 c.winner !== t,
-            ) && p.fp > s.players[t].fp,
-        ) ||
-        most(
-          others.map((q) => q.fp),
-          p.fp,
-        )
+            ) && comparison(p) > comparison(s.players[t]),
+        ) || most(others.map(comparison), comparison(p))
       );
     case 20:
+      if (hasNightRules(s))
+        return (
+          ts("defensiveWin").length >= 2 &&
+          STATS.some((k) =>
+            most(
+              others.map((q) => q.stats[k]),
+              p.stats[k],
+            ),
+          )
+        );
       return (
         ts("defensiveWin").length >= 2 ||
         most(
@@ -461,11 +502,7 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
     case 18:
       return (
         n("give", target) >= 3 &&
-        most(
-          others.map((q) => q.fp),
-          p.fp,
-          false,
-        )
+        most(others.map(comparison), comparison(p), false)
       );
     case 19:
       return wins(target) >= 2 && scouts(target).length >= 1;

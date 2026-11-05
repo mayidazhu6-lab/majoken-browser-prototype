@@ -1,4 +1,4 @@
-import type { GameState, Player } from "./types";
+import type { GameState, Item, Player } from "./types";
 import { MATERIALS, level } from "./config";
 export interface Recipe {
   id: string;
@@ -134,7 +134,7 @@ export const RECIPES: Recipe[] = [
 export const recipe = (id: string) => RECIPES.find((r) => r.id === id);
 export const isMaterial = (kind: string) => MATERIALS.includes(kind);
 export const available = (p: Player) => p.inventory.filter((i) => !i.lock);
-export function addItem(s: GameState, p: Player, kind: string) {
+export function addItem(s: GameState, p: Player, kind: string): Item {
   const item = { id: s.nextItem++, kind };
   p.inventory.push(item);
   return item;
@@ -149,7 +149,7 @@ export function canRecipe(p: Player, id: string, day: number) {
     (r.tier !== "combat" || level(p.stats.insight) === 3)
   );
 }
-export function materialIds(p: Player, kinds: string[]) {
+export function materialIds(p: Player, kinds: readonly string[]) {
   const pool = available(p);
   const ids: number[] = [];
   for (const kind of kinds) {

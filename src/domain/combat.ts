@@ -1,5 +1,5 @@
 import type { Combat, GameState, Item, Player, Stance } from "./types";
-import { CONFIG, hasElementCombat, level } from "./config";
+import { CONFIG, hasElementCombat, hasNightRules, level } from "./config";
 import { recipe } from "./items";
 import { pick } from "./rng";
 import { log } from "./core";
@@ -47,7 +47,7 @@ export function startCombat(
         : -1,
     initiator: a,
   };
-  if (hasElementCombat(s) && kind !== "secret") {
+  if (hasElementCombat(s) && (kind !== "secret" || hasNightRules(s))) {
     c.hp = [ELEMENT_HP, ELEMENT_HP];
     c.elemental = { ready: [kind === "mock", kind === "mock"], rounds: [] };
   }

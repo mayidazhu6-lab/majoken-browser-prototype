@@ -30,13 +30,15 @@ defineProps<{ combat: Combat; names: string[]; onlyLast?: boolean }>();
               基本2 ＋ Lv補正{{ effect.levelBonus }} ＋ 相性{{
                 effect.affinity
               }}
-              ＋ 薬{{ effect.potionBonus }} ＝ {{ effect.calculated }}
+              ＋ 薬{{ effect.potionBonus
+              }}<template v-if="effect.nightBonus">
+                ＋ 夜間{{ effect.nightBonus }}</template
+              >
+              ＝ {{ effect.calculated }}
             </p>
             <p>
               使用薬
-              {{
-                effect.potion ? elementPotion(effect.potion)?.name : "なし"
-              }}
+              {{ effect.potion ? elementPotion(effect.potion)?.name : "なし" }}
               · 残HP {{ round.hp[side] }}
             </p>
           </td>

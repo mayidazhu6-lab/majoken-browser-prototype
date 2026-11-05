@@ -6,6 +6,13 @@ import TaskBriefing from "./components/TaskBriefing.vue";
 import BlockingDialog from "./components/BlockingDialog.vue";
 import GroupedItems from "./components/GroupedItems.vue";
 import { ELEMENT_POTIONS, elementPotion } from "./domain/elementCombat";
+import {
+  NIGHT_RECIPES,
+  nightRecipe as modernRecipe,
+  publicModifiers,
+  rewardOptions,
+  usable,
+} from "./domain/night";
 import { legalStances } from "./domain/combat";
 import CombatRounds from "./components/CombatRounds.vue";
 import { useGameStore } from "./stores/game";
@@ -16,6 +23,7 @@ import {
   V20_MAGICS,
   V20_RESEARCH,
   V20_RULES_VERSION,
+  hasNightRules,
   MAGICS,
   MATERIALS,
   STATS,
@@ -155,7 +163,9 @@ function syncNightDisplay() {
   const saved = me.value?.night;
   night.value = saved?.kind ?? "rest";
   nightPlan.value = [...(saved?.recipes ?? [])];
-  nightRecipe.value = nightPlan.value[0] ?? "vigor";
+  nightRecipe.value =
+    nightPlan.value[0] ??
+    (s.value && hasNightRules(s.value) ? "abundance" : "vigor");
   nightPotion.value = saved?.potion;
   target.value = saved?.target ?? 1;
 }
@@ -389,6 +399,32 @@ watch(
 const mySide = computed(() => combat.value?.participants.indexOf(0) ?? -1);
 const myCombat = computed(() => mySide.value >= 0);
 const selectedElement = ref<Stat>("attack");
+const bonusRound = ref(false);
+const modernNight = computed(() => !!s.value && hasNightRules(s.value));
+const modernReward = computed(() =>
+  s.value?.phase === "rewards" && modernNight.value
+    ? rewardOptions(s.value)
+    : undefined,
+);
+const researchPayment = ref<Partial<Record<Stat, string>>>({});
+const nightDraft = computed<Action>(() => ({
+  type: "night",
+  player: 0,
+  choice: {
+    kind: night.value,
+    target: target.value === 0 ? 1 : target.value,
+    recipes: [...nightPlan.value],
+  },
+}));
+const modifiers = computed(() =>
+  me.value ? publicModifiers(me.value) : { gather: 0, research: 0, shop: 0 },
+);
+watch(
+  () => s.value?.revision,
+  () => {
+    bonusRound.value = false;
+  },
+);
 const elementalPotionChoices = computed(
   () =>
     combat.value?.brought[mySide.value]?.filter(
@@ -411,7 +447,11 @@ const history = computed(
       .reverse() ?? [],
 );
 const itemName = (kind: string) =>
-  LABELS[kind] ?? elementPotion(kind)?.name ?? recipe(kind)?.name ?? kind;
+  LABELS[kind] ??
+  modernRecipe(kind)?.name ??
+  elementPotion(kind)?.name ??
+  recipe(kind)?.name ??
+  kind;
 const describeTrade = (items: Record<string, number>) =>
   Object.entries(items)
     .filter(([, count]) => count > 0)
@@ -680,7 +720,7 @@ watch(
         ></a
       >
       <div class="top-actions">
-        <span class="version">v2.0 開発版 · 公開戦闘</span
+        <span class="version">v2.0 開発版 · 夜間処理</span
         ><button @click="loadSave()">続きから</button
         ><template v-if="s"
           ><button @click="store.save()">保存</button
@@ -714,7 +754,7 @@ watch(
           >
         </h1>
         <p class="lead">
-          研究所を守る8日間。<br />公開2巡と協力イベントの結果まで試遊できます。公開決闘とイベントの模擬戦も行えます。
+          研究所を守る8日間。<br />公開行動、協力イベント、夜間行動を進めて研究所の8日間を遊べます。
         </p>
         <button class="primary start-button" @click="creation = true">
           ゲーム開始 →
@@ -818,7 +858,9 @@ watch(
         </p>
       </section>
       <section
-        v-if="s.event.resolved && s.event.acknowledged && !s.result"
+        v-if="
+          !modernNight && s.event.resolved && s.event.acknowledged && !s.result
+        "
         class="panel persistent-turn"
         role="status"
       >
@@ -851,7 +893,7 @@ watch(
       </section>
       <nav
         v-if="
-          !s.event.resolved &&
+          (!s.event.resolved || modernNight) &&
           !briefing &&
           !combat &&
           ['public', 'magic', 'night', 'vote'].includes(s.phase)
@@ -1216,7 +1258,15 @@ watch(
             v-if="combat?.elemental && myCombat"
             class="panel combat-panel"
           >
-            <h2>{{ combat.kind === "mock" ? "公開模擬戦" : "公開決闘" }}</h2>
+            <h2>
+              {{
+                combat.kind === "mock"
+                  ? "公開模擬戦"
+                  : combat.kind === "secret"
+                    ? "秘匿決闘"
+                    : "公開決闘"
+              }}
+            </h2>
             <div class="battle-header" role="status">
               <strong
                 >第{{
@@ -1252,6 +1302,16 @@ watch(
                 {{ brought.length ? "持ち込みを確定" : "持ち込まずに進む" }}
               </button>
             </template>
+            <template v-else-if="combat.elemental.pending">
+              <p>あなたの属性と薬は確定済みです。</p>
+              <button
+                class="primary"
+                :disabled="!!store.pending"
+                @click="act({ type: 'elementReply', player: 0 })"
+              >
+                ラウンド結果を見る
+              </button>
+            </template>
             <template v-else-if="!combat.done">
               <p>
                 火は風、風は水、水は火に有利です。双方のダメージを同時に反映します。
@@ -1283,6 +1343,19 @@ watch(
                   </option>
                 </select>
               </label>
+              <label
+                v-if="
+                  combat.elemental.bonus?.[mySide] &&
+                  !combat.elemental.spent?.[mySide]
+                "
+              >
+                <input
+                  v-model="bonusRound"
+                  type="checkbox"
+                />このラウンドで夜間補正＋{{
+                  combat.elemental.bonus[mySide]
+                }}を使う
+              </label>
               <button
                 class="primary"
                 :disabled="!!store.pending"
@@ -1292,6 +1365,7 @@ watch(
                     player: 0,
                     element: selectedElement,
                     potion: battlePotion,
+                    bonus: bonusRound,
                   })
                 "
               >
@@ -1592,6 +1666,7 @@ watch(
                   player: 0,
                   kind: 'research',
                   stat: forcedStat,
+                  material: researchPayment[forcedStat],
                 })
               "
               @click="
@@ -1600,6 +1675,7 @@ watch(
                   player: 0,
                   kind: 'research',
                   stat: forcedStat,
+                  material: researchPayment[forcedStat],
                 })
               "
             >
@@ -1639,6 +1715,20 @@ watch(
             <div class="section-heading">
               <h2>今日、何を研究する？</h2>
               <span class="ap-badge">{{ me.ap }} AP</span>
+            </div>
+            <div v-if="modernNight && currentPlayer(s) === 0">
+              <button
+                v-for="item in usable(s, me).filter(
+                  (i) => modernRecipe(i.kind)?.level === 1,
+                )"
+                :key="item.id"
+                :disabled="
+                  !can({ type: 'usePotion', player: 0, item: item.id })
+                "
+                @click="act({ type: 'usePotion', player: 0, item: item.id })"
+              >
+                {{ itemName(item.kind) }}を使う（0AP）
+              </button>
             </div>
             <p v-if="!actionScreen">
               1AP行動を1回選び、納品・取引を済ませたら「手番終了」へ。何もしないでパスすることもできます。
@@ -1683,6 +1773,18 @@ watch(
                     :value="i.id"
                   >
                     {{ itemName(i.kind) }}
+                  </option></select
+                ><select
+                  v-if="modernNight && modifiers.research"
+                  v-model="researchPayment[forcedStat]"
+                  aria-label="命令研究の素材"
+                >
+                  <option
+                    v-for="kind in V20_RESEARCH[forcedStat]"
+                    :key="kind"
+                    :value="kind"
+                  >
+                    {{ itemName(kind) }}
                   </option>
                 </select></label
               >
@@ -1693,18 +1795,23 @@ watch(
                     素材を基本2個、6種類から等確率で獲得。<br />今回の獲得数：{{
                       Math.max(
                         0,
-                        2 +
-                          me.rest -
-                          me.curse +
-                          (recipe(
-                            me.inventory.find((i) => i.id === actionPotion)
-                              ?.kind ?? "",
-                          )?.effect === "gather"
-                            ? recipe(
-                                me.inventory.find((i) => i.id === actionPotion)!
-                                  .kind,
-                              )!.power
-                            : 0),
+                        modernNight
+                          ? 2 +
+                              modifiers.gather +
+                              Number(!!me.publicPotions?.includes("abundance"))
+                          : 2 +
+                              me.rest -
+                              me.curse +
+                              (recipe(
+                                me.inventory.find((i) => i.id === actionPotion)
+                                  ?.kind ?? "",
+                              )?.effect === "gather"
+                                ? recipe(
+                                    me.inventory.find(
+                                      (i) => i.id === actionPotion,
+                                    )!.kind,
+                                  )!.power
+                                : 0),
                       )
                     }}個
                   </p>
@@ -1757,12 +1864,25 @@ watch(
                     }}
                   </p>
                 </div>
+                <label v-if="modernNight && modifiers.research"
+                  >{{ modifiers.research > 0 ? "追加素材" : "支払う素材" }}
+                  <select v-model="researchPayment[k]">
+                    <option
+                      v-for="kind in V20_RESEARCH[k]"
+                      :key="kind"
+                      :value="kind"
+                    >
+                      {{ itemName(kind) }}
+                    </option>
+                  </select>
+                </label>
                 <button
                   :disabled="
                     !can({
                       type: 'research',
                       player: 0,
                       stat: k,
+                      material: researchPayment[k],
                       potion: actionPotion,
                     })
                   "
@@ -1771,6 +1891,7 @@ watch(
                       type: 'research',
                       player: 0,
                       stat: k,
+                      material: researchPayment[k],
                       potion: actionPotion,
                     })
                   "
@@ -1833,7 +1954,10 @@ watch(
             </template>
             <template v-if="actionScreen && tab === 'shop'"
               ><h3>購買部 <span class="tag">1AP</span></h3>
-              <p class="muted">任意の素材3個 → 指定素材1個</p>
+              <p class="muted">
+                任意の素材{{ 3 + (modernNight ? modifiers.shop : 0) }}個 →
+                指定素材1個
+              </p>
               <GroupedItems
                 v-model="selected"
                 :items="available(me).filter((i) => MATERIALS.includes(i.kind))"
@@ -1860,7 +1984,7 @@ watch(
                   })
                 "
               >
-                3個を交換
+                {{ 3 + (modernNight ? modifiers.shop : 0) }}個を交換
               </button>
             </template>
             <template v-if="actionScreen && tab === 'trade'">
@@ -1884,7 +2008,7 @@ watch(
                 <div
                   v-for="kind in [
                     ...MATERIALS,
-                    ...Object.values(ELEMENT_POTIONS).map((r) => r.id),
+                    ...NIGHT_RECIPES.map((r) => r.id),
                   ]"
                   :key="kind"
                   class="trade-row"
@@ -1982,7 +2106,8 @@ watch(
           </section>
           <section
             v-if="
-              s.phase === 'vote' && me.activeMagic && me.magic === 'foresight'
+              s.phase === 'vote' &&
+              (modernNight || (me.activeMagic && me.magic === 'foresight'))
             "
             class="panel"
           >
@@ -1996,9 +2121,123 @@ watch(
             >
               {{ EVENTS[id - 1].name }}（{{ EVENTS[id - 1].difficulty }}）
             </button>
-            <p class="muted">使用者の匿名投票で決定。同票は抽選します。</p>
+            <p class="muted">匿名投票で決定。同票は抽選します。</p>
           </section>
-          <section v-if="s.phase === 'night'" class="panel night-panel">
+          <section
+            v-if="s.phase === 'night' && modernNight"
+            class="panel night-panel"
+          >
+            <h2>夜間行動と錬金</h2>
+            <template v-if="!me.night">
+              <label
+                >夜間行動
+                <select v-model="night">
+                  <option
+                    v-for="kind in [
+                      'rest',
+                      'raid',
+                      'scout',
+                      'curse',
+                      'guard',
+                    ] as NightKind[]"
+                    :key="kind"
+                    :value="kind"
+                  >
+                    {{ LABELS[kind] }}
+                  </option>
+                </select>
+              </label>
+              <label v-if="['raid', 'scout', 'curse'].includes(night)"
+                >対象
+                <select v-model="target">
+                  <option
+                    v-for="p in s.players.slice(1)"
+                    :key="p.id"
+                    :value="p.id"
+                  >
+                    {{ p.name }}
+                  </option>
+                </select>
+              </label>
+              <h3>錬金（夜間行動とは別枠）</h3>
+              <label
+                >レシピ
+                <select v-model="nightRecipe">
+                  <option
+                    v-for="r in NIGHT_RECIPES"
+                    :key="r.id"
+                    :value="r.id"
+                    :disabled="!me.recipes.includes(r.id)"
+                  >
+                    {{ r.name }}（{{ r.materials.map(itemName).join("＋")
+                    }}{{ me.recipes.includes(r.id) ? "" : "・未解放" }}）
+                  </option>
+                </select>
+              </label>
+              <button
+                :disabled="!me.recipes.includes(nightRecipe)"
+                @click="nightPlan.push(nightRecipe)"
+              >
+                作成予定に追加
+              </button>
+              <p v-for="(id, i) in nightPlan" :key="i">
+                {{ itemName(id) }}
+                <button @click="nightPlan.splice(i, 1)">削除</button>
+              </p>
+              <p v-if="actionError(nightDraft)" class="muted">
+                {{ actionError(nightDraft) }}
+              </p>
+              <button
+                class="primary"
+                :disabled="!can(nightDraft)"
+                @click="act(nightDraft)"
+              >
+                夜間行動と錬金を確定
+              </button>
+              <p class="muted">
+                未確定のまま解決に進むと自動休息になり、作成予定は確定されません。
+              </p>
+            </template>
+            <p v-else>
+              {{ LABELS[me.night.kind] }}と錬金計画（{{
+                me.night.recipes?.length ?? 0
+              }}個）を確定しました。
+            </p>
+          </section>
+          <section v-if="modernReward?.winner === 0" class="panel night-reward">
+            <h2>夜間の報酬を選ぶ</h2>
+            <p>相手：{{ modernReward.loser.name }}</p>
+            <button
+              v-for="item in modernReward.items"
+              :key="item.id"
+              :disabled="!!store.pending"
+              @click="act({ type: 'nightReward', player: 0, item: item.id })"
+            >
+              強奪：{{ itemName(item.kind) }}
+            </button>
+            <template v-if="modernReward.canCommand">
+              <button
+                :disabled="!!store.pending"
+                @click="
+                  act({ type: 'nightReward', player: 0, command: 'gather' })
+                "
+              >
+                翌日の採集を命令
+              </button>
+              <button
+                :disabled="!!store.pending"
+                @click="
+                  act({ type: 'nightReward', player: 0, command: 'research' })
+                "
+              >
+                翌日の研究を命令
+              </button>
+            </template>
+          </section>
+          <section
+            v-if="s.phase === 'night' && !modernNight"
+            class="panel night-panel"
+          >
             <p class="eyebrow">秘匿行動</p>
             <h2>秘密の行動をひとつ。</h2>
             <div v-if="!actionScreen || me.night" class="night-options">
@@ -2231,7 +2470,8 @@ watch(
           <section
             v-if="
               s.phase !== 'ended' &&
-              !s.event.resolved &&
+              (!s.event.resolved || modernNight) &&
+              s.phase !== 'rewards' &&
               !combat &&
               !s.challenge &&
               !actionScreen

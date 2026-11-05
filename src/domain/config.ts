@@ -1,9 +1,12 @@
 import type { Magic, Stat } from "./types";
 export const LEGACY_RULES_VERSION = "browser-0.2.2+decisions-5";
 export const V20_PUBLIC_RULES_VERSION = "browser-2.0-public";
-export const V20_RULES_VERSION = "browser-2.0-combat";
-export const hasElementCombat = (s: { rulesVersion: string }) =>
+export const V20_COMBAT_RULES_VERSION = "browser-2.0-combat";
+export const V20_RULES_VERSION = "browser-2.0-night";
+export const hasNightRules = (s: { rulesVersion: string }) =>
   s.rulesVersion === V20_RULES_VERSION;
+export const hasElementCombat = (s: { rulesVersion: string }) =>
+  hasNightRules(s) || s.rulesVersion === V20_COMBAT_RULES_VERSION;
 export const isV20 = (s: { rulesVersion: string }) =>
   hasElementCombat(s) || s.rulesVersion === V20_PUBLIC_RULES_VERSION;
 export const V20_MAGICS = ["foresight", "barrier"] as const;
@@ -128,4 +131,5 @@ export const supportedRulesVersion = (version: string) =>
   version === CONFIG.rulesVersion ||
   version === LEGACY_RULES_VERSION ||
   version === V20_RULES_VERSION ||
+  version === V20_COMBAT_RULES_VERSION ||
   version === V20_PUBLIC_RULES_VERSION;

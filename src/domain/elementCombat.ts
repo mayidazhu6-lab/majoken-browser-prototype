@@ -41,7 +41,7 @@ export function elementLoadout(s: GameState, p: Player, ids: number[]) {
   const side = c?.participants.indexOf(p.id);
   if (
     !c?.elemental ||
-    c.kind !== "public" ||
+    c.kind === "mock" ||
     side === undefined ||
     side < 0 ||
     c.done ||
@@ -53,7 +53,7 @@ export function elementLoadout(s: GameState, p: Player, ids: number[]) {
     throw Error("持ち込みは1戦闘につき最大2個です");
   const items = ids.map((id) => {
     const item = available(p).find((candidate) => candidate.id === id);
-    if (!item || !elementPotion(item.kind))
+    if (!item || !elementPotion(item.kind) || (item.usableDay ?? 0) > s.day)
       throw Error("持ち込める上位薬がありません");
     return item;
   });
@@ -70,7 +70,10 @@ export function prepareElementAI(s: GameState, c: Combat) {
         s,
         p,
         available(p)
-          .filter((item) => elementPotion(item.kind))
+          .filter(
+            (item) =>
+              elementPotion(item.kind) && (item.usableDay ?? 0) <= s.day,
+          )
           .slice(0, 2)
           .map((item) => item.id),
       );
@@ -110,6 +113,7 @@ export function resolveElementRound(
   s: GameState,
   choices: [Stat, Stat],
   ids: [number | undefined, number | undefined],
+  bonusesUsed: [boolean, boolean] = [false, false],
 ) {
   const c = s.combat;
   if (!c?.elemental || c.done || !c.elemental.ready.every(Boolean))
@@ -123,7 +127,7 @@ export function resolveElementRound(
         : c.brought[side].find((item) => item.id === id);
     if (
       id !== undefined &&
-      (c.kind !== "public" || potion?.kind !== ELEMENT_POTIONS[element].id)
+      (c.kind === "mock" || potion?.kind !== ELEMENT_POTIONS[element].id)
     )
       throw Error("選択した属性に対応する上位薬だけ使用できます");
     const { total, ...bonuses } = elementDamage(
@@ -132,11 +136,16 @@ export function resolveElementRound(
       choices[1 - side],
       !!potion,
     );
+    const nightBonus =
+      bonusesUsed[side] && !c.elemental!.spent?.[side]
+        ? (c.elemental!.bonus?.[side] ?? 0)
+        : 0;
     return {
       element,
       ...bonuses,
-      calculated: total,
-      dealt: Math.min(c.hp[1 - side], total),
+      calculated: total + nightBonus,
+      ...(c.kind === "secret" ? { nightBonus } : {}),
+      dealt: Math.min(c.hp[1 - side], total + nightBonus),
       potion: potion?.kind,
     };
   });
@@ -144,18 +153,23 @@ export function resolveElementRound(
   c.hp = [c.hp[0] - b.dealt, c.hp[1] - a.dealt];
   c.elemental.rounds.push({ sides: [a, b], hp: [...c.hp] });
   for (const [side, effect] of effects.entries()) {
+    if (effect.nightBonus && c.elemental.spent) c.elemental.spent[side] = true;
     if (!effect.potion) continue;
     c.brought[side] = c.brought[side].filter((item) => item.id !== ids[side]);
     log(s, "usePotion", `${elementPotion(effect.potion)!.name}を使用`, {
       actor: c.participants[side],
       kind: effect.potion,
+      ...(c.kind === "secret" ? { audience: c.participants } : {}),
     });
   }
   log(
     s,
     "combatRound",
     `${V20_LABELS[a.element]} 対 ${V20_LABELS[b.element]}`,
-    { data: { id: c.id } },
+    {
+      data: { id: c.id },
+      ...(c.kind === "secret" ? { audience: c.participants } : {}),
+    },
   );
   if (c.hp.includes(0) || c.elemental.rounds.length >= CONFIG.maxRounds) {
     c.done = true;

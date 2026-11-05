@@ -34,7 +34,7 @@ for (const [seed, expected] of [
     await page.getByRole("button", { name: "続きから" }).click();
     await expect(result).toContainText(expected);
     await result.getByRole("button", { name: "確認した" }).click();
-    await expect(page.getByText("今回の試遊範囲はここまで")).toBeVisible();
+    await expect(page.getByText("今夜、固有魔法を使いますか？")).toBeVisible();
     expect(
       await page.evaluate(() => localStorage.getItem("majoken-save-v2")),
     ).toBe("legacy-save");

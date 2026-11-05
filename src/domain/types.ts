@@ -17,6 +17,7 @@ export type Phase =
 export interface Item {
   id: number;
   kind: string;
+  usableDay?: number;
   lock?: string;
 }
 export interface Goal {
@@ -50,12 +51,17 @@ export interface Player {
   unlocks: number[];
   pendingRecipe: boolean;
   temporaryRecipe?: { kind: string; day: number };
+  publicPotions?: string[];
   rest: number;
   curse: number;
   immune: boolean;
   lastRaid: number;
   night?: Night;
-  commands: { from: number }[];
+  commands: {
+    from: number;
+    kind?: "gather" | "research";
+    qualifies?: boolean;
+  }[];
   nextMagic?: Magic;
   changedMagic: boolean;
 }
@@ -138,6 +144,7 @@ export interface ElementRound {
       affinity: number;
       levelBonus: number;
       potionBonus: number;
+      nightBonus?: number;
       calculated: number;
       dealt: number;
       potion?: string;
@@ -147,6 +154,7 @@ export interface ElementRound {
       affinity: number;
       levelBonus: number;
       potionBonus: number;
+      nightBonus?: number;
       calculated: number;
       dealt: number;
       potion?: string;
@@ -163,7 +171,18 @@ export interface Combat {
   previous: [Stance | null, Stance | null];
   brought: [Item[], Item[]];
   rounds: Round[];
-  elemental?: { ready: [boolean, boolean]; rounds: ElementRound[] };
+  elemental?: {
+    ready: [boolean, boolean];
+    rounds: ElementRound[];
+    bonus?: [number, number];
+    spent?: [boolean, boolean];
+    pending?: {
+      player: number;
+      element: Stat;
+      potion?: number;
+      bonus?: boolean;
+    };
+  };
   winner?: number | null;
   done: boolean;
   resultAcknowledged: boolean;
@@ -196,6 +215,13 @@ export interface Setup {
   seed: string;
   magic: Magic;
   stats: Stats;
+}
+export interface NightBattle {
+  participants: [number, number];
+  raids: number[];
+  scout?: number;
+  automatic?: boolean;
+  winner?: number | null;
 }
 export interface GameState {
   version: 2;
@@ -230,6 +256,13 @@ export interface GameState {
   };
   combatHistory: Combat[];
   duelQueue: [number, number][];
+  nightWork?: {
+    battles: NightBattle[];
+    valid: number[];
+    battle: number;
+    reward: number;
+  };
+  finalComparison?: number[];
   trades: Trade[];
   result?: Result;
   publicTurn: {
@@ -243,11 +276,30 @@ export interface GameState {
   };
 }
 export type Action =
+  | { type: "elementReply"; player: number }
+  | {
+      type: "nightReward";
+      player: number;
+      item?: number;
+      command?: "gather" | "research";
+    }
   | { type: "eventAck"; player: number }
   | { type: "publicOutcomeAck"; player: number }
-  | { type: "forced"; player: number; kind: "gather" | "research"; stat?: Stat }
+  | {
+      type: "forced";
+      player: number;
+      kind: "gather" | "research";
+      stat?: Stat;
+      material?: string;
+    }
   | { type: "gather"; player: number; potion?: number }
-  | { type: "research"; player: number; stat: Stat; potion?: number }
+  | {
+      type: "research";
+      player: number;
+      stat: Stat;
+      potion?: number;
+      material?: string;
+    }
   | { type: "brew"; player: number; recipe: string }
   | { type: "reserve"; player: number; items: number[]; stats: Partial<Stats> }
   | { type: "withdraw"; player: number }
@@ -265,7 +317,13 @@ export type Action =
   | { type: "challengeReply"; player: number; fight: boolean; items?: number[] }
   | { type: "surrenderReply"; player: number; accept: boolean }
   | { type: "loadout"; player: number; items: number[] }
-  | { type: "elementRound"; player: number; element: Stat; potion?: number }
+  | {
+      type: "elementRound";
+      bonus?: boolean;
+      player: number;
+      element: Stat;
+      potion?: number;
+    }
   | { type: "round"; player: number; stance: Stance; potion?: number }
   | { type: "combatAck"; player: number }
   | { type: "reward"; player: number; kind: "item" | "command"; stat?: Stat }
