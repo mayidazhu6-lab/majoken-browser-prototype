@@ -146,7 +146,10 @@ describe("v2.0 public milestone", () => {
   });
 
   it("leaves the legacy slot untouched and retries the same candidate after a save failure", () => {
-    const values = new Map([["majoken-save-v2", "legacy"]]);
+    const values = new Map([
+      ["majoken-save-v2", "legacy"],
+      ["majoken-save-rules-2.0-night", "night-save"],
+    ]);
     let reject = false;
     vi.stubGlobal("localStorage", {
       getItem: (key: string) => values.get(key) ?? null,
@@ -161,7 +164,7 @@ describe("v2.0 public milestone", () => {
     expect(store.error).toContain("ルール版");
     store.start(setup);
     const initial = store.state;
-    const oldSave = values.get("majoken-save-rules-2.0-night");
+    const oldSave = values.get("majoken-save-rules-2.0-goals");
     reject = true;
     store.act({ type: "gather", player: 0 });
     const candidate = store.pending;
@@ -169,12 +172,13 @@ describe("v2.0 public milestone", () => {
     expect(store.state).toBe(initial);
     store.act({ type: "endTurn", player: 0 });
     expect(store.pending).toBe(candidate);
-    expect(values.get("majoken-save-rules-2.0-night")).toBe(oldSave);
+    expect(values.get("majoken-save-rules-2.0-goals")).toBe(oldSave);
     reject = false;
     store.save();
     expect(store.state).toBe(candidate);
     expect(store.pending).toBeUndefined();
     expect(values.get("majoken-save-v2")).toBe("legacy");
+    expect(values.get("majoken-save-rules-2.0-night")).toBe("night-save");
     store.load();
     expect(store.state).toEqual(candidate);
   });

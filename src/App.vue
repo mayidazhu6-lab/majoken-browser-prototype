@@ -24,6 +24,7 @@ import {
   V20_RESEARCH,
   V20_RULES_VERSION,
   hasNightRules,
+  hasFinalGoalRules,
   MAGICS,
   MATERIALS,
   STATS,
@@ -57,8 +58,15 @@ import type {
   Stat,
   Stance,
 } from "./domain/types";
-function goalDescription(...args: Parameters<typeof describeGoal>) {
-  const description = describeGoal(...args);
+function goalDescription(
+  goal: Parameters<typeof describeGoal>[0],
+  long: boolean,
+) {
+  const description = describeGoal(
+    goal,
+    long,
+    !!store.state && hasFinalGoalRules(store.state),
+  );
   return {
     ...description,
     name: uiText(description.name),
@@ -1075,7 +1083,7 @@ watch(
               </p>
             </details>
             <p class="muted">
-              卒業者のみを最終FPで順位付けします。同点は同率。未卒業者には順位を付けません。
+              卒業者を最終FPで順位付けします。同点の場合は日次課題の達成数を比較し、両方同じなら同率です。
             </p>
             <button @click="store.state = undefined">新しい研究を始める</button>
           </section>

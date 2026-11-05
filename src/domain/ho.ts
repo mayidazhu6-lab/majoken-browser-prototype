@@ -1,7 +1,8 @@
+import modernGoals from "./goals-v20.json" with { type: "json" };
 import goals from "./goals.json" with { type: "json" };
 import type { GameState, Goal, Player, Log } from "./types";
 import { sample, pick } from "./rng";
-import { STATS, hasNightRules } from "./config";
+import { STATS, hasNightRules, hasFinalGoalRules } from "./config";
 import { eventProgress, EVENTS } from "./events";
 export const LONG_GOALS = goals.long;
 export const DAILY_GOALS = goals.daily;
@@ -69,7 +70,7 @@ export function dailyAchieved(s: GameState, p: Player, g: Goal = p.dailyGoal) {
     case 6:
       return sum("gather") >= 2;
     case 7:
-      return has("contribution");
+      return hasFinalGoalRules(s) ? trade.length > 0 : has("contribution");
     case 8:
       return trade.some((l) => (l.amount ?? 0) > 0);
     case 9:
@@ -118,7 +119,10 @@ export function dailyAchieved(s: GameState, p: Player, g: Goal = p.dailyGoal) {
           : c.rounds.some((r) => r.damage[i] > r.damage[1 - i]);
       });
     case 22:
-      return has("loot", (l) => (l.amount ?? 0) > 0) || has("command");
+      return (
+        has("loot", (l) => (l.amount ?? 0) > 0) ||
+        ((!hasFinalGoalRules(s) || s.day < 8) && has("command"))
+      );
     case 23:
       return trade.length > 0 && pub.length > 0;
     case 24:
@@ -201,8 +205,10 @@ export function dailyProgress(s: GameState, p: Player) {
       current = sum("gather");
       break;
     case 7:
-      current = Number(contribution || candidate);
-      met = contribution;
+      current = hasFinalGoalRules(s)
+        ? Number(met)
+        : Number(contribution || candidate);
+      if (!hasFinalGoalRules(s)) met = contribution;
       break;
     case 8:
       current = trades.reduce((n, l) => n + (l.amount ?? 0), 0);
@@ -232,15 +238,18 @@ export function dailyProgress(s: GameState, p: Player) {
       current = sum("scout");
       break;
     case 14:
-      current = sum("loot");
+      current = hasFinalGoalRules(s) ? Number(met) : sum("loot");
       break;
     case 15:
       current = Number(has("rest"));
       break;
     case 16:
-      current = battles.filter(
-        (c) => c.kind === "secret" && c.initiator === p.id && c.winner === p.id,
-      ).length;
+      current = hasFinalGoalRules(s)
+        ? Number(met)
+        : battles.filter(
+            (c) =>
+              c.kind === "secret" && c.initiator === p.id && c.winner === p.id,
+          ).length;
       break;
     case 17:
       current = facts("curseHit").length;
@@ -312,7 +321,9 @@ export function dailyProgress(s: GameState, p: Player) {
       ? "研究所崩壊により本日の日次HOは最終判定されず、報酬は付与されません。"
       : judged
         ? "最終判定済みです。"
-        : [7, 11].includes(goal.id) && !s.event.resolved && candidate
+        : (goal.id === 11 || (!hasFinalGoalRules(s) && goal.id === 7)) &&
+            !s.event.resolved &&
+            candidate
           ? "予約・行動は有効候補です。イベント成功と公開終了時の確定が必要です。"
           : "最終判定は夜のHO判定時に行います。",
   };
@@ -358,7 +369,11 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
         ts("contribution").length,
       );
     case 7:
-      return scouts(target).length >= 2 && ts("trade", target).length >= 1;
+      return (
+        (hasFinalGoalRules(s)
+          ? new Set(scouts(target).map((l) => l.day)).size
+          : scouts(target).length) >= 2 && ts("trade", target).length >= 1
+      );
     case 8:
       return n("givePotion") >= 3;
     case 9:
@@ -510,7 +525,16 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
       throw Error(`未定義長期HO ${g.id}`);
   }
 }
-export function goalDescription(g: Goal, long: boolean) {
+export function goalDescription(g: Goal, long: boolean, modern = false) {
+  const suffix = g.targets.length
+    ? `（指定：${g.targets.map((n) => `席${n + 1}`).join("・")}）`
+    : "";
+  if (modern) {
+    const d = (long ? modernGoals.long : modernGoals.daily).find(
+      (x) => x.id === g.id,
+    )!;
+    return { ...d, condition: d.condition + suffix };
+  }
   const d = (long ? LONG_GOALS : DAILY_GOALS).find((x) => x.id === g.id)!;
   return {
     ...d,
@@ -530,10 +554,7 @@ export function goalDescription(g: Goal, long: boolean) {
         .replaceAll("通常窃盗", "成功偵察")
         .replaceAll("3ラウンド全部", "3R連続")
         .replaceAll("3ラウンド合計点", "残HP")
-        .replaceAll("窃盗・", "偵察・") +
-      (g.targets.length
-        ? `（指定：${g.targets.map((n) => `席${n + 1}`).join("・")}）`
-        : ""),
+        .replaceAll("窃盗・", "偵察・") + suffix,
   };
 }
 // v0.1変換後も全46種は達成可能。除外候補はなし。

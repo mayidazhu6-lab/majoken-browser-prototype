@@ -13,6 +13,7 @@ import {
   isV20,
   hasElementCombat,
   hasNightRules,
+  hasFinalGoalRules,
   V20_MAGICS,
   V20_LABELS,
   V20_RESEARCH,
@@ -935,21 +936,24 @@ function evaluateHO(s: GameState) {
   const daily = s.players.map((p) => dailyAchieved(s, p));
   if (hasNightRules(s) && s.day === 8)
     s.finalComparison = s.players.map((p) => p.fp);
-  const longs = s.players.map((p) => longAchieved(s, p));
+  const modern = hasFinalGoalRules(s);
+  const longs = modern ? [] : s.players.map((p) => longAchieved(s, p));
   s.players.forEach((p, i) => {
     p.dailyGoal.achieved = daily[i];
     p.dailyHistory.push({ day: s.day, id: p.dailyGoal.id, achieved: daily[i] });
-    p.longGoal.achieved =
-      longs[i] ||
-      (!hasNightRules(s) &&
-        ![1, 6, 9, 17, 20, 22, 25, 18].includes(p.longGoal.id) &&
-        p.longGoal.achieved);
+    if (!modern)
+      p.longGoal.achieved =
+        longs[i] ||
+        (!hasNightRules(s) &&
+          ![1, 6, 9, 17, 20, 22, 25, 18].includes(p.longGoal.id) &&
+          p.longGoal.achieved);
   });
   s.players.forEach((p, i) => {
+    const goal = goalDescription(p.dailyGoal, false, modern);
     log(
       s,
       "dailyHO",
-      `日次HO「${goalDescription(p.dailyGoal, false).name}」：${daily[i] ? "日次HO達成！ FP+1" : "未達成"}。条件：${goalDescription(p.dailyGoal, false).condition}`,
+      `日次HO「${goal.name}」：${daily[i] ? "日次HO達成！ FP+1" : "未達成"}。条件：${goal.condition}`,
       {
         actor: p.id,
         amount: daily[i] ? 1 : 0,
@@ -958,8 +962,11 @@ function evaluateHO(s: GameState) {
     );
     if (daily[i]) fp(s, p, 1, "ho");
   });
-  if (s.day === 8) end(s, "completed");
-  else s.phase = "dawn";
+  if (s.day === 8) {
+    if (modern)
+      for (const p of s.players) p.longGoal.achieved = longAchieved(s, p);
+    end(s, "completed");
+  } else s.phase = "dawn";
 }
 function end(s: GameState, reason: "completed" | "collapse") {
   const graduates =
@@ -981,7 +988,14 @@ function end(s: GameState, reason: "completed" | "collapse") {
     ranking: s.players.map((p) => ({
       player: p.id,
       rank: graduates.includes(p.id)
-        ? 1 + graduates.filter((id) => s.players[id].fp > p.fp).length
+        ? 1 +
+          graduates.filter(
+            (id) =>
+              s.players[id].fp > p.fp ||
+              (hasFinalGoalRules(s) &&
+                s.players[id].fp === p.fp &&
+                dailyCount(id) > dailyCount(p.id)),
+          ).length
         : null,
       fp: p.fp,
       daily: p.dailyHistory.filter((h) => h.achieved).length,

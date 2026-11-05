@@ -1,8 +1,9 @@
 import type { GameState } from "../domain/types";
-import { LABELS, STATS } from "../domain/config";
+import { LABELS, STATS, V20_LABELS, hasFinalGoalRules } from "../domain/config";
 
 /** A partial progress view based on the player's records and public counts only. */
 export function graduationProgress(s: GameState): string[] {
+  const modern = hasFinalGoalRules(s);
   const p = s.players[0],
     target = p.longGoal.targets[0];
   const logs = s.logs.filter(
@@ -47,7 +48,7 @@ export function graduationProgress(s: GameState): string[] {
       ];
     case 7:
       return [
-        `指定相手への成功偵察 ${scouts(target).length} / 2回`,
+        `指定相手への成功偵察 ${modern ? new Set(scouts(target).map((l) => l.day)).size : scouts(target).length} / 2回`,
         trade + " / 必要1回",
       ];
     case 8:
@@ -58,7 +59,13 @@ export function graduationProgress(s: GameState): string[] {
       ];
     case 10:
       return [
-        `命令を実行させた相手 ${new Set(entries("commandExecuted").map((l) => l.target)).size} / 2人`,
+        `命令を実行させた相手 ${
+          new Set(
+            entries("commandExecuted")
+              .filter((l) => !modern || l.data?.qualifies === true)
+              .map((l) => l.target),
+          ).size
+        } / 2人`,
       ];
     case 11:
       return [
@@ -94,7 +101,9 @@ export function graduationProgress(s: GameState): string[] {
     case 20:
       return [
         `防衛勝利 ${entries("defensiveWin").length} / 2回`,
-        `現在の防御 ${p.stats.defense}（別条件：最終日に単独最多）`,
+        modern
+          ? "第8日終了時に火・水・風のいずれかで単独最多も必要です。"
+          : `現在の防御 ${p.stats.defense}（別条件：最終日に単独最多）`,
       ];
     case 21:
       return [
@@ -103,7 +112,7 @@ export function graduationProgress(s: GameState): string[] {
     case 22:
       return STATS.map(
         (k) =>
-          `${LABELS[k]} ${p.stats[k]}：現在${names.every((q) => q.stats[k] < p.stats[k]) ? "単独最多" : "単独最多ではありません"}（最終日に判定）`,
+          `${(modern ? V20_LABELS : LABELS)[k]} ${p.stats[k]}：現在${names.every((q) => q.stats[k] < p.stats[k]) ? "単独最多" : "単独最多ではありません"}（最終日に判定）`,
       );
     case 23:
       return [
