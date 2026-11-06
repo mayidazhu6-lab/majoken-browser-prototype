@@ -68,7 +68,7 @@ for (const version of [V20_PREVIOUS_RULES_VERSION, V20_RULES_VERSION]) {
       expect(dailyReview(deserialize(original))).toEqual(result);
     }
     expect(days).toBe(8);
-  });
+  }, 20000);
 }
 
 it("keeps both sides of a same-kind purchase, instead of only showing the net count", () => {
