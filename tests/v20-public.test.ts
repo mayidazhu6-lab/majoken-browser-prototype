@@ -164,7 +164,7 @@ describe("v2.0 public milestone", () => {
     expect(store.error).toContain("ルール版");
     store.start(setup);
     const initial = store.state;
-    const oldSave = values.get("majoken-save-rules-2.0-review");
+    const oldSave = values.get("majoken-save-rules-2.0-final");
     reject = true;
     store.act({ type: "gather", player: 0 });
     const candidate = store.pending;
@@ -172,7 +172,7 @@ describe("v2.0 public milestone", () => {
     expect(store.state).toBe(initial);
     store.act({ type: "endTurn", player: 0 });
     expect(store.pending).toBe(candidate);
-    expect(values.get("majoken-save-rules-2.0-review")).toBe(oldSave);
+    expect(values.get("majoken-save-rules-2.0-final")).toBe(oldSave);
     reject = false;
     store.save();
     expect(store.state).toBe(candidate);

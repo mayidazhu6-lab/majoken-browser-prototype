@@ -1,10 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { simulate } from "../src/domain/simulation";
-import { CONFIG } from "../src/domain/config";
+import { V20_RULES_VERSION } from "../src/domain/config";
 const seeds = process.argv.slice(2);
 if (!seeds.length) seeds.push("witches-2026", "moon-42", "lab-77", "review-1");
 const results = seeds.map((seed) => {
-  const s = simulate(seed);
+  const s = simulate(seed, V20_RULES_VERSION);
   return {
     seed,
     day: s.day,
@@ -24,7 +24,7 @@ const results = seeds.map((seed) => {
     combats: s.combatHistory.map((c) => ({
       kind: c.kind,
       winner: c.winner,
-      rounds: c.rounds.length,
+      rounds: c.elemental?.rounds.length ?? c.rounds.length,
       hp: c.hp,
       participants: c.participants,
     })),
@@ -69,7 +69,7 @@ const results = seeds.map((seed) => {
     })),
     donationHO: s.players.flatMap((p) =>
       p.dailyHistory
-        .filter((h) => [7, 11].includes(h.id))
+        .filter((h) => h.id === 11)
         .map((h) => ({ player: p.id, ...h })),
     ),
     actions: s.actions.length,
@@ -91,7 +91,7 @@ writeFileSync(
   "docs/reports/simulation.json",
   JSON.stringify(
     {
-      rulesVersion: CONFIG.rulesVersion,
+      rulesVersion: V20_RULES_VERSION,
       policy: "cooperative human bot + three normal AI (unmodified rules)",
       summary,
       results,

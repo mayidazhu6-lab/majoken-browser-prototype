@@ -1,5 +1,9 @@
-import { expect, it } from "vitest";
-import { V20_GOALS_RULES_VERSION } from "../src/domain/config";
+import { describe, expect, it } from "vitest";
+import {
+  V20_GOALS_RULES_VERSION,
+  V20_RULES_VERSION,
+} from "../src/domain/config";
+import { log } from "../src/domain/core";
 import { addItem } from "../src/domain/items";
 import {
   chooseNight,
@@ -149,4 +153,51 @@ it("records last-night curse and rest without creating tomorrow's modifiers", ()
   expect(s.logs.some((l) => l.type === "curseHit")).toBe(true);
   expect(s.logs.some((l) => l.type === "rest" && l.actor === 1)).toBe(true);
   expect(s.players.every((p) => p.rest === 0 && p.curse === 0)).toBe(true);
+});
+
+describe("L10のAI報酬選択", () => {
+  it.each([
+    ["未命令の相手", 1, false, false, true],
+    ["同じ相手に実行済み", 1, true, false, false],
+    ["第8夜", 8, false, false, false],
+    ["休息者への自動決着", 1, false, true, false],
+  ] as const)("%s", (_label, day, repeated, automatic, expectCommand) => {
+    const s = createGame(
+      {
+        name: "アリア",
+        seed: "l10-reward",
+        magic: "barrier",
+        stats: { attack: 3, defense: 3, insight: 3 },
+      },
+      V20_RULES_VERSION,
+    );
+    s.day = day;
+    s.phase = "night";
+    const [human, winner, loser, other] = s.players;
+    human.night = { kind: "rest" };
+    other.night = { kind: "rest" };
+    winner.stats = { attack: 9, defense: 9, insight: 9 };
+    winner.night = { kind: "raid", target: loser.id };
+    winner.longGoal = { id: 10, targets: [], achieved: false };
+    loser.stats = { attack: 1, defense: 1, insight: 1 };
+    loser.night = { kind: automatic ? "rest" : "guard" };
+    if (repeated)
+      log(s, "commandExecuted", "実行済み", {
+        actor: winner.id,
+        target: loser.id,
+        data: { qualifies: true },
+      });
+    const stock = loser.inventory.length;
+    const next = dispatch(s, { type: "advance" });
+    expect(next.phase).toBe("ho");
+    expect(next.players[loser.id].commands).toHaveLength(expectCommand ? 1 : 0);
+    expect(next.players[loser.id].inventory).toHaveLength(
+      stock - Number(!expectCommand),
+    );
+    if (expectCommand)
+      expect(next.players[loser.id].commands[0]).toMatchObject({
+        from: winner.id,
+        qualifies: true,
+      });
+  });
 });

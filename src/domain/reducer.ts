@@ -16,6 +16,7 @@ import {
   hasFinalGoalRules,
   hasStrategyRules,
   hasSharedCrisisPlanning,
+  hasGoalDrivenRewards,
   V20_MAGICS,
   V20_LABELS,
   V20_RESEARCH,
@@ -723,10 +724,32 @@ function runNight(s: GameState) {
       work.reward++;
       continue;
     }
-    if (!s.players[options.winner].ai) return;
-    if (options.items.length)
-      giveNightReward(s, options.winner, options.items[0].id);
-    else giveNightReward(s, options.winner, undefined, "gather");
+    const winner = s.players[options.winner];
+    if (!winner.ai) return;
+    const commanded =
+      hasGoalDrivenRewards(s) && winner.longGoal.id === 10
+        ? new Set(
+            s.logs
+              .filter(
+                (l) =>
+                  l.actor === winner.id &&
+                  l.data?.qualifies === true &&
+                  (l.type === "commandExecuted" ||
+                    (l.type === "command" && l.day === s.day)),
+              )
+              .map((l) => l.target),
+          )
+        : undefined;
+    const advancesL10 =
+      options.canCommand &&
+      commanded &&
+      commanded.size < 2 &&
+      !commanded.has(options.loser.id) &&
+      !options.battle.automatic &&
+      options.battle.raids.includes(winner.id);
+    if (advancesL10 || !options.items.length)
+      giveNightReward(s, winner.id, undefined, "gather");
+    else giveNightReward(s, winner.id, options.items[0].id);
   }
   if (s.phase === "rewards") finishNight(s);
 }

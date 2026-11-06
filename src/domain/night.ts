@@ -1,4 +1,4 @@
-import { LABELS, level, V20_RESEARCH } from "./config";
+import { hasGoalDrivenRewards, LABELS, level, V20_RESEARCH } from "./config";
 import { fp, log } from "./core";
 import { ELEMENT_POTIONS } from "./elementCombat";
 import { addItem, available, consume, materialIds } from "./items";
@@ -248,7 +248,9 @@ export function giveNightReward(
     log(s, "command", `翌日の${command === "gather" ? "採集" : "研究"}を命令`, {
       actor: player,
       target: loser.id,
-      data,
+      data: hasGoalDrivenRewards(s)
+        ? { ...data, qualifies: !battle.automatic && data.initiated }
+        : data,
       audience,
     });
   }
