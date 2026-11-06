@@ -26,7 +26,9 @@ import {
   V20_MAGICS,
   V20_RESEARCH,
   V20_RULES_VERSION,
+  V20_RELEASE_RULES_VERSION,
   hasNightRules,
+  hasPlaytestRules,
   hasFinalGoalRules,
   MAGICS,
   MATERIALS,
@@ -180,9 +182,9 @@ function syncNightDisplay() {
   nightPotion.value = saved?.potion;
   target.value = saved?.target ?? 1;
 }
-function loadSave(json?: string) {
+function loadSave(json?: string, released = false) {
   const previous = store.state;
-  store.load(json);
+  store.load(json, released);
   if (store.state !== previous) {
     syncNightDisplay();
     restoreView();
@@ -254,6 +256,7 @@ const combat = computed(() => s.value?.combat ?? mockResult.value);
 const waitingForTrades = computed(
   () =>
     s.value?.phase === "public" &&
+    hasPlaytestRules(s.value) &&
     s.value.publicTurn.round === 4 &&
     s.value.trades.length > 0,
 );
@@ -572,11 +575,16 @@ function presentation() {
     mockResult: mockResult.value,
   };
 }
+function presentationKey() {
+  return s.value?.rulesVersion === V20_RELEASE_RULES_VERSION
+    ? "majoken-ui-rules-2.0"
+    : "majoken-ui-rules-2.0.1";
+}
 function restorePresentation(json?: string) {
   try {
     const view = json
       ? JSON.parse(json).presentation
-      : JSON.parse(localStorage.getItem("majoken-ui-rules-2.0") ?? "null");
+      : JSON.parse(localStorage.getItem(presentationKey()) ?? "null");
     if (
       view?.version !== 1 ||
       view.key !== JSON.stringify([s.value?.setup, s.value?.actions])
@@ -614,10 +622,7 @@ watch(
   () => {
     if (!s.value) return;
     try {
-      localStorage.setItem(
-        "majoken-ui-rules-2.0",
-        JSON.stringify(presentation()),
-      );
+      localStorage.setItem(presentationKey(), JSON.stringify(presentation()));
     } catch {
       /* Game save and JSON export remain available. */
     }
@@ -748,8 +753,14 @@ watch(
       >
       <div class="top-actions">
         <span class="version">v2.0 開発版 · 夜間処理</span
-        ><button @click="loadSave()">続きから</button
-        ><template v-if="s"
+        ><button @click="loadSave()">続きから</button>
+        <button
+          v-if="store.releasedSaveAvailable"
+          @click="loadSave(undefined, true)"
+        >
+          旧v2.0の続きから
+        </button>
+        <template v-if="s"
           ><button @click="store.save()">保存</button
           ><button @click="download">JSON保存</button></template
         ><label class="button"

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   V20_PUBLIC_RULES_VERSION,
   V20_RULES_VERSION,
+  V20_RELEASE_RULES_VERSION,
 } from "../src/domain/config";
 import { reserve, resolveEvent, withdraw } from "../src/domain/events";
 import { addItem } from "../src/domain/items";
@@ -186,7 +187,6 @@ describe("v2.0 public milestone", () => {
     const values = new Map([
       ["majoken-save-v2", "legacy"],
       ["majoken-save-rules-2.0-night", "night-save"],
-      ["majoken-save-rules-2.0-final", "released-save"],
     ]);
     let reject = false;
     vi.stubGlobal("localStorage", {
@@ -217,8 +217,41 @@ describe("v2.0 public milestone", () => {
     expect(store.pending).toBeUndefined();
     expect(values.get("majoken-save-v2")).toBe("legacy");
     expect(values.get("majoken-save-rules-2.0-night")).toBe("night-save");
-    expect(values.get("majoken-save-rules-2.0-final")).toBe("released-save");
     store.load();
     expect(store.state).toEqual(candidate);
+  });
+  it("imports a published v2.0 JSON and retries writes in its original slot", () => {
+    const values = new Map<string, string>();
+    let reject = false;
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (reject) throw Error("storage unavailable");
+        values.set(key, value);
+      },
+    });
+    setActivePinia(createPinia());
+    const store = useGameStore();
+    store.start(setup);
+    const current = values.get("majoken-save-rules-2.0.1");
+    const released = createGame(setup, V20_RELEASE_RULES_VERSION);
+    store.load(serialize(released));
+    expect(store.state).toEqual(released);
+    expect(values.get("majoken-save-rules-2.0-final")).toBe(
+      serialize(released),
+    );
+
+    reject = true;
+    store.act({ type: "gather", player: 0 });
+    const candidate = store.pending!;
+    expect(candidate.rulesVersion).toBe(V20_RELEASE_RULES_VERSION);
+    reject = false;
+    store.save();
+    expect(values.get("majoken-save-rules-2.0-final")).toBe(
+      serialize(candidate),
+    );
+    expect(values.get("majoken-save-rules-2.0.1")).toBe(current);
+    store.load();
+    expect(store.state?.rulesVersion).toBe(V20_RULES_VERSION);
   });
 });
