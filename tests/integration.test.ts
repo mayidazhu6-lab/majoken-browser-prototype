@@ -3,10 +3,12 @@ import { simulate } from "../src/domain/simulation";
 import { replay, serialize, deserialize } from "../src/domain/persistence";
 import { assertInvariants } from "../src/domain/reducer";
 describe("Phase 4/5 全ゲーム試遊", () => {
-  for (const seed of ["witches-2026", "moon-42", "lab-77"])
+  for (const seed of ["witches-2026", "moon-42", "lab-77", "review-1"])
     it(`A01/A10/A11 seed=${seed} 停止せず終了し操作再現`, () => {
       const s = simulate(seed);
       expect(s.phase).toBe("ended");
+      expect(s.day).toBe(8);
+      expect(s.result?.reason).toBe("completed");
       assertInvariants(s);
       expect(s.combatHistory.every((c) => c.done && c.rounds.length <= 5)).toBe(
         true,

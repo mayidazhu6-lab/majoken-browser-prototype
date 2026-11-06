@@ -1,7 +1,9 @@
+import modernGoals from "./goals-v20.json" with { type: "json" };
 import goals from "./goals.json" with { type: "json" };
 import type { GameState, Goal, Player, Log } from "./types";
 import { sample, pick } from "./rng";
-import { STATS } from "./config";
+import { STATS, hasNightRules, hasFinalGoalRules } from "./config";
+import { eventProgress, EVENTS } from "./events";
 export const LONG_GOALS = goals.long;
 export const DAILY_GOALS = goals.daily;
 export function dealGoals(s: GameState, long = false) {
@@ -50,6 +52,8 @@ export function dailyAchieved(s: GameState, p: Player, g: Goal = p.dailyGoal) {
     case 1:
       return has("research", (l) => (l.amount ?? 0) > 0);
     case 2:
+      if (hasNightRules(s))
+        return has("gather") && (has("research") || has("brew"));
       return ls.some(
         (l, i) =>
           l.type === "gather" &&
@@ -66,7 +70,7 @@ export function dailyAchieved(s: GameState, p: Player, g: Goal = p.dailyGoal) {
     case 6:
       return sum("gather") >= 2;
     case 7:
-      return has("contribution");
+      return hasFinalGoalRules(s) ? trade.length > 0 : has("contribution");
     case 8:
       return trade.some((l) => (l.amount ?? 0) > 0);
     case 9:
@@ -74,19 +78,26 @@ export function dailyAchieved(s: GameState, p: Player, g: Goal = p.dailyGoal) {
     case 10:
       return trade.some((l) => (l.amount ?? 0) > 0 && l.data?.received === 0);
     case 11:
-      return (
-        has("contribution") &&
-        ["gather", "research", "brew"].some((t) => has(t))
-      );
+      return has("contribution") && ["gather", "research"].some((t) => has(t));
     case 12:
       return has("fp", (l) => (l.amount ?? 0) > 0 && l.kind !== "ho");
     case 13:
       return has("scout", (l) => (l.amount ?? 0) > 0);
     case 14:
-      return has("loot", (l) => (l.amount ?? 0) > 0);
+      return has(
+        "loot",
+        (l) =>
+          (l.amount ?? 0) > 0 &&
+          (!hasNightRules(s) || l.data?.initiated === true),
+      );
     case 15:
       return has("rest");
     case 16:
+      if (hasNightRules(s))
+        return has(
+          "win",
+          (l) => l.data?.kind === "secret" && l.data?.initiated === true,
+        );
       return battles.some(
         (c) => c.kind === "secret" && c.initiator === p.id && c.winner === p.id,
       );
@@ -101,26 +112,223 @@ export function dailyAchieved(s: GameState, p: Player, g: Goal = p.dailyGoal) {
     case 21:
       return pub.some((c) => {
         const i = c.participants.indexOf(p.id);
-        return c.rounds.some((r) => r.damage[i] > r.damage[1 - i]);
+        return c.elemental
+          ? c.elemental.rounds.some(
+              (r) => r.sides[1 - i].dealt > r.sides[i].dealt,
+            )
+          : c.rounds.some((r) => r.damage[i] > r.damage[1 - i]);
       });
     case 22:
-      return has("loot", (l) => (l.amount ?? 0) > 0) || has("command");
+      return (
+        has("loot", (l) => (l.amount ?? 0) > 0) ||
+        ((!hasFinalGoalRules(s) || s.day < 8) && has("command"))
+      );
     case 23:
       return trade.length > 0 && pub.length > 0;
     case 24:
       return battles.some((c) => {
         const i = c.participants.indexOf(p.id);
-        return c.rounds.some(
-          (r, n) =>
-            n >= 2 &&
-            r.original[i] === c.rounds[n - 1].original[i] &&
-            r.original[i] === c.rounds[n - 2].original[i],
+        const choices = c.elemental
+          ? c.elemental.rounds.map((r) => r.sides[i].element)
+          : c.rounds.map((r) => r.original[i]);
+        return choices.some(
+          (choice, n) =>
+            n >= 2 && choice === choices[n - 1] && choice === choices[n - 2],
         );
       });
     default:
       throw Error(`未定義日次HO ${g.id}`);
   }
 }
+/** Read-only estimate; the existing nightly evaluator remains authoritative. */
+export function dailyProgress(s: GameState, p: Player) {
+  const goal = p.dailyGoal;
+  const ls = s.logs.filter((l) => l.day === s.day && l.actor === p.id);
+  const facts = (type: string) => ls.filter((l) => l.type === type);
+  const sum = (type: string) =>
+    facts(type).reduce((n, l) => n + (l.amount ?? 0), 0);
+  const has = (type: string) => facts(type).length > 0;
+  const trades = facts("trade");
+  const battles = s.combatHistory.filter(
+    (c) =>
+      c.kind !== "mock" &&
+      c.participants.includes(p.id) &&
+      facts("combat").some((l) => l.data?.id === c.id),
+  );
+  if (
+    s.combat &&
+    s.combat.kind !== "mock" &&
+    s.combat.participants.includes(p.id) &&
+    !battles.some((c) => c.id === s.combat!.id)
+  )
+    battles.push(s.combat);
+  const pub = battles.filter((c) => c.kind === "public");
+  const e = EVENTS[s.event.id - 1];
+  const reserved = s.event.reservations.some(
+    (r) =>
+      r.player === p.id &&
+      (((!e.either || !s.event.route || s.event.route === "materials") &&
+        r.items.length > 0) ||
+        ((!e.either || !s.event.route || s.event.route === "stats") &&
+          Object.values(r.stats).some((n) => (n ?? 0) > 0))),
+  );
+  const candidate =
+    reserved ||
+    s.event.mock.includes(p.id) ||
+    ls.some((l) => e.actions?.includes(l.type));
+  const contribution =
+    has("contribution") ||
+    (!s.event.resolved && eventProgress(s).success && candidate);
+  let current = 0,
+    total = 1;
+  let met = dailyAchieved(s, p);
+  switch (goal.id) {
+    case 1:
+      current = Number(facts("research").some((l) => (l.amount ?? 0) > 0));
+      break;
+    case 2:
+      total = 2;
+      current = met ? 2 : Number(has("gather"));
+      break;
+    case 3:
+      current = sum("brew");
+      break;
+    case 4:
+      total = 2;
+      current = sum("research");
+      break;
+    case 5:
+      current = sum("acquirePotion");
+      break;
+    case 6:
+      total = 2;
+      current = sum("gather");
+      break;
+    case 7:
+      current = hasFinalGoalRules(s)
+        ? Number(met)
+        : Number(contribution || candidate);
+      if (!hasFinalGoalRules(s)) met = contribution;
+      break;
+    case 8:
+      current = trades.reduce((n, l) => n + (l.amount ?? 0), 0);
+      break;
+    case 9:
+      total = 2;
+      current = new Set(trades.map((l) => l.target)).size;
+      break;
+    case 10:
+      current = Number(
+        trades.some((l) => (l.amount ?? 0) > 0 && l.data?.received === 0),
+      );
+      break;
+    case 11:
+      total = 2;
+      current =
+        Number(contribution || candidate) +
+        Number(has("gather") || has("research"));
+      met = contribution && (has("gather") || has("research"));
+      break;
+    case 12:
+      current = facts("fp")
+        .filter((l) => l.kind !== "ho" && (l.amount ?? 0) > 0)
+        .reduce((n, l) => n + l.amount!, 0);
+      break;
+    case 13:
+      current = sum("scout");
+      break;
+    case 14:
+      current = hasFinalGoalRules(s) ? Number(met) : sum("loot");
+      break;
+    case 15:
+      current = Number(has("rest"));
+      break;
+    case 16:
+      current = hasFinalGoalRules(s)
+        ? Number(met)
+        : battles.filter(
+            (c) =>
+              c.kind === "secret" && c.initiator === p.id && c.winner === p.id,
+          ).length;
+      break;
+    case 17:
+      current = facts("curseHit").length;
+      break;
+    case 18:
+      current = Number(has("guard"));
+      break;
+    case 19:
+      current = pub.length;
+      met = current > 0;
+      break;
+    case 20:
+      current = pub.filter((c) => c.winner === p.id).length;
+      break;
+    case 21:
+      met = pub.some((c) => {
+        const side = c.participants.indexOf(p.id);
+        return c.elemental
+          ? c.elemental.rounds.some(
+              (r) => r.sides[1 - side].dealt > r.sides[side].dealt,
+            )
+          : c.rounds.some((r) => r.damage[side] > r.damage[1 - side]);
+      });
+      current = Number(met);
+      break;
+    case 22:
+      current = Number(met);
+      break;
+    case 23:
+      total = 2;
+      current = Number(trades.length > 0) + Number(pub.length > 0);
+      met = current === 2;
+      break;
+    case 24:
+      total = 3;
+      for (const c of battles) {
+        const side = c.participants.indexOf(p.id);
+        let streak = 0,
+          previous: string | undefined;
+        const choices = c.elemental
+          ? c.elemental.rounds.map((r) => r.sides[side].element)
+          : c.rounds.map((r) => r.original[side]);
+        for (const choice of choices) {
+          streak = choice === previous ? streak + 1 : 1;
+          current = Math.max(current, streak);
+          previous = choice;
+        }
+      }
+      met = current >= total;
+      break;
+  }
+  const judged = p.dailyHistory.find(
+    (h) => h.day === s.day && h.id === goal.id,
+  );
+  const unjudgedCollapse =
+    s.phase === "ended" && s.result?.reason === "collapse" && !judged;
+  const status = unjudgedCollapse
+    ? "判定なし・報酬なし"
+    : judged?.achieved
+      ? "達成確定"
+      : !judged && met
+        ? "達成見込み"
+        : "未達成";
+  return {
+    status,
+    current: Math.min(total, Math.max(0, current)),
+    total,
+    detail: unjudgedCollapse
+      ? "研究所崩壊により本日の日次HOは最終判定されず、報酬は付与されません。"
+      : judged
+        ? "最終判定済みです。"
+        : (goal.id === 11 || (!hasFinalGoalRules(s) && goal.id === 7)) &&
+            !s.event.resolved &&
+            candidate
+          ? "予約・行動は有効候補です。イベント成功と公開終了時の確定が必要です。"
+          : "最終判定は夜のHO判定時に行います。",
+  };
+}
+
 export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
   const all = s.logs;
   const ls = all.filter((l) => l.actor === p.id);
@@ -140,9 +348,11 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
   const most = (values: number[], v: number, strict = true) =>
     values.every((x) => (strict ? v > x : v >= x));
   const others = s.players.filter((x) => x.id !== p.id);
+  const comparison = (player: Player) =>
+    s.finalComparison?.[player.id] ?? player.fp;
   switch (g.id) {
     case 1:
-      return p.fp >= q.fp + 2;
+      return comparison(p) >= comparison(q) + 2;
     case 2:
       return ts("trade", target).length >= 2 && wins(target) >= 1;
     case 3:
@@ -159,13 +369,23 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
         ts("contribution").length,
       );
     case 7:
-      return scouts(target).length >= 2 && ts("trade", target).length >= 1;
+      return (
+        (hasFinalGoalRules(s)
+          ? new Set(scouts(target).map((l) => l.day)).size
+          : scouts(target).length) >= 2 && ts("trade", target).length >= 1
+      );
     case 8:
       return n("givePotion") >= 3;
     case 9:
       return p.inventory.length > q.inventory.length;
     case 10:
-      return new Set(ts("commandExecuted").map((l) => l.target)).size >= 2;
+      return (
+        new Set(
+          ts("commandExecuted")
+            .filter((l) => !hasNightRules(s) || l.data?.qualifies === true)
+            .map((l) => l.target),
+        ).size >= 2
+      );
     case 11:
       return ts("curseHit", target).length > 0 && wins(target) >= 1;
     case 12:
@@ -201,6 +421,21 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
           ),
         ),
       );
+      if (hasNightRules(s))
+        return (
+          a ||
+          others.some(
+            (q) =>
+              scouts(q.id).filter((l) =>
+                ts("win", q.id).some(
+                  (v) =>
+                    v.data?.kind === "public" &&
+                    v.data?.initiator === p.id &&
+                    v.seq < l.seq,
+                ),
+              ).length >= 3,
+          )
+        );
       const b =
         others.reduce(
           (sum, q) =>
@@ -230,14 +465,20 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
                 c.participants.includes(t) &&
                 c.winner !== null &&
                 c.winner !== t,
-            ) && p.fp > s.players[t].fp,
-        ) ||
-        most(
-          others.map((q) => q.fp),
-          p.fp,
-        )
+            ) && comparison(p) > comparison(s.players[t]),
+        ) || most(others.map(comparison), comparison(p))
       );
     case 20:
+      if (hasNightRules(s))
+        return (
+          ts("defensiveWin").length >= 2 &&
+          STATS.some((k) =>
+            most(
+              others.map((q) => q.stats[k]),
+              p.stats[k],
+            ),
+          )
+        );
       return (
         ts("defensiveWin").length >= 2 ||
         most(
@@ -276,11 +517,7 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
     case 18:
       return (
         n("give", target) >= 3 &&
-        most(
-          others.map((q) => q.fp),
-          p.fp,
-          false,
-        )
+        most(others.map(comparison), comparison(p), false)
       );
     case 19:
       return wins(target) >= 2 && scouts(target).length >= 1;
@@ -288,7 +525,16 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
       throw Error(`未定義長期HO ${g.id}`);
   }
 }
-export function goalDescription(g: Goal, long: boolean) {
+export function goalDescription(g: Goal, long: boolean, modern = false) {
+  const suffix = g.targets.length
+    ? `（指定：${g.targets.map((n) => `席${n + 1}`).join("・")}）`
+    : "";
+  if (modern) {
+    const d = (long ? modernGoals.long : modernGoals.daily).find(
+      (x) => x.id === g.id,
+    )!;
+    return { ...d, condition: d.condition + suffix };
+  }
   const d = (long ? LONG_GOALS : DAILY_GOALS).find((x) => x.id === g.id)!;
   return {
     ...d,
@@ -308,10 +554,7 @@ export function goalDescription(g: Goal, long: boolean) {
         .replaceAll("通常窃盗", "成功偵察")
         .replaceAll("3ラウンド全部", "3R連続")
         .replaceAll("3ラウンド合計点", "残HP")
-        .replaceAll("窃盗・", "偵察・") +
-      (g.targets.length
-        ? `（指定：${g.targets.map((n) => `席${n + 1}`).join("・")}）`
-        : ""),
+        .replaceAll("窃盗・", "偵察・") + suffix,
   };
 }
 // v0.1変換後も全46種は達成可能。除外候補はなし。

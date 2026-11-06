@@ -1,9 +1,25 @@
 import type { Combat, GameState, Item, Player, Stance } from "./types";
-import { CONFIG, level } from "./config";
+import { CONFIG, hasElementCombat, hasNightRules, level } from "./config";
 import { recipe } from "./items";
 import { pick } from "./rng";
 import { log } from "./core";
+import { ELEMENT_HP } from "./elementCombat";
 export const STANCES: Stance[] = ["attack", "defend", "charge"];
+/** Ownership is unrestricted; only eligible, unlocked items enter combat. */
+export function automaticLoadout(p: Player) {
+  if (level(p.stats.insight) < 3) return [];
+  return p.inventory
+    .filter((i) => !i.lock && recipe(i.kind)?.tier === "combat")
+    .slice(0, level(p.stats.insight))
+    .map((i) => i.id);
+}
+export function legalStances(c: Combat, side: number): Stance[] {
+  return STANCES.filter(
+    (v) =>
+      v !== "charge" ||
+      (c.previous[side] !== "charge" && c.rounds.length < CONFIG.maxRounds - 1),
+  );
+}
 export function startCombat(
   s: GameState,
   a: number,
@@ -21,6 +37,7 @@ export function startCombat(
     brought: [[], []],
     rounds: [],
     done: false,
+    resultAcknowledged: false,
     returnPhase: s.phase,
     illusionRound:
       kind === "secret" &&
@@ -30,6 +47,10 @@ export function startCombat(
         : -1,
     initiator: a,
   };
+  if (hasElementCombat(s) && (kind !== "secret" || hasNightRules(s))) {
+    c.hp = [ELEMENT_HP, ELEMENT_HP];
+    c.elemental = { ready: [kind === "mock", kind === "mock"], rounds: [] };
+  }
   s.combat = c;
   log(
     s,
@@ -77,7 +98,7 @@ export function calculateRound(
 ) {
   const values = choices.map((c, i) =>
     c === "charge"
-      ? stats[i].defense + rolls[i] + guard[i]
+      ? stats[i].insight + rolls[i] + buffs[i].charge
       : stats[i][c === "attack" ? "attack" : "defense"] +
         rolls[i] +
         charge[i] +
@@ -93,8 +114,9 @@ export function calculateRound(
       const j = 1 - i;
       if (choices[i] !== "attack") continue;
       const diff = values[i] - values[j];
-      if (diff > 0) hits[j] = damage(diff);
-      else if (choices[j] === "defend") hits[i] = damage(-diff);
+      if (choices[j] === "defend") {
+        if (diff < 0) hits[i] = damage(-diff);
+      } else hits[j] = Math.max(1, values[i] - 3);
     }
   const next = choices.map((c, i) =>
     c === "charge" ? stats[i].insight + rolls[i] + buffs[i].charge : 0,
@@ -115,12 +137,9 @@ export function resolveRound(
     { attack: number; defense: number; charge: number },
     { attack: number; defense: number; charge: number },
   ];
+  if ([0, 1].some((i) => !legalStances(c, i).includes(choices[i])))
+    throw Error("連続ためる・最終ラウンドのためるは不可");
   for (const i of [0, 1]) {
-    if (
-      !STANCES.includes(choices[i]) ||
-      (choices[i] === "charge" && c.previous[i] === "charge")
-    )
-      throw Error("連続ためるは不可");
     const id = potionIds[i];
     if (id !== undefined) {
       const item = c.brought[i].find((v) => v.id === id);
@@ -139,7 +158,7 @@ export function resolveRound(
   if (c.illusionRound === c.rounds.length)
     choices[1] = pick(
       s,
-      STANCES.filter((v) => v !== choices[1]),
+      legalStances(c, 1).filter((v) => v !== choices[1]),
       "幻惑による変更",
     );
   const rolls: [number, number] = [
@@ -157,6 +176,7 @@ export function resolveRound(
         )
       : 0,
   ) as [number, number];
+  const chargeBonus = [...c.charge] as [number, number];
   const r = calculateRound(
     [ps[0].stats, ps[1].stats],
     choices,
@@ -165,13 +185,34 @@ export function resolveRound(
     buffs,
     guards,
   );
+  if (c.rounds.length + 1 >= CONFIG.maxRounds) r.charge = [0, 0];
   c.hp = [
     Math.max(0, c.hp[0] - r.damage[0]),
     Math.max(0, c.hp[1] - r.damage[1]),
   ];
   c.charge = r.charge;
-  c.previous = original;
+  c.previous = [...choices];
   c.rounds.push({
+    insight: [ps[0].stats.insight, ps[1].stats.insight],
+    nextCharge: [...r.charge],
+    base: choices.map(
+      (v, i) =>
+        ps[i].stats[
+          v === "attack" ? "attack" : v === "charge" ? "insight" : "defense"
+        ],
+    ) as [number, number],
+    chargeBonus: choices.map((v, i) =>
+      v === "charge" ? 0 : chargeBonus[i],
+    ) as [number, number],
+    buffs,
+    guard: choices.map((v, i) => (v === "defend" ? guards[i] : 0)) as [
+      number,
+      number,
+    ],
+    counter: [
+      choices[0] === "defend" && r.damage[1] > 0,
+      choices[1] === "defend" && r.damage[0] > 0,
+    ],
     choices,
     original,
     rolls,
@@ -180,6 +221,20 @@ export function resolveRound(
     hp: [...c.hp],
     potions: potions as [string | null, string | null],
   });
+  log(
+    s,
+    "combatRound",
+    `R${c.rounds.length}：${choices.map((v) => (v === "attack" ? "攻撃" : v === "defend" ? "防御" : "ためる")).join(" / ")} · 判定 ${r.values.join("/")} · 被ダメージ ${r.damage.join("/")} · 残HP ${c.hp.join("/")}`,
+    {
+      actor: c.participants[0],
+      target: c.participants[1],
+      audience: c.kind === "secret" ? [...c.participants] : "public",
+      data: {
+        combat: c.id,
+        round: structuredClone(c.rounds[c.rounds.length - 1]),
+      },
+    },
+  );
   if (c.hp.some((h) => h <= 0) || c.rounds.length >= CONFIG.maxRounds) {
     c.done = true;
     c.winner =
@@ -197,11 +252,13 @@ export function chooseStance(
   previous: Stance | null,
   hp: [number, number],
   potions: string[] = [],
+  remainingRounds = CONFIG.maxRounds as number,
 ): Stance {
   let best: Stance = "defend",
     bestValue = -Infinity;
   for (const a of ["defend", "attack", "charge"] as Stance[]) {
-    if (a === "charge" && previous === "charge") continue;
+    if (a === "charge" && (previous === "charge" || remainingRounds <= 1))
+      continue;
     let score = 0;
     const buff = { attack: 0, defense: 0, charge: 0 };
     const effect =

@@ -1,5 +1,29 @@
 # GitHub接続・Pages公開準備
 
+## v0.2.3レビュー指摘修正（2026-11-05）
+
+既存Draft [PR #2](https://github.com/mayidazhu6-lab/majoken-browser-prototype/pull/2) / `feat/browser-v0.2.3` を更新。錬金の全レシピ効果・素材残数、初日の薬納品除外、幻惑の発動表示を修正。[変更・検証・セーブ互換](review-v0.2.3.md)。新しいPRの作成、main・PR #1のマージ、公開は行わない。
+
+## v0.2.3作業（2026-11-05）
+
+開始時にoriginをfetchし、PR #1がopen/draft・未マージ、headが `81d88a1` のv0.2.2であることを確認。そこから専用ブランチ `feat/browser-v0.2.3` を作成した。レビューPRは `feat/browser-v0.2` をbaseとし、既存PR #1へ混ぜずv0.2.3差分を確認する。[実装・不具合調査・要確認事項](v0.2.3.md)、[検証報告](test-report.md)。main・PR #1のマージ、Pages公開は行わない。
+
+## v0.2.2作業（2026-10-30）
+
+PR #1はopen/draft、head feat/browser-v0.2、base main、未マージを確認。同じブランチへv0.2.2を追加する。[原因・変更・懸念](v0.2.2.md)、[検証報告](test-report.md)。mainへのマージ・Pages公開は行わない。
+
+## v0.2.1作業（履歴・2026-10-30）
+
+対象8cea351の再レビュー4件の修正は [review-v0.2.1.md](review-v0.2.1.md)。同じブランチ・PR #1へ追加し、mainはマージしない。
+
+既存の `feat/browser-v0.2` と [PR #1](https://github.com/mayidazhu6-lab/majoken-browser-prototype/pull/1) を更新。仕様確定・変更と制約は [v0.2.1.md](v0.2.1.md)。mainへのマージ・Pages公開は実施しない。
+
+## v0.2作業（履歴・2026-10-30）
+
+対象は `mayidazhu6-lab/majoken-browser-prototype`。作業ブランチは `feat/browser-v0.2`。ローカル検証結果は [test-report.md](test-report.md)。ユーザー指示に基づき作業ブランチをpushし、mainへのマージはレビュー承認後とする。Pagesは公開しない。
+
+以下のv0.1作成時の未接続・未pushの説明は、当時の作業履歴として保持する。現在はoriginが対象リポジトリを指している。
+
 ## 2026-10-30 登録作業
 
 - 作成済みリポジトリ：https://github.com/mayidazhu6-lab/majoken-browser-prototype

@@ -2,7 +2,7 @@
 
 ## データと制御
 
-Vue 3画面 → Pinia `act(action)` → JSONデータ境界 → 純粋TypeScript `dispatch` → 複製状態上でvalidate/reduce/log → 不変条件検査 → 状態置換・自動保存。拒否時は元状態を保持。UIから能力・所持・APを直接変更しません。
+Vue 3画面 → Pinia `act(action)` → JSONデータ境界 → 純粋TypeScript `dispatch` → 複製状態上でvalidate/reduce/log → 人間判断・割り込みまでAI手番を自動処理 → 不変条件検査 → 状態置換・自動保存。拒否時は元状態を保持。UIから能力・所持・APを直接変更しません。
 
 `dispatch` は渡された状態を変更しない純粋APIです。内部関数は複製済み状態を更新します。PRNG状態もGameStateに含め、`Math.random`、現在時刻、UI演出から乱数を消費しません。ログのseqは受理順を表し、再生に影響する壁時計は保存しません。
 
@@ -13,7 +13,7 @@ Vue 3画面 → Pinia `act(action)` → JSONデータ境界 → 純粋TypeScript
 | `rng.ts` | seedハッシュ・PRNG・等確率／非復元抽選・監査ログ |
 | `items.ts` | 薬のレシピ、素材検証、所持／消費、利用可否 |
 | `events.ts` | 12イベント、重み付き山札、仮納品、撤回、成功条件と報酬 |
-| `combat.ts` | 新HP戦闘、持込薬、ラウンド計算、期待値によるAI戦法 |
+| `combat.ts` | 新HP戦闘（ためる被害は攻撃判定値−3・最低1）、Lv3資格付きの自動持込候補、持込薬、ラウンド計算、期待値によるAI戦法 |
 | `goals.json` / `ho.ts` | 46HO原文・ID、条件変換、抽選、全評価関数 |
 | `ai.ts` | AI方針データ、候補の重み付き選択、公開観測インターフェース |
 | `reducer.ts` | 全行動の検証と適用、フェーズ、魔法、夜行動、取引、AI起動、HO報酬、勝敗 |
@@ -21,15 +21,19 @@ Vue 3画面 → Pinia `act(action)` → JSONデータ境界 → 純粋TypeScript
 | `persistence.ts` | JSON形式、バージョン検査、操作ログ再生・状態一致照合 |
 | `simulation.ts` | 合法な協力寄りの人間代行方針、全ゲーム試遊 |
 | `src/stores/game.ts` | Pinia、Vueのリアクティブ値からJSONデータへの変換、localStorage、通知 |
-| `src/App.vue` / `style.css` | 3列UI、キャラ作成、行動・戦闘、本人通知、明示的開発者表示 |
+| `src/App.vue` / `components/` / `style.css` | フェーズ別3列UI、中央のBlockingDialog、左右順を共通化したCombatRounds、キャラ作成、行動・戦闘、本人通知、明示的開発者表示 |
 
 ## 状態
 
 `GameState` はルール版、初期設定、seed、PRNG状態・抽選数、日、phase、4人の状態、イベント山札と現在予約、予知候補と票、結界、戦闘・戦闘履歴、挑戦への返答待ち、取引、操作ログ、監査ログ、最終結果を含みます。
 
+`publicTurn` は日替わりの席順、巡（1/2＝通常、2巡終了で4＝公開完了。3の確認巡は廃止）、現在位置、通常行動済み状態、AIの取引／模擬戦済みフラグ、巡・申請者・相手別の申請回数を保持。AP消費時に通常行動済みへ変更し、割り込みでは手番を動かさない。秘匿決闘はdoneであっても人間のcombatAckまで保持し、その後に報酬へ進む。返答・戦闘・報酬の解決後も同じ状態から再開する。
+
 `Player` は公開能力・AP・FPと、本人秘密の所持個体、HO・対象・日別結果、固有魔法／次回使用日、永久／仮レシピ、最高FP、休息／呪詛、夜行動、命令を保持します。
 
-各 `Item` のIDはゲーム内で一意。`lock` は `event` または `trade:ID`。完成薬と素材を同じ所有権・移動処理で扱います。能力予約はevent.reservationsに別途保持し、移転と能力納品時に下限を検証します。
+各 `Item` のIDはゲーム内で一意。`lock` は `event` または `trade:ID`。完成薬と素材を同じ所有権・移動処理で扱います。能力予約はevent.reservationsに別途保持し、能力納品時に下限を検証します。
+
+`dailyProgress` は読み取り専用の本人向け表示推定で、夜の `dailyAchieved` と報酬処理を変更しない。納品見込みは公開予約と現在の成功条件で計算し、取消に追従する。能力Lv上昇は研究の各行動前後の状態比較からログへ記録し、UIの再描画・再読込で再発行しない。
 
 ## 情報境界
 
@@ -39,6 +43,13 @@ Vue 3画面 → Pinia `act(action)` → JSONデータ境界 → 純粋TypeScript
 
 開発者表示とJSONはローカル試験者向けの全状態です。サーバーによる秘匿・悪意あるクライアントへの防御は提供しません。
 
+## 保存と互換性
+
+状態・JSON形式の版は2、ルール版は `browser-0.2.2+decisions-5`。`majoken-save-v2` にだけ書込み、v0.1の領域は保持。v0.1および旧v0.2のルール版を明示的な版不一致で拒否し、旧ルールエンジン・自動変換は提供しない。再生は自動AI進行を含むdispatch列を照合する。ストアは再開後に追加AI実行をしない。
+
 ## 検証・配布
 
 Vitestは純粋ドメイン、PlaywrightはChromiumで実画面操作。シミュレーションは通常のdispatchだけを呼び、イベント失敗や乱数を強制変更しません。Viteは相対baseなのでGitHub Pagesのリポジトリサブパスでも静的資産を参照できます。CIと公開承認付きPagesワークフローを分離しています。
+
+
+v0.2.2の結果確認はCurrentEvent.acknowledged・Combat.resultAcknowledged・GameState.publicOutcomeを保存し、eventAck/combatAck/publicOutcomeAckを操作ログで再現する。公開2巡の終端で既存resolveEventを実行し、確認で再判定しない。素材選択はGroupedItems.vueが種類別数量を個体IDへ解決する。ルール差分は[v0.2.2.md](v0.2.2.md)。

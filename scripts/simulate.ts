@@ -1,9 +1,10 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { simulate } from "../src/domain/simulation";
+import { V20_RULES_VERSION } from "../src/domain/config";
 const seeds = process.argv.slice(2);
-if (!seeds.length) seeds.push("witches-2026", "moon-42", "lab-77");
+if (!seeds.length) seeds.push("witches-2026", "moon-42", "lab-77", "review-1");
 const results = seeds.map((seed) => {
-  const s = simulate(seed);
+  const s = simulate(seed, V20_RULES_VERSION);
   return {
     seed,
     day: s.day,
@@ -23,7 +24,7 @@ const results = seeds.map((seed) => {
     combats: s.combatHistory.map((c) => ({
       kind: c.kind,
       winner: c.winner,
-      rounds: c.rounds.length,
+      rounds: c.elemental?.rounds.length ?? c.rounds.length,
       hp: c.hp,
       participants: c.participants,
     })),
@@ -43,6 +44,34 @@ const results = seeds.map((seed) => {
         stat: l.kind,
         amount: l.amount,
       })),
+    contributionByDay: Array.from({ length: s.day }, (_, i) => ({
+      day: i + 1,
+      firstRoundDonors: [
+        ...new Set(
+          s.logs
+            .filter(
+              (l) =>
+                l.day === i + 1 &&
+                l.type === "reserve" &&
+                l.data?.round === 1 &&
+                Number(l.data?.units) > 0,
+            )
+            .map((l) => l.actor),
+        ),
+      ],
+      contributors: [
+        ...new Set(
+          s.logs
+            .filter((l) => l.day === i + 1 && l.type === "contribution")
+            .map((l) => l.actor),
+        ),
+      ],
+    })),
+    donationHO: s.players.flatMap((p) =>
+      p.dailyHistory
+        .filter((h) => h.id === 11)
+        .map((h) => ({ player: p.id, ...h })),
+    ),
     actions: s.actions.length,
   };
 });
@@ -62,6 +91,7 @@ writeFileSync(
   "docs/reports/simulation.json",
   JSON.stringify(
     {
+      rulesVersion: V20_RULES_VERSION,
       policy: "cooperative human bot + three normal AI (unmodified rules)",
       summary,
       results,

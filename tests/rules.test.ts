@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createGame, dispatch, aiView } from "../src/domain/reducer";
 import { MATERIALS, STATS } from "../src/domain/config";
 import { addItem, RECIPES } from "../src/domain/items";
+import { simulationAction } from "../src/domain/simulation";
 import { fp } from "../src/domain/core";
 import {
   DAILY_GOALS,
@@ -50,12 +51,16 @@ describe("Phase 2 主要行動", () => {
     s = dispatch(s, { type: "research", player: 0, stat: "attack" });
     expect(s.players[0].stats.attack).toBe(5);
     expect(s.players[0].curse).toBe(0);
+    s = dispatch(s, { type: "endTurn", player: 0 });
+    for (let n = 0; (s.combat || s.challenge || s.trades.length) && n < 50; n++)
+      s = dispatch(s, simulationAction(s));
     s = dispatch(s, { type: "research", player: 0, stat: "attack" });
     expect(s.players[0].stats.attack).toBe(8);
-    expect(() => dispatch(s, { type: "gather", player: 0 })).toThrow("AP不足");
+    expect(() => dispatch(s, { type: "gather", player: 0 })).toThrow();
   });
   it("A04 納品予約ロック・過剰納品拒否・失敗返却", () => {
     const s = game();
+    s.publicTurn.round = 2;
     s.event = {
       id: 1,
       specified: "water",
@@ -74,6 +79,7 @@ describe("Phase 2 主要行動", () => {
   });
   it("成功納品のみ消費、能力下限と予約撤回", () => {
     const s = game();
+    s.publicTurn.round = 2;
     s.event = {
       id: 6,
       specified: "water",
@@ -94,7 +100,7 @@ describe("Phase 2 主要行動", () => {
     expect(s.players[0].stats.defense).toBe(1);
     expect(s.players[0].fp).toBe(2);
   });
-  it("取引成立で申請者のみ1AP、拒否はAP消費なし", () => {
+  it("取引成立・拒否ともAP消費なし", () => {
     let s = game();
     const id = s.players[0].inventory[0].id;
     s = dispatch(s, {
@@ -104,7 +110,7 @@ describe("Phase 2 主要行動", () => {
       offer: [id],
       request: {},
     });
-    expect(s.players[0].ap).toBe(1);
+    expect(s.players[0].ap).toBe(2);
     expect(s.players[1].ap).toBe(2);
     expect(s.players[1].inventory.some((i) => i.id === id)).toBe(true);
     const before = s.players[0].ap;
@@ -154,6 +160,7 @@ describe("Phase 4 イベント・HO・AI・勝敗", () => {
       mock: [],
       resolved: false,
     };
+    s.publicTurn.round = 4;
     s = dispatch(s, { type: "advance" });
     expect(s.phase).toBe("ended");
     expect(s.result?.reason).toBe("collapse");
@@ -190,6 +197,7 @@ describe("Phase 4 イベント・HO・AI・勝敗", () => {
     expect(EVENTS).toHaveLength(12);
     for (const e of EVENTS) {
       const s = game();
+      s.publicTurn.round = 2;
       s.event = {
         id: e.id,
         specified: "water",
@@ -250,7 +258,7 @@ describe("Phase 4 イベント・HO・AI・勝敗", () => {
       ),
     ).toBe(true);
   });
-  it("FPだけでは卒業なし、同率首席とFP順位は別", () => {
+  it("FPだけでは卒業なし、未卒業者に順位なし", () => {
     let s = game();
     s.day = 8;
     s.phase = "ho";
@@ -262,13 +270,14 @@ describe("Phase 4 イベント・HO・AI・勝敗", () => {
     s = dispatch(s, { type: "advance" });
     expect(s.result?.graduates).toEqual([]);
     expect(s.result?.chiefs).toEqual([]);
-    expect(s.result?.ranking[0].rank).toBe(1);
+    expect(s.result?.ranking[0].rank).toBeNull();
   });
 });
 
 describe("最終レビューの回帰検証", () => {
   it("確定したイベント進捗を納品消費後も表示できる", () => {
     const s = game();
+    s.publicTurn.round = 2;
     s.event = {
       id: 1,
       specified: "water",

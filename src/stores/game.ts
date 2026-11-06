@@ -2,68 +2,88 @@ import { defineStore } from "pinia";
 import { shallowRef, ref } from "vue";
 import type { Action, GameState, Setup } from "../domain/types";
 import { createGame, dispatch } from "../domain/reducer";
+import { hasGoalDrivenRewards, V20_RULES_VERSION } from "../domain/config";
 import { deserialize, serialize } from "../domain/persistence";
-const KEY = "majoken-save-v1";
+
+const KEY = "majoken-save-rules-2.0-final";
+const LEGACY_KEYS = [
+  "majoken-save-rules-2.0-review",
+  "majoken-save-rules-2.0-strategy",
+  "majoken-save-rules-2.0-goals",
+  "majoken-save-rules-2.0-night",
+  "majoken-save-rules-2.0-combat",
+  "majoken-save-rules-2.0",
+  "majoken-save-v2",
+  "majoken-save-v1",
+];
+
 export const useGameStore = defineStore("game", () => {
   const state = shallowRef<GameState>();
+  const pending = shallowRef<GameState>();
   const error = ref("");
   const notice = ref("");
+
+  function commit(candidate: GameState) {
+    try {
+      localStorage.setItem(KEY, serialize(candidate));
+      state.value = candidate;
+      pending.value = undefined;
+      error.value = "";
+      return true;
+    } catch {
+      pending.value = candidate;
+      error.value =
+        "自動保存できませんでした。進行を停止しました。保存を再試行してください。";
+      return false;
+    }
+  }
+
   function act(a: Action) {
+    if (!state.value || pending.value) return;
     try {
-      if (!state.value) return;
-      const previous = state.value.phase;
-      state.value = dispatch(state.value, JSON.parse(JSON.stringify(a)));
-      if (previous === "dawn" && state.value.phase === "public")
-        state.value = dispatch(state.value, { type: "aiPublic" });
-      error.value = "";
-      try {
-        localStorage.setItem(KEY, serialize(state.value));
-      } catch {
-        notice.value = "自動保存できません。JSON保存をご利用ください。";
-      }
+      commit(dispatch(state.value, JSON.parse(JSON.stringify(a))));
     } catch (e) {
       error.value = (e as Error).message;
     }
   }
+
   function start(setup: Setup) {
+    if (pending.value) return;
     try {
-      state.value = dispatch(createGame(JSON.parse(JSON.stringify(setup))), {
-        type: "aiPublic",
-      });
-      error.value = "";
-      localStorage.setItem(KEY, serialize(state.value));
+      commit(createGame(JSON.parse(JSON.stringify(setup)), V20_RULES_VERSION));
     } catch (e) {
       error.value = (e as Error).message;
     }
   }
+
   function save() {
-    if (state.value) {
-      try {
-        localStorage.setItem(KEY, serialize(state.value));
-        notice.value = "保存しました";
-      } catch {
-        error.value = "保存できません。JSON保存をご利用ください。";
-      }
-    }
+    const candidate = pending.value ?? state.value;
+    if (candidate && commit(candidate)) notice.value = "保存しました";
   }
+
   function load(json?: string) {
+    if (pending.value) return;
     try {
       const raw = json ?? localStorage.getItem(KEY);
-      if (!raw) throw Error("保存データがありません");
-      state.value = deserialize(raw);
+      const legacyError =
+        "ルール版が一致しません。旧セーブは元の保存枠に保持されています。";
+      if (!raw)
+        throw Error(
+          LEGACY_KEYS.some((key) => localStorage.getItem(key))
+            ? legacyError
+            : "保存データがありません",
+        );
+      if (!hasGoalDrivenRewards(JSON.parse(raw)?.state ?? {}))
+        throw Error(legacyError);
+      const loaded = deserialize(raw);
+      if (json && !commit(loaded)) return;
+      state.value = loaded;
       error.value = "";
       notice.value = "保存データを再開しました";
-      if (json) {
-        try {
-          localStorage.setItem(KEY, serialize(state.value));
-        } catch {
-          notice.value =
-            "読込済み。自動保存できないためJSON保存をご利用ください。";
-        }
-      }
     } catch (e) {
       error.value = (e as Error).message;
     }
   }
-  return { state, error, notice, act, start, save, load };
+
+  return { state, pending, error, notice, act, start, save, load };
 });

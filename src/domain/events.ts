@@ -1,5 +1,11 @@
-import type { EventDefinition, GameState, Player, Stat } from "./types";
-import { MATERIALS, STATS } from "./config";
+import type {
+  EventDefinition,
+  GameState,
+  Player,
+  Reservation,
+  Stat,
+} from "./types";
+import { MATERIALS, STATS, LEGACY_RULES_VERSION, isV20 } from "./config";
 import { isMaterial, addItem, available } from "./items";
 import { pick, random } from "./rng";
 import { fp, log } from "./core";
@@ -111,10 +117,21 @@ export const EVENTS: EventDefinition[] = [
     fp: 2,
   },
 ];
-export function drawEvent(s: GameState, day: number, excluded: number[] = []) {
-  const pool = EVENTS.filter(
-    (e) => !s.usedEvents.includes(e.id) && !excluded.includes(e.id),
+export function eligibleEvents(
+  s: GameState,
+  day: number,
+  excluded: number[] = [],
+) {
+  return EVENTS.filter(
+    (e) =>
+      !s.usedEvents.includes(e.id) &&
+      !excluded.includes(e.id) &&
+      (day !== 1 || !e.potions || s.rulesVersion === LEGACY_RULES_VERSION),
   );
+}
+export function drawEvent(s: GameState, day: number, excluded: number[] = []) {
+  const pool = eligibleEvents(s, day, excluded);
+  if (!pool.length) throw Error("抽選候補がありません");
   const weights = day <= 4 ? [45, 45, 10] : [5, 45, 50];
   const ds = ["Easy", "Normal", "Hard"];
   const valid = ds.map((d, i) => ({
@@ -139,7 +156,11 @@ export function startEvent(s: GameState) {
   s.usedEvents.push(id);
   s.event = {
     id,
-    specified: pick(s, MATERIALS.slice(0, 5), "異界門指定素材"),
+    specified: isV20(s)
+      ? id === 11
+        ? pick(s, MATERIALS, "異界門指定素材")
+        : "obsidian"
+      : pick(s, MATERIALS.slice(0, 5), "異界門指定素材"),
     reservations: [],
     mock: [],
     resolved: false,
@@ -165,14 +186,16 @@ export function eventProgress(s: GameState) {
   const actions = s.logs.filter(
     (l) => l.day === s.day && e.actions?.includes(l.type),
   ).length;
+  const enough = (n: number, required: number) =>
+    isV20(s) ? n >= required : n === required;
   const materialOk =
-    materials.length === (e.materials ?? 0) &&
+    enough(materials.length, e.materials ?? 0) &&
     Object.entries(e.required ?? {}).every(([k, v]) => (counts[k] ?? 0) >= v);
-  const statOk = stats === (e.stats ?? 0);
+  const statOk = enough(stats, e.stats ?? 0);
   const other =
     (!e.mock || s.event.mock.length === 2) &&
     (!e.actions || actions >= (e.count ?? 0)) &&
-    (!e.potions || potions === e.potions);
+    (!e.potions || enough(potions, e.potions));
   const success =
     other &&
     (e.either
@@ -190,6 +213,22 @@ export function eventProgress(s: GameState) {
     actions,
     success,
   };
+}
+export function reservationUnits(s: GameState, p: Player) {
+  return s.event.reservations
+    .filter((r) => r.player === p.id)
+    .reduce(
+      (n, r) =>
+        n +
+        r.items.length +
+        Object.values(r.stats).reduce((a, b) => a + (b ?? 0), 0),
+      0,
+    );
+}
+export function reservationRoom(s: GameState, p: Player) {
+  return !isV20(s) && s.phase === "public" && s.publicTurn.round === 1
+    ? Math.max(0, 1 - reservationUnits(s, p))
+    : Infinity;
 }
 export function reserve(
   s: GameState,
@@ -220,6 +259,10 @@ export function reserve(
     throw Error("対象外の納品物");
   const before = eventProgress(s);
   const ns = Object.values(stats).reduce((a, b) => a + (b ?? 0), 0);
+  if (ids.length + ns > reservationRoom(s, p))
+    throw Error(
+      "第1巡の納品予約は1人1個までです（素材・薬・能力1ポイントを合算）",
+    );
   if (ns && !e.stats) throw Error("能力納品の対象外");
   for (const k of STATS) {
     const reserved = s.event.reservations
@@ -229,24 +272,36 @@ export function reserve(
       throw Error("能力下限は1です");
   }
   if (
-    before.materials + items.filter((i) => isMaterial(i.kind)).length >
+    !isV20(s) &&
+    (before.materials + items.filter((i) => isMaterial(i.kind)).length >
       (e.materials ?? 0) ||
-    before.potions + items.filter((i) => !isMaterial(i.kind)).length >
-      (e.potions ?? 0) ||
-    before.stats + ns > (e.stats ?? 0)
+      before.potions + items.filter((i) => !isMaterial(i.kind)).length >
+        (e.potions ?? 0) ||
+      before.stats + ns > (e.stats ?? 0))
   )
     throw Error("必要数を超える納品です");
   items.forEach((i) => (i.lock = "event"));
   s.event.reservations.push({ player: p.id, items: ids, stats });
   if (e.either && !s.event.route) {
     const now = eventProgress(s);
-    if (now.materials === e.materials) s.event.route = "materials";
-    else if (now.stats === e.stats) s.event.route = "stats";
+    if (now.materials >= (e.materials ?? Infinity)) s.event.route = "materials";
+    else if (now.stats >= (e.stats ?? Infinity)) s.event.route = "stats";
   }
-  log(s, "reserve", `${p.name}が納品を予約`, {
-    actor: p.id,
-    data: { items: items.map((i) => i.kind), stats },
-  });
+  const progress = eventProgress(s);
+  log(
+    s,
+    "reserve",
+    `${p.name}が納品を予約：素材+${items.filter((i) => isMaterial(i.kind)).length}・薬+${items.filter((i) => !isMaterial(i.kind)).length}・能力+${ns}（合計 素材${progress.materials}・薬${progress.potions}・能力${progress.stats}）`,
+    {
+      actor: p.id,
+      data: {
+        items: items.map((i) => i.kind),
+        stats,
+        round: s.publicTurn.round,
+        units: ids.length + ns,
+      },
+    },
+  );
 }
 export function withdraw(s: GameState, p: Player) {
   p.inventory.forEach((i) => {
@@ -254,7 +309,16 @@ export function withdraw(s: GameState, p: Player) {
   });
   s.event.reservations = s.event.reservations.filter((r) => r.player !== p.id);
   const e = EVENTS[s.event.id - 1];
-  if (e.either) {
+  if (e.either && isV20(s)) {
+    const pr = eventProgress(s);
+    const materials = pr.materials >= e.materials!;
+    const stats = pr.stats >= e.stats!;
+    if (
+      !(s.event.route === "materials" && materials) &&
+      !(s.event.route === "stats" && stats)
+    )
+      s.event.route = materials ? "materials" : stats ? "stats" : undefined;
+  } else if (e.either) {
     const pr = eventProgress(s);
     if (
       (s.event.route === "materials" && pr.materials !== e.materials) ||
@@ -264,6 +328,40 @@ export function withdraw(s: GameState, p: Player) {
   }
   log(s, "withdraw", `${p.name}が納品予約を撤回`, { actor: p.id });
 }
+function adoptedReservations(s: GameState, e: EventDefinition): Reservation[] {
+  const reservations = s.event.reservations;
+  const items = reservations.flatMap((r) =>
+    r.items.map((id) =>
+      s.players[r.player].inventory.find((i) => i.id === id)!,
+    ),
+  );
+  const adopted = new Set<number>();
+  const itemLimit =
+    e.either && s.event.route === "stats" ? 0 : (e.materials ?? e.potions ?? 0);
+  for (const [kind, count] of Object.entries(e.required ?? {}))
+    for (const item of items.filter((i) => i.kind === kind).slice(0, count))
+      adopted.add(item.id);
+  for (const item of items) {
+    if (adopted.size >= itemLimit) break;
+    adopted.add(item.id);
+  }
+  let remaining =
+    e.either && s.event.route === "materials" ? 0 : (e.stats ?? 0);
+  return reservations.map((r) => {
+    const stats: Partial<Record<Stat, number>> = {};
+    for (const kind of STATS) {
+      const amount = Math.min(remaining, r.stats[kind] ?? 0);
+      if (amount) stats[kind] = amount;
+      remaining -= amount;
+    }
+    return {
+      player: r.player,
+      items: r.items.filter((id) => adopted.has(id)),
+      stats,
+    };
+  });
+}
+
 export function resolveEvent(s: GameState) {
   if (s.event.resolved) throw Error("イベント判定済み");
   const e = EVENTS[s.event.id - 1];
@@ -274,7 +372,9 @@ export function resolveEvent(s: GameState) {
   s.event.resolved = true;
   if (!success) s.failed++;
   const donations = new Map<number, number>();
-  for (const r of s.event.reservations) {
+  for (const r of isV20(s) && success
+    ? adoptedReservations(s, e)
+    : s.event.reservations) {
     const p = s.players[r.player];
     const ids = r.items.filter(
       (id) => !e.either || s.event.route === "materials",
@@ -288,7 +388,17 @@ export function resolveEvent(s: GameState) {
     if (success) {
       p.inventory = p.inventory.filter((i) => !ids.includes(i.id));
       if (!e.either || s.event.route === "stats")
-        for (const k of STATS) p.stats[k] -= r.stats[k] ?? 0;
+        for (const k of STATS) {
+          const amount = r.stats[k] ?? 0;
+          p.stats[k] -= amount;
+          if (amount)
+            log(
+              s,
+              "statDonation",
+              `${p.name}が${k === "attack" ? "攻撃" : k === "defense" ? "防御" : "洞察"}を${amount}納品（恒久値−${amount}）`,
+              { actor: p.id, kind: k, amount: -amount },
+            );
+        }
     }
     p.inventory.forEach((i) => {
       if (i.lock === "event") delete i.lock;
@@ -337,7 +447,10 @@ export function donationItems(s: GameState, p: Player): number[] {
   if (e.potions)
     return pool
       .filter((i) => !isMaterial(i.kind))
-      .slice(0, e.potions - pr.potions)
+      .slice(
+        0,
+        Math.max(0, Math.min(e.potions - pr.potions, reservationRoom(s, p))),
+      )
       .map((i) => i.id);
   if (!e.materials) return [];
   const eligible = pool.filter(
@@ -357,5 +470,8 @@ export function donationItems(s: GameState, p: Player): number[] {
   const room = Math.max(0, e.materials - pr.materials - missing);
   for (const i of eligible)
     if (selected.length < room && !selected.includes(i.id)) selected.push(i.id);
-  return selected.slice(0, Math.max(0, e.materials - pr.materials));
+  return selected.slice(
+    0,
+    Math.min(reservationRoom(s, p), Math.max(0, e.materials - pr.materials)),
+  );
 }
