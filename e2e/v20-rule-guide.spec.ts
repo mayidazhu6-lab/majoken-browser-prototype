@@ -30,6 +30,11 @@ for (const [device, width, height] of [
       const guide = page.getByRole("dialog", { name: title, exact: true });
       const start = page.getByRole("button", { name: /ゲーム開始/ });
       await expect(start).toBeVisible();
+      await expect(opener).toBeVisible();
+      const startBox = (await start.boundingBox())!;
+      const guideButtonBox = (await opener.boundingBox())!;
+      expect(guideButtonBox.x).toBeCloseTo(startBox.x);
+      expect(guideButtonBox.width).toBeCloseTo(startBox.width);
       await opener.click();
       await expect(guide).toContainText("ルール v2.0.2");
       await expect(guide.locator("details[open]")).toHaveCount(1);
@@ -53,12 +58,13 @@ for (const [device, width, height] of [
       await expect(opener).toBeFocused();
 
       await start.click();
+      await page.getByRole("checkbox", { name: "開発者モード" }).check();
       await page.getByLabel(/乱数シード/).fill(setup.seed);
-      await page
-        .getByRole("button", { name: /公開行動の試遊をはじめる/ })
-        .click();
+      await page.getByRole("button", { name: "研究開始", exact: true }).click();
       await settleScreens(page);
-      await page.getByRole("button", { name: "購買部", exact: true }).click();
+      await page
+        .getByRole("button", { name: "購買部（1AP）", exact: true })
+        .click();
       const material = page.locator(".center-column select");
       await material.selectOption("dew");
       const before = await page.evaluate(() =>

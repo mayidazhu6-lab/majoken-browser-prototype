@@ -11,8 +11,9 @@ const [run] = JSON.parse(
 async function start(page: Page, seed: string) {
   await page.goto("/");
   await page.getByRole("button", { name: /ゲーム開始/ }).click();
+  await page.getByRole("checkbox", { name: "開発者モード" }).check();
   await page.getByLabel(/乱数シード/).fill(seed);
-  await page.getByRole("button", { name: /公開行動の試遊をはじめる/ }).click();
+  await page.getByRole("button", { name: "研究開始", exact: true }).click();
   await settleScreens(page);
 }
 
@@ -101,7 +102,7 @@ test("休息・研鑽の研究プレビューが支払いと成長に一致し�
   await guide.getByText("エンディングと勝利条件", { exact: true }).click();
   await expect(guide.getByText(/1位が複数なら共同首席/)).toBeVisible();
   await guide.getByRole("button", { name: "閉じる", exact: true }).click();
-  await page.getByRole("button", { name: "研究", exact: true }).click();
+  await page.getByRole("button", { name: "研究（1AP）", exact: true }).click();
   const card = page
     .locator(".action-card")
     .filter({ has: page.getByRole("heading", { name: "火を研究" }) });
@@ -165,7 +166,9 @@ test("取引の保存を再試行すると内訳が表示され、取引は一�
   await start(page, "v20-smoke-1");
   for (let round = 1; round <= 2; round++) {
     await settleScreens(page);
-    await page.getByRole("button", { name: "採集", exact: true }).click();
+    await page
+      .getByRole("button", { name: "採集（1AP）", exact: true })
+      .click();
     await page.getByRole("button", { name: "採集 1AP" }).click();
     await settleScreens(page);
     await page.getByRole("button", { name: /手番終了 \/ パス/ }).click();
@@ -214,7 +217,9 @@ test("取引の保存を再試行すると内訳が表示され、取引は一�
 test("取引の入力を保ったまま持ち物と課題を確認できる", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 740 });
   await start(page, "v20-smoke-1");
-  await page.getByRole("button", { name: "魔女間取引", exact: true }).click();
+  await page
+    .getByRole("button", { name: "魔女間取引（0AP）", exact: true })
+    .click();
   const target = page.getByRole("combobox", { name: "相手", exact: true });
   await target.selectOption("2");
   await page.getByText("提供と要求の個数を入力", { exact: true }).click();

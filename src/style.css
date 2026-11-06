@@ -1229,6 +1229,10 @@ footer > span:first-child {
   min-height: 88px;
   font-size: 1.1rem;
 }
+.public-action-menu button {
+  flex-direction: column;
+  overflow-wrap: anywhere;
+}
 .battle-header {
   position: sticky;
   top: 0;
@@ -1406,6 +1410,9 @@ footer > span:first-child {
 
 .intro-rules {
   margin-top: 12px;
+}
+.intro-rules > button {
+  width: 100%;
 }
 .rule-guide {
   line-height: 1.65;
