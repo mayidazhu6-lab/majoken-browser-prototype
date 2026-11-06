@@ -8,11 +8,14 @@ test("秘匿決闘の入力確定後と強奪の選択前後に再開する", as
   };
   await page.goto("/");
   await page.getByRole("button", { name: /ゲーム開始/ }).click();
+  await page.getByRole("checkbox", { name: "開発者モード" }).check();
   await page.getByLabel(/乱数シード/).fill("night-10");
-  await page.getByRole("button", { name: /公開行動の試遊をはじめる/ }).click();
+  await page.getByRole("button", { name: "研究開始", exact: true }).click();
   await settleScreens(page);
   for (let i = 0; i < 2; i++) {
-    await page.getByRole("button", { name: "採集", exact: true }).click();
+    await page
+      .getByRole("button", { name: "採集（1AP）", exact: true })
+      .click();
     await page.getByRole("button", { name: "採集 1AP" }).click();
     await settleScreens(page);
     await page.getByRole("button", { name: /手番終了 \/ パス/ }).click();

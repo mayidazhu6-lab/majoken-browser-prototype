@@ -9,12 +9,13 @@ for (const [seed, action, title] of [
   test(`${seed} の ${title}を属性で決着できる`, async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: /ゲーム開始/ }).click();
+    await page.getByRole("checkbox", { name: "開発者モード" }).check();
     await page.getByLabel(/乱数シード/).fill(seed);
-    await page
-      .getByRole("button", { name: /公開行動の試遊をはじめる/ })
-      .click();
+    await page.getByRole("button", { name: "研究開始", exact: true }).click();
     await settleScreens(page);
-    await page.getByRole("button", { name: "決闘", exact: true }).click();
+    await page
+      .getByRole("button", { name: "決闘（1AP）", exact: true })
+      .click();
     await page.getByRole("button", { name: action }).click();
     const battle = page.locator(".combat-panel");
     await expect(battle.getByRole("heading", { name: title })).toBeVisible();
@@ -50,8 +51,9 @@ test("届いた決闘はモーダルで応答し、受ける側でも自分が�
 }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /ゲーム開始/ }).click();
+  await page.getByRole("checkbox", { name: "開発者モード" }).check();
   await page.getByLabel(/乱数シード/).fill("v20-finish-2");
-  await page.getByRole("button", { name: /公開行動の試遊をはじめる/ }).click();
+  await page.getByRole("button", { name: "研究開始", exact: true }).click();
   await settleScreens(page);
   await page.getByRole("button", { name: /手番終了 \/ パス/ }).click();
   const challenge = page.getByRole("dialog", { name: /から公開決闘の挑戦/ });

@@ -17,10 +17,9 @@ for (const [seed, expected] of [
     });
     await page.goto("/");
     await page.getByRole("button", { name: /ゲーム開始/ }).click();
+    await page.getByRole("checkbox", { name: "開発者モード" }).check();
     await page.getByLabel(/乱数シード/).fill(seed);
-    await page
-      .getByRole("button", { name: /公開行動の試遊をはじめる/ })
-      .click();
+    await page.getByRole("button", { name: "研究開始", exact: true }).click();
     await settleScreens(page);
     await expect(page.locator(".event-preview")).toContainText(
       "今日の共通イベント",
@@ -39,14 +38,62 @@ for (const [seed, expected] of [
     await inventory
       .getByRole("button", { name: "閉じる", exact: true })
       .click();
+    const actions = page.getByRole("navigation", { name: "公開行動" });
+    const panel = page.locator(".actions-panel");
+    for (const label of [
+      "採集（1AP）",
+      "研究（1AP）",
+      "納品（0AP）",
+      "購買部（1AP）",
+      "魔女間取引（0AP）",
+      "決闘（1AP）",
+    ])
+      await expect(
+        actions.getByRole("button", { name: label, exact: true }),
+      ).toBeVisible();
+
+    await actions
+      .getByRole("button", { name: "採集（1AP）", exact: true })
+      .click();
+    await page.getByRole("button", { name: "キャンセルして戻る" }).click();
+    await expect(panel).toContainText("残りAP 2 / 2");
+
     for (let round = 1; round <= 2; round++) {
       await settleScreens(page);
-      await expect(page.locator(".persistent-turn")).toContainText(
-        `第${round}巡`,
-      );
-      await page.getByRole("button", { name: "採集", exact: true }).click();
+      await expect(panel).toContainText(`第${round}巡 / 全2巡`);
+      await expect(panel).toContainText(`残りAP ${3 - round} / 2`);
+      await expect(panel).toContainText("この巡の1AP行動：未使用");
+      await actions
+        .getByRole("button", { name: "採集（1AP）", exact: true })
+        .click();
       await page.getByRole("button", { name: "採集 1AP" }).click();
       await settleScreens(page);
+      if (round === 1) {
+        await page.reload();
+        await page
+          .getByRole("button", { name: "続きから", exact: true })
+          .click();
+        await settleScreens(page);
+        await expect(panel).toContainText("残りAPは次の巡に持ち越します。");
+      } else {
+        await expect(panel).toContainText("残りAPはありません。");
+      }
+      await expect(panel).toContainText(`残りAP ${2 - round} / 2`);
+      await expect(panel).toContainText("この巡の1AP行動：使用済み");
+      await actions
+        .getByRole("button", { name: /採集（1AP）.*詳細のみ/ })
+        .click();
+      await expect(
+        panel.getByRole("button", { name: "採集 1AP" }),
+      ).toBeDisabled();
+      await page.getByRole("button", { name: "キャンセルして戻る" }).click();
+      await actions
+        .getByRole("button", { name: "納品（0AP）", exact: true })
+        .click();
+      await expect(
+        panel.getByRole("button", { name: "自分の予約をすべて撤回（0AP）" }),
+      ).toBeEnabled();
+      await page.getByRole("button", { name: "キャンセルして戻る" }).click();
       await page.getByRole("button", { name: /手番終了 \/ パス/ }).click();
     }
     const result = page.getByRole("dialog", { name: "共通イベントの結果" });
@@ -129,7 +176,7 @@ test("公開済みv2.0を旧ルールのまま再開し、修正版とは別に�
 
   await page.reload();
   await page.getByRole("button", { name: /ゲーム開始/ }).click();
-  await page.getByRole("button", { name: /公開行動の試遊をはじめる/ }).click();
+  await page.getByRole("button", { name: "研究開始", exact: true }).click();
   const newSave = await page.evaluate(
     (key) => localStorage.getItem(key),
     newKey,

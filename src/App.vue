@@ -101,7 +101,7 @@ const s = computed(() => store.state!);
 const me = computed(() => s.value?.players[0]!);
 const setup = ref<Setup>({
   name: "アリア",
-  seed: "witches-2026",
+  seed: "",
   magic: "barrier",
   stats: { attack: 3, defense: 3, insight: 3 },
 });
@@ -127,14 +127,14 @@ const hoNoticeDay = ref(0);
 const creation = ref(false);
 const graduation = ref(false);
 const actionScreen = ref("");
-const actionLabels: Record<string, string> = {
-  gather: "採集",
-  research: "研究",
-  event: "納品",
-  shop: "購買部",
-  trade: "魔女間取引",
-  duel: "決闘",
-};
+const publicActions = {
+  gather: { label: "採集", cost: 1 },
+  research: { label: "研究", cost: 1 },
+  event: { label: "納品", cost: 0 },
+  shop: { label: "購買部", cost: 1 },
+  trade: { label: "魔女間取引", cost: 0 },
+  duel: { label: "決闘", cost: 1 },
+} as const;
 const menu = ref("");
 const menuOpener = ref<HTMLElement>();
 function openMenu(event: MouseEvent, section: "inventory" | "goals") {
@@ -224,7 +224,13 @@ function loadSave(json?: string, rulesVersion?: string) {
 }
 function startGame() {
   const previous = store.state;
-  store.start(setup.value);
+  const seed =
+    debug.value && setup.value.seed.trim()
+      ? setup.value.seed
+      : Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+          byte.toString(16).padStart(2, "0"),
+        ).join("");
+  store.start({ ...setup.value, seed });
   if (store.state !== previous) {
     syncNightDisplay();
     restoreView();
@@ -431,6 +437,19 @@ const interruptReason = computed(() => {
     return "他の魔女の手番です。";
   if (s.value?.publicTurn.acted && s.value.phase === "public")
     return "この手番の1AP行動は完了しました。0AP操作後、手番を終了してください。";
+  return "";
+});
+const publicAPReason = computed(() => {
+  const state = s.value;
+  if (!state || state.phase !== "public") return "";
+  if (state.publicTurn.round > 2) return "公開行動の2巡は終了しました。";
+  if (currentPlayer(state) !== 0) return "他の魔女の手番です。";
+  if (state.publicTurn.acted)
+    return me.value.ap > 0
+      ? "今の巡では1AP行動を使用済みです。残りAPは次の巡に持ち越します。"
+      : "今の巡では1AP行動を使用済みです。残りAPはありません。";
+  if (me.value.ap < 1) return "AP不足のため、1AP行動はできません。";
+  if (me.value.commands.length) return "先に行動制限・命令を処理してください。";
   return "";
 });
 const nightResults = computed(() =>
@@ -810,6 +829,15 @@ function download() {
   a.click();
   URL.revokeObjectURL(url);
 }
+async function copySeed() {
+  try {
+    await navigator.clipboard.writeText(s.value.seed);
+    store.notice = "乱数シードをコピーしました。";
+  } catch {
+    store.notice =
+      "コピーできませんでした。乱数シード欄から手動でコピーできます。";
+  }
+}
 async function upload(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0];
   if (file) {
@@ -985,12 +1013,21 @@ watch(
         <p class="eyebrow">キャラクターメイク</p>
         <h2>研究所へようこそ</h2>
         <p class="muted">名前、魔法、能力を決めて研究を始めましょう。</p>
-        <label>魔女の名前<input v-model="setup.name" maxlength="24" /></label
-        ><label
-          >乱数シード<input v-model="setup.seed" maxlength="100" /><small
-            >同じシードと操作で同じ結果を再現します。</small
-          ></label
-        >
+        <label>魔女の名前<input v-model="setup.name" maxlength="24" /></label>
+        <label class="checkbox-row">
+          <input v-model="debug" type="checkbox" />開発者モード
+        </label>
+        <p class="muted">
+          開発者モードではプレイ中に全員の秘密情報を表示します。
+        </p>
+        <template v-if="debug">
+          <label
+            >乱数シード<input v-model="setup.seed" maxlength="100"
+          /></label>
+          <p class="muted">
+            空欄なら自動生成します。同じシードと初期設定で初期抽選を再現できます。
+          </p>
+        </template>
         <div class="field-label">固有魔法</div>
         <div class="magic-options">
           <button
@@ -1021,10 +1058,10 @@ watch(
         <p class="muted">各能力2＋自由3ポイント。能力6でLv2、9でLv3。</p>
         <button
           class="primary start-button"
-          :disabled="total !== 9 || !setup.name.trim() || !setup.seed"
+          :disabled="total !== 9 || !setup.name.trim()"
           @click="startGame"
         >
-          公開行動の試遊をはじめる <span>→</span>
+          研究開始
         </button>
         <p class="center muted">あなた1人＋AI3人・時間制限なし</p>
       </section>
@@ -1146,6 +1183,7 @@ watch(
         <h2 tabindex="-1">行動の結果</h2>
         <p v-for="(line, i) in actionResult" :key="i">{{ uiText(line) }}</p>
         <p>残りAP：{{ me.ap }} / 2</p>
+        <p v-if="publicAPReason">{{ publicAPReason }}</p>
         <button class="primary" @click="actionResult = []">確認した</button>
       </section>
       <div
@@ -1826,7 +1864,7 @@ watch(
               :disabled="!can({ type: 'forced', player: 0, kind: 'gather' })"
               @click="act({ type: 'forced', player: 0, kind: 'gather' })"
             >
-              命令の採集を実行</button
+              命令の採集を実行（1AP）</button
             ><select v-model="forcedStat">
               <option v-for="k in STATS" :key="k" :value="k">
                 {{ LABELS[k] }}
@@ -1866,7 +1904,7 @@ watch(
                 })
               "
             >
-              命令の研究を実行
+              命令の研究を実行（1AP）
             </button>
           </section>
           <section
@@ -1890,9 +1928,6 @@ watch(
               }}
             </p>
             <p v-if="waitingForTrades">{{ interruptReason }}</p>
-            <p v-else-if="s.publicTurn.acted">
-              通常行動は完了しました。0AP行動の後、手番を終了してください。
-            </p>
           </section>
           <section
             v-if="
@@ -1905,7 +1940,20 @@ watch(
           >
             <div class="section-heading">
               <h2>今日、何を研究する？</h2>
-              <span class="ap-badge">{{ me.ap }} AP</span>
+              <span class="ap-badge">残りAP {{ me.ap }} / 2</span>
+            </div>
+            <div role="status">
+              <p v-if="s.publicTurn.round <= 2 && currentPlayer(s) === 0">
+                第{{ s.publicTurn.round }}巡 / 全2巡 · この巡の1AP行動：{{
+                  s.publicTurn.acted ? "使用済み" : "未使用"
+                }}
+              </p>
+              <p v-if="publicAPReason" id="public-ap-reason">
+                {{ publicAPReason }}
+              </p>
+              <p v-if="s.publicTurn.acted && currentPlayer(s) === 0">
+                可能な0AP操作を続けるか、手番を終了できます。
+              </p>
             </div>
             <div v-if="modernNight && currentPlayer(s) === 0">
               <button
@@ -1946,28 +1994,33 @@ watch(
               >
               <small>条件・進捗と納品を見る →</small>
             </button>
-            <nav v-if="!actionScreen" class="action-menu">
+            <nav
+              v-if="!actionScreen"
+              class="action-menu public-action-menu"
+              aria-label="公開行動"
+            >
               <button
-                v-for="(label, id) in {
-                  gather: '採集',
-                  research: '研究',
-                  event: '納品',
-                  shop: '購買部',
-                  trade: '魔女間取引',
-                  duel: '決闘',
-                }"
+                v-for="(action, id) in publicActions"
                 :key="id"
                 :class="{ active: tab === id }"
+                :aria-describedby="
+                  action.cost && publicAPReason ? 'public-ap-reason' : undefined
+                "
                 @click="openAction(id)"
               >
-                {{ label }}
+                <span>{{ action.label }}（{{ action.cost }}AP）</span>
+                <small v-if="action.cost && publicAPReason" class="muted">
+                  {{ id === "duel" ? "1APの挑戦は不可" : "詳細のみ" }}
+                </small>
               </button>
             </nav>
             <button v-if="actionScreen" @click="cancelAction">
               キャンセルして戻る
             </button>
             <h3 v-if="actionScreen && actionScreen !== 'trade'">
-              {{ actionLabels[actionScreen] }}
+              {{
+                publicActions[actionScreen as keyof typeof publicActions]?.label
+              }}
             </h3>
             <template v-if="actionScreen && tab === 'field'"
               ><label
@@ -2139,9 +2192,10 @@ watch(
                   reserveStats = {};
                 "
               >
-                仮納品する</button
+                仮納品する（0AP）
+              </button>
               ><button @click="act({ type: 'withdraw', player: 0 })">
-                自分の予約をすべて撤回
+                自分の予約をすべて撤回（0AP）
               </button>
               <p v-if="reserveReason" class="operation-reason" role="status">
                 {{ reserveReason }}
@@ -2182,7 +2236,7 @@ watch(
                   })
                 "
               >
-                {{ 3 + (modernNight ? modifiers.shop : 0) }}個を交換
+                {{ 3 + (modernNight ? modifiers.shop : 0) }}個を交換（1AP）
               </button>
             </template>
             <template v-if="actionScreen && tab === 'trade'">
@@ -2234,7 +2288,7 @@ watch(
                 "
                 @click="offer"
               >
-                固定条件で提案
+                固定条件で提案（0AP）
               </button>
               <p class="muted">
                 所持品の内訳は非公開です。提案では品を予約せず、承諾時に確認します。片側0個の譲渡も可能です。
@@ -2919,10 +2973,11 @@ watch(
       </div>
       <section v-if="debug" class="panel debug">
         <h2>開発者モード · 秘密情報を含む</h2>
+        <label>現在の乱数シード<input :value="s.seed" readonly /></label>
+        <button type="button" @click="copySeed">シードをコピー</button>
         <p>
-          seed: {{ s.seed }} / RNG draws: {{ s.draws }} / day: {{ s.day }} /
-          phase: {{ s.phase }} / revision: {{ s.revision }} /
-          {{ s.rulesVersion }}
+          RNG draws: {{ s.draws }} / day: {{ s.day }} / phase: {{ s.phase }} /
+          revision: {{ s.revision }} / {{ s.rulesVersion }}
         </p>
         <details>
           <summary>AIの行動理由・乱数監査・勝敗の根拠</summary>
