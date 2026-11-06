@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { V20_RULES_VERSION } from "../src/domain/config";
+import { V20_PLAYTEST_RULES_VERSION } from "../src/domain/config";
 import { drawEvent, eligibleEvents } from "../src/domain/events";
 import { log } from "../src/domain/core";
 import { addItem } from "../src/domain/items";
@@ -19,7 +19,7 @@ const create = () =>
       magic: "foresight",
       stats: { attack: 3, defense: 3, insight: 3 },
     },
-    V20_RULES_VERSION,
+    V20_PLAYTEST_RULES_VERSION,
   );
 
 function aiTurn(event: number, failed: number) {

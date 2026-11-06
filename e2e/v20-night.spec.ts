@@ -8,7 +8,7 @@ test("秘匿決闘の入力確定後と強奪の選択前後に再開する", as
   };
   await page.goto("/");
   await page.getByRole("button", { name: /ゲーム開始/ }).click();
-  await page.getByLabel(/乱数シード/).fill("night-2");
+  await page.getByLabel(/乱数シード/).fill("night-10");
   await page.getByRole("button", { name: /公開行動の試遊をはじめる/ }).click();
   await settleScreens(page);
   for (let i = 0; i < 2; i++) {
@@ -22,23 +22,26 @@ test("秘匿決闘の入力確定後と強奪の選択前後に再開する", as
     .getByRole("button", { name: "確認した" })
     .click();
   await page.getByRole("button", { name: /秘匿行動へ/ }).click();
-  if (
-    await page.getByRole("heading", { name: /予知の投票 · 明日/ }).isVisible()
-  ) {
-    const vote = page.locator(".panel").filter({
-      has: page.getByRole("heading", { name: /予知の投票 · 明日/ }),
-    });
-    await vote.getByRole("button").first().click();
-    await page.getByRole("button", { name: /投票を締め切る/ }).click();
-  }
+  await expect(
+    page.getByRole("heading", { name: /予知.*明日のイベント/ }),
+  ).toHaveCount(0);
   const night = page.locator(".night-panel");
   const actions = night.getByRole("group", { name: "夜間行動" });
-  await expect(actions.getByRole("button")).toHaveCount(5);
+  await expect(actions.getByRole("button")).toHaveText([
+    "襲撃",
+    "呪詛",
+    "警戒",
+    "休息",
+    "偵察",
+  ]);
   await night.getByText("すべての薬の効果").click();
   await expect(
     night.getByText("呪詛を受けたとき、自動で1個消費", { exact: false }),
   ).toBeVisible();
-  await actions.getByRole("button", { name: "襲撃", exact: true }).click();
+  const raid = actions.getByRole("button", { name: "襲撃", exact: true });
+  await raid.click();
+  await expect(raid).toHaveAttribute("aria-pressed", "true");
+  await expect(night.locator(".night-effect")).toContainText("火Lv");
   await night.getByLabel("対象").selectOption("2");
   await night.getByRole("button", { name: "夜間行動と錬金を確定" }).click();
   await settleScreens(page);
@@ -66,12 +69,16 @@ test("秘匿決闘の入力確定後と強奪の選択前後に再開する", as
   await expect(reward).toBeVisible();
   await reload();
   await reward
-    .getByRole("button", { name: /^強奪：/ })
+    .getByRole("button", { name: /アイテムを強奪/ })
     .first()
     .click();
   await reload();
   await expect(reward).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: /今日の課題を判定/ }),
-  ).toBeVisible();
+  await page.getByRole("button", { name: /課題を判定して夜明けへ/ }).click();
+  const dawn = page.getByRole("region", { name: "夜明けのまとめ" });
+  await expect(dawn).toContainText(/今日の課題：(達成|失敗)/);
+  await expect(dawn).toContainText("持ち物・名声の増減");
+  await expect(page.getByRole("heading", { name: /第 2 日/ })).toBeVisible();
+  await reload();
+  await expect(dawn).toBeVisible();
 });

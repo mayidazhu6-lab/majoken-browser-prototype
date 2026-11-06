@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { settleScreens } from "./helpers";
 import type { Action } from "../src/domain/types";
 
-const key = "majoken-save-rules-2.0.1";
+const key = "majoken-save-rules-2.0.2";
 const [run] = JSON.parse(
   readFileSync("tests/fixtures/v20-runs.json", "utf8"),
 ) as { setup: { seed: string }; actions: Action[] }[];

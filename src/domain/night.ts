@@ -1,4 +1,11 @@
-import { hasGoalDrivenRewards, LABELS, level, V20_RESEARCH } from "./config";
+import {
+  hasRevisedNightRules,
+  hasGoalDrivenRewards,
+  LABELS,
+  level,
+  V20_RESEARCH,
+} from "./config";
+import { pick } from "./rng";
 import { fp, log } from "./core";
 import { ELEMENT_POTIONS } from "./elementCombat";
 import { addItem, available, consume, materialIds } from "./items";
@@ -103,7 +110,16 @@ export function autoPotion(s: GameState, p: Player, kind: string) {
   return true;
 }
 
+export function nightInventory(p: Player) {
+  const counts: Record<string, number> = {};
+  for (const { kind } of p.inventory) counts[kind] = (counts[kind] ?? 0) + 1;
+  return counts;
+}
+
 export function registerNight(s: GameState) {
+  const inventoryBefore = hasRevisedNightRules(s)
+    ? s.players.map(nightInventory)
+    : undefined;
   const order = s.publicTurn.order;
   for (const id of order) {
     const p = s.players[id];
@@ -174,15 +190,27 @@ export function registerNight(s: GameState) {
       });
       if (automatic)
         for (const actor of [id, target])
-          log(s, "automaticBattle", "休息中の襲撃は自動決着", {
-            actor,
-            audience: [actor],
-          });
+          log(
+            s,
+            "automaticBattle",
+            hasRevisedNightRules(s)
+              ? actor === id
+                ? "休息中の相手への襲撃に成功"
+                : "休息中に襲撃を受け、休息は失敗"
+              : "休息中の襲撃は自動決着",
+            { actor, audience: [actor] },
+          );
     } else if (kind === "scout" && opposite.kind === "guard") {
       battles.push({ participants: [id, target], raids: [], scout: id });
     }
   }
-  s.nightWork = { battles, valid, battle: 0, reward: 0 };
+  s.nightWork = {
+    battles,
+    valid,
+    battle: 0,
+    reward: 0,
+    ...(inventoryBefore ? { inventoryBefore } : {}),
+  };
   s.phase = "duels";
 }
 
@@ -205,24 +233,31 @@ export function giveNightReward(
   s: GameState,
   player: number,
   item?: number,
-  command?: "gather" | "research",
+  command?: "gather" | "research" | "choice",
+  randomLoot = false,
 ) {
   const options = rewardOptions(s);
+  const revised = hasRevisedNightRules(s);
+  const looting = revised ? randomLoot : item !== undefined;
   if (
     s.phase !== "rewards" ||
     !options ||
     player !== options.winner ||
-    (item === undefined) === (command === undefined)
+    looting === (command !== undefined) ||
+    (revised ? item !== undefined : randomLoot)
   )
     throw Error("報酬を選択できません");
   const { battle, loser, items, canCommand } = options;
   const winner = s.players[player];
   const audience = [player, loser.id];
   const data = { initiated: battle.raids.includes(player) };
-  if (item !== undefined) {
-    const selected = items.find((i) => i.id === item);
+  if (looting) {
+    if (!items.length) throw Error("強奪できる品がありません");
+    const selected = randomLoot
+      ? pick(s, items, "襲撃報酬のランダム強奪")
+      : items.find((i) => i.id === item);
     if (!selected) throw Error("その品は強奪できません");
-    consume(loser, [item]);
+    consume(loser, [selected.id]);
     winner.inventory.push(selected);
     log(
       s,
@@ -251,21 +286,33 @@ export function giveNightReward(
         audience: [player],
       });
   } else {
-    if (!canCommand || (command !== "gather" && command !== "research"))
+    if (
+      !canCommand ||
+      (revised
+        ? command !== "choice"
+        : command !== "gather" && command !== "research")
+    )
       throw Error("行動命令を出せません");
     loser.commands.push({
       from: player,
       kind: command,
       qualifies: !battle.automatic && data.initiated,
     });
-    log(s, "command", `翌日の${command === "gather" ? "採集" : "研究"}を命令`, {
-      actor: player,
-      target: loser.id,
-      data: hasGoalDrivenRewards(s)
-        ? { ...data, qualifies: !battle.automatic && data.initiated }
-        : data,
-      audience,
-    });
+    log(
+      s,
+      "command",
+      command === "choice"
+        ? "翌日の手番に採集か研究の行動制限を付与"
+        : `翌日の${command === "gather" ? "採集" : "研究"}を命令`,
+      {
+        actor: player,
+        target: loser.id,
+        data: hasGoalDrivenRewards(s)
+          ? { ...data, qualifies: !battle.automatic && data.initiated }
+          : data,
+        audience,
+      },
+    );
   }
   s.nightWork!.reward++;
 }

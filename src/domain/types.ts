@@ -59,7 +59,7 @@ export interface Player {
   night?: Night;
   commands: {
     from: number;
-    kind?: "gather" | "research";
+    kind?: "gather" | "research" | "choice";
     qualifies?: boolean;
   }[];
   nextMagic?: Magic;
@@ -261,6 +261,7 @@ export interface GameState {
     valid: number[];
     battle: number;
     reward: number;
+    inventoryBefore?: Record<string, number>[];
   };
   finalComparison?: number[];
   trades: Trade[];
@@ -281,7 +282,8 @@ export type Action =
       type: "nightReward";
       player: number;
       item?: number;
-      command?: "gather" | "research";
+      command?: "gather" | "research" | "choice";
+      randomLoot?: true;
     }
   | { type: "eventAck"; player: number }
   | { type: "publicOutcomeAck"; player: number }

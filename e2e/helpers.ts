@@ -24,6 +24,11 @@ export async function selectItems(
 export async function settleScreens(page: Page) {
   for (let i = 0; i < 12; i++) {
     await page.waitForTimeout(20);
+    const later = page.getByRole("button", { name: "後で返答", exact: true });
+    if (await later.isVisible()) {
+      await later.click();
+      continue;
+    }
     if (await page.getByRole("dialog").isVisible()) return;
     const card = page.locator(".briefing, .action-result");
     if (await card.isVisible()) {

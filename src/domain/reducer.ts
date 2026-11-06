@@ -18,6 +18,7 @@ import {
   hasSharedCrisisPlanning,
   hasGoalDrivenRewards,
   hasPlaytestRules,
+  hasRevisedNightRules,
   V20_MAGICS,
   V20_LABELS,
   V20_RESEARCH,
@@ -81,6 +82,7 @@ import {
   nightRecipe,
   registerNight,
   rewardOptions,
+  nightInventory,
   publicModifiers,
   publicResearchCost,
   publicResearchGrowth,
@@ -749,7 +751,14 @@ function runNight(s: GameState) {
       !options.battle.automatic &&
       options.battle.raids.includes(winner.id);
     if (advancesL10 || !options.items.length)
-      giveNightReward(s, winner.id, undefined, "gather");
+      giveNightReward(
+        s,
+        winner.id,
+        undefined,
+        hasRevisedNightRules(s) ? "choice" : "gather",
+      );
+    else if (hasRevisedNightRules(s))
+      giveNightReward(s, winner.id, undefined, undefined, true);
     else giveNightReward(s, winner.id, options.items[0].id);
   }
   if (s.phase === "rewards") finishNight(s);
@@ -1122,7 +1131,7 @@ function forced(
   );
   assert(p.commands.length, "命令がありません");
   const cmd = p.commands.shift()!;
-  if (hasNightRules(s)) {
+  if (hasNightRules(s) && cmd.kind !== "choice") {
     const expected =
       cmd.kind === "research" && legalResearch(s, p).length
         ? "research"
@@ -1207,7 +1216,9 @@ function advance(s: GameState) {
         )) {
           if (
             p.magic === "foresight" &&
-            (s.day === 8 || !eligibleEvents(s, s.day + 1).length)
+            (s.day === 8 ||
+              (hasRevisedNightRules(s) && s.foresight.length > 0) ||
+              !eligibleEvents(s, s.day + 1).length)
           )
             continue;
           magic(s, p, p.id);
@@ -1216,6 +1227,23 @@ function advance(s: GameState) {
       if (hasNightRules(s) && s.foresight.length === 1) {
         s.nextEvent = s.foresight[0];
         enterNight(s);
+        break;
+      }
+      if (hasRevisedNightRules(s) && s.foresight.length) {
+        const caster = s.players.find(
+          (p) => p.activeMagic && p.magic === "foresight",
+        )!;
+        if (caster.ai) {
+          const difficulty = (id: number) =>
+            ["Easy", "Normal", "Hard"].indexOf(EVENTS[id - 1].difficulty);
+          const best = Math.min(...s.foresight.map(difficulty));
+          s.nextEvent = pick(
+            s,
+            s.foresight.filter((id) => difficulty(id) === best),
+            "予知の使用者が選択",
+          );
+          enterNight(s);
+        } else s.phase = "vote";
         break;
       }
       if (s.foresight.length) {
@@ -1237,6 +1265,12 @@ function advance(s: GameState) {
       } else enterNight(s);
       break;
     case "vote": {
+      if (hasRevisedNightRules(s)) {
+        assert(s.foresight.includes(s.votes[0]), "予知の候補を選んでください");
+        s.nextEvent = s.votes[0];
+        enterNight(s);
+        break;
+      }
       const voters = s.players.filter(
         (p) => hasNightRules(s) || (p.activeMagic && p.magic === "foresight"),
       );
@@ -1282,6 +1316,26 @@ function advance(s: GameState) {
       break;
     case "ho":
       evaluateHO(s);
+      if (hasRevisedNightRules(s)) {
+        for (const p of s.players) {
+          const before = s.nightWork?.inventoryBefore?.[p.id] ?? {};
+          const after = nightInventory(p);
+          const items = Object.fromEntries(
+            [...new Set([...Object.keys(before), ...Object.keys(after)])]
+              .map(
+                (kind) =>
+                  [kind, (after[kind] ?? 0) - (before[kind] ?? 0)] as const,
+              )
+              .filter(([, delta]) => delta !== 0),
+          );
+          log(s, "nightInventory", "夜間の持ち物の増減", {
+            actor: p.id,
+            audience: [p.id],
+            data: { items },
+          });
+        }
+        if (!s.result) nextDay(s);
+      }
       break;
     case "dawn":
       nextDay(s);
@@ -1865,7 +1919,7 @@ function apply(s: GameState, a: Action) {
     }
     case "nightReward":
       assert(hasNightRules(s), "夜間報酬はありません");
-      giveNightReward(s, p.id, a.item, a.command);
+      giveNightReward(s, p.id, a.item, a.command, a.randomLoot);
       runNight(s);
       break;
     case "reward":
@@ -1879,7 +1933,9 @@ function apply(s: GameState, a: Action) {
     case "vote":
       assert(
         s.phase === "vote" &&
-          (hasNightRules(s) || (p.activeMagic && p.magic === "foresight")) &&
+          (hasRevisedNightRules(s)
+            ? !p.ai && p.activeMagic && p.magic === "foresight"
+            : hasNightRules(s) || (p.activeMagic && p.magic === "foresight")) &&
           s.foresight.includes(a.event) &&
           s.votes[p.id] === undefined,
         "投票不可",
@@ -2230,9 +2286,7 @@ function runPublicAI(s: GameState) {
     if (hasStrategyRules(s)) {
       if (p.commands.length && !t.acted) {
         const choice =
-          p.commands[0].kind === "research"
-            ? legalResearch(s, p)[0]
-            : undefined;
+          p.commands[0].kind !== "gather" ? legalResearch(s, p)[0] : undefined;
         forced(
           s,
           p,

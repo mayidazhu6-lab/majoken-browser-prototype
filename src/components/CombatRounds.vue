@@ -4,7 +4,15 @@ import { CONFIG, LABELS, V20_LABELS } from "../domain/config";
 import { elementPotion } from "../domain/elementCombat";
 import { recipe } from "../domain/items";
 import { roundReason, revealedActions } from "../ui/combatPresentation";
-defineProps<{ combat: Combat; names: string[]; onlyLast?: boolean }>();
+withDefaults(
+  defineProps<{
+    combat: Combat;
+    names: string[];
+    onlyLast?: boolean;
+    sides?: number[];
+  }>(),
+  { sides: () => [0, 1] },
+);
 </script>
 <template>
   <div class="combat-rounds">
@@ -15,32 +23,36 @@ defineProps<{ combat: Combat; names: string[]; onlyLast?: boolean }>();
       <thead>
         <tr>
           <th>R</th>
-          <th v-for="(name, side) in names" :key="side">{{ name }}</th>
+          <th v-for="side in sides" :key="side">{{ names[side] }}</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="(round, index) in combat.elemental.rounds" :key="index">
           <th>{{ index + 1 }}</th>
-          <td v-for="(effect, side) in round.sides" :key="side">
-            <strong
-              >{{ V20_LABELS[effect.element] }} · 与ダメージ
-              {{ effect.dealt }}</strong
-            >
-            <p>
-              基本2 ＋ Lv補正{{ effect.levelBonus }} ＋ 相性{{
-                effect.affinity
-              }}
-              ＋ 薬{{ effect.potionBonus
-              }}<template v-if="effect.nightBonus">
-                ＋ 夜間{{ effect.nightBonus }}</template
+          <td v-for="side in sides" :key="side">
+            <template v-for="effect in [round.sides[side]]" :key="side">
+              <strong
+                >{{ V20_LABELS[effect.element] }} · 与ダメージ
+                {{ effect.dealt }}</strong
               >
-              ＝ {{ effect.calculated }}
-            </p>
-            <p>
-              使用薬
-              {{ effect.potion ? elementPotion(effect.potion)?.name : "なし" }}
-              · 残HP {{ round.hp[side] }}
-            </p>
+              <p>
+                基本2 ＋ Lv補正{{ effect.levelBonus }} ＋ 相性{{
+                  effect.affinity
+                }}
+                ＋ 薬{{ effect.potionBonus
+                }}<template v-if="effect.nightBonus">
+                  ＋ 夜間{{ effect.nightBonus }}</template
+                >
+                ＝ {{ effect.calculated }}
+              </p>
+              <p>
+                使用薬
+                {{
+                  effect.potion ? elementPotion(effect.potion)?.name : "なし"
+                }}
+                · 残HP {{ round.hp[side] }}
+              </p>
+            </template>
           </td>
         </tr>
       </tbody>

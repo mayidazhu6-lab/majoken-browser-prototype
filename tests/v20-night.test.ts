@@ -201,3 +201,105 @@ describe("L10のAI報酬選択", () => {
       });
   });
 });
+
+describe("試遊後の夜間ルール", () => {
+  const revised = () => createGame(create().setup, V20_RULES_VERSION);
+
+  it("人間が予知を使った夜は本人の選択だけで翌日のイベントが決まる", () => {
+    const s = revised();
+    s.phase = "magic";
+    s.event.resolved = true;
+    s.event.acknowledged = true;
+    s.players[0].magic = "foresight";
+    s.players[1].magic = "foresight";
+    const cast = dispatch(s, { type: "magic", player: 0 });
+    const voting = dispatch(cast, { type: "advance" });
+    const event = voting.foresight.at(-1)!;
+    expect(voting.votes).toEqual({});
+    expect(voting.players[1].activeMagic).toBe(false);
+    expect(() => dispatch(voting, { type: "vote", player: 1, event })).toThrow(
+      "投票不可",
+    );
+    const selected = dispatch(voting, { type: "vote", player: 0, event });
+    const night = dispatch(selected, { type: "advance" });
+    expect(night.phase).toBe("night");
+    expect(night.nextEvent).toBe(event);
+  });
+
+  it("AIが予知を使った夜は人間の投票を求めない", () => {
+    const s = revised();
+    s.phase = "magic";
+    s.event.resolved = true;
+    s.event.acknowledged = true;
+    s.players[1].magic = "foresight";
+    const night = dispatch(s, { type: "advance" });
+    expect(night.phase).toBe("night");
+    expect(night.votes).toEqual({});
+    expect(night.foresight).toContain(night.nextEvent);
+  });
+
+  it("襲撃報酬の強奪はランダムに1個で、行動制限は受けた側が選ぶ", () => {
+    const s = revised();
+    s.phase = "night";
+    s.event.resolved = true;
+    s.event.acknowledged = true;
+    s.players[0].night = { kind: "raid", target: 1 };
+    for (const p of s.players.slice(1)) p.night = { kind: "rest" };
+    const pending = dispatch(s, { type: "advance" });
+    const stock = pending.players[1].inventory;
+    expect(pending.phase).toBe("rewards");
+    expect(pending.players[0].fp).toBe(s.players[0].fp);
+    expect(() =>
+      dispatch(pending, { type: "nightReward", player: 0, item: stock[0].id }),
+    ).toThrow();
+    const action = {
+      type: "nightReward",
+      player: 0,
+      randomLoot: true,
+    } as const;
+    const robbed = dispatch(pending, action);
+    expect(robbed).toEqual(dispatch(pending, action));
+    expect(robbed.players[1].inventory).toHaveLength(stock.length - 1);
+    expect(robbed.players[0].inventory).toHaveLength(
+      s.players[0].inventory.length + 1,
+    );
+
+    const limited = dispatch(pending, {
+      type: "nightReward",
+      player: 0,
+      command: "choice",
+    });
+    expect(limited.players[1].commands[0]).toMatchObject({ kind: "choice" });
+    const dawn = dispatch(robbed, { type: "advance" });
+    expect(dawn.day).toBe(2);
+    expect(dawn.players[0].dailyHistory).toHaveLength(1);
+    const delta = dawn.logs.find(
+      (l) => l.type === "nightInventory" && l.actor === 0,
+    );
+    expect(Object.values(delta?.data?.items ?? {})).toEqual([1]);
+  });
+});
+
+it.each(["gather", "research"] as const)(
+  "制限を受けた魔女が%sを選べる",
+  (kind) => {
+    const s = createGame(create().setup, V20_RULES_VERSION);
+    const player = s.players[0];
+    player.commands.push({ from: 1, kind: "choice", qualifies: true });
+    addItem(s, player, "obsidian");
+    addItem(s, player, "crystal");
+    const done = dispatch(s, {
+      type: "forced",
+      player: 0,
+      kind,
+      stat: "attack",
+    });
+    expect(done.players[0].ap).toBe(1);
+    expect(done.players[0].commands).toHaveLength(0);
+    expect(done.logs.find((l) => l.type === "commandExecuted")).toMatchObject({
+      actor: 1,
+      target: 0,
+      data: { qualifies: true },
+    });
+  },
+);
