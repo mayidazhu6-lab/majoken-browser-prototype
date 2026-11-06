@@ -22,15 +22,23 @@ test("秘匿決闘の入力確定後と強奪の選択前後に再開する", as
     .getByRole("button", { name: "確認した" })
     .click();
   await page.getByRole("button", { name: /秘匿行動へ/ }).click();
-  if (await page.getByRole("heading", { name: /予知 · 明日/ }).isVisible()) {
-    const vote = page
-      .locator(".panel")
-      .filter({ has: page.getByRole("heading", { name: /予知 · 明日/ }) });
+  if (
+    await page.getByRole("heading", { name: /予知の投票 · 明日/ }).isVisible()
+  ) {
+    const vote = page.locator(".panel").filter({
+      has: page.getByRole("heading", { name: /予知の投票 · 明日/ }),
+    });
     await vote.getByRole("button").first().click();
     await page.getByRole("button", { name: /投票を締め切る/ }).click();
   }
   const night = page.locator(".night-panel");
-  await night.getByLabel("夜間行動").selectOption("raid");
+  const actions = night.getByRole("group", { name: "夜間行動" });
+  await expect(actions.getByRole("button")).toHaveCount(5);
+  await night.getByText("すべての薬の効果").click();
+  await expect(
+    night.getByText("呪詛を受けたとき、自動で1個消費", { exact: false }),
+  ).toBeVisible();
+  await actions.getByRole("button", { name: "襲撃", exact: true }).click();
   await night.getByLabel("対象").selectOption("2");
   await night.getByRole("button", { name: "夜間行動と錬金を確定" }).click();
   await settleScreens(page);

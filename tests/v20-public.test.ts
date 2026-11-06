@@ -1,6 +1,10 @@
 import { createPinia, setActivePinia } from "pinia";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { V20_PUBLIC_RULES_VERSION } from "../src/domain/config";
+import {
+  V20_PUBLIC_RULES_VERSION,
+  V20_RULES_VERSION,
+  V20_RELEASE_RULES_VERSION,
+} from "../src/domain/config";
 import { reserve, resolveEvent, withdraw } from "../src/domain/events";
 import { addItem } from "../src/domain/items";
 import { deserialize, serialize } from "../src/domain/persistence";
@@ -125,6 +129,40 @@ describe("v2.0 public milestone", () => {
     expect(state.logs.at(-1)?.type).toBe("tradeRejected");
   });
 
+  it.each([true, false])(
+    "waits for a trade reply before resolving the event (accept=%s)",
+    (accept) => {
+      let state = createGame(setup, V20_RULES_VERSION);
+      const sender = state.players[1];
+      const offered = addItem(state, sender, "herb");
+      state.trades.push({
+        id: 1,
+        from: sender.id,
+        to: 0,
+        offer: [offered.id],
+        offeredKinds: { herb: 1 },
+        request: {},
+      });
+      state.publicTurn.round = 2;
+      state.publicTurn.order = [1, 2, 3, 0];
+      state.publicTurn.index = 3;
+
+      state = dispatch(state, { type: "endTurn", player: 0 });
+      expect(state.publicTurn.round).toBe(4);
+      expect(state.event.resolved).toBe(false);
+      expect(() => dispatch(state, { type: "advance" })).toThrow(
+        "未回答の取引",
+      );
+
+      state = dispatch(state, { type: "tradeReply", player: 0, id: 1, accept });
+      expect(state.trades).toHaveLength(0);
+      expect(state.event.resolved).toBe(true);
+      expect(
+        state.players[0].inventory.some((item) => item.id === offered.id),
+      ).toBe(accept);
+    },
+  );
+
   it("releases reservations and ends immediately on a third failure", () => {
     const state = newGame();
     state.failed = 2;
@@ -164,7 +202,7 @@ describe("v2.0 public milestone", () => {
     expect(store.error).toContain("ルール版");
     store.start(setup);
     const initial = store.state;
-    const oldSave = values.get("majoken-save-rules-2.0-final");
+    const oldSave = values.get("majoken-save-rules-2.0.1");
     reject = true;
     store.act({ type: "gather", player: 0 });
     const candidate = store.pending;
@@ -172,7 +210,7 @@ describe("v2.0 public milestone", () => {
     expect(store.state).toBe(initial);
     store.act({ type: "endTurn", player: 0 });
     expect(store.pending).toBe(candidate);
-    expect(values.get("majoken-save-rules-2.0-final")).toBe(oldSave);
+    expect(values.get("majoken-save-rules-2.0.1")).toBe(oldSave);
     reject = false;
     store.save();
     expect(store.state).toBe(candidate);
@@ -181,5 +219,39 @@ describe("v2.0 public milestone", () => {
     expect(values.get("majoken-save-rules-2.0-night")).toBe("night-save");
     store.load();
     expect(store.state).toEqual(candidate);
+  });
+  it("imports a published v2.0 JSON and retries writes in its original slot", () => {
+    const values = new Map<string, string>();
+    let reject = false;
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        if (reject) throw Error("storage unavailable");
+        values.set(key, value);
+      },
+    });
+    setActivePinia(createPinia());
+    const store = useGameStore();
+    store.start(setup);
+    const current = values.get("majoken-save-rules-2.0.1");
+    const released = createGame(setup, V20_RELEASE_RULES_VERSION);
+    store.load(serialize(released));
+    expect(store.state).toEqual(released);
+    expect(values.get("majoken-save-rules-2.0-final")).toBe(
+      serialize(released),
+    );
+
+    reject = true;
+    store.act({ type: "gather", player: 0 });
+    const candidate = store.pending!;
+    expect(candidate.rulesVersion).toBe(V20_RELEASE_RULES_VERSION);
+    reject = false;
+    store.save();
+    expect(values.get("majoken-save-rules-2.0-final")).toBe(
+      serialize(candidate),
+    );
+    expect(values.get("majoken-save-rules-2.0.1")).toBe(current);
+    store.load();
+    expect(store.state?.rulesVersion).toBe(V20_RULES_VERSION);
   });
 });

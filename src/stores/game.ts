@@ -2,10 +2,11 @@ import { defineStore } from "pinia";
 import { shallowRef, ref } from "vue";
 import type { Action, GameState, Setup } from "../domain/types";
 import { createGame, dispatch } from "../domain/reducer";
-import { hasGoalDrivenRewards, V20_RULES_VERSION } from "../domain/config";
+import { V20_RELEASE_RULES_VERSION, V20_RULES_VERSION } from "../domain/config";
 import { deserialize, serialize } from "../domain/persistence";
 
-const KEY = "majoken-save-rules-2.0-final";
+const KEY = "majoken-save-rules-2.0.1";
+const RELEASE_KEY = "majoken-save-rules-2.0-final";
 const LEGACY_KEYS = [
   "majoken-save-rules-2.0-review",
   "majoken-save-rules-2.0-strategy",
@@ -17,15 +18,31 @@ const LEGACY_KEYS = [
   "majoken-save-v1",
 ];
 
+function saveKey(rulesVersion: string) {
+  if (rulesVersion === V20_RULES_VERSION) return KEY;
+  if (rulesVersion === V20_RELEASE_RULES_VERSION) return RELEASE_KEY;
+}
+
+function hasReleasedSave() {
+  try {
+    return localStorage.getItem(RELEASE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
 export const useGameStore = defineStore("game", () => {
   const state = shallowRef<GameState>();
   const pending = shallowRef<GameState>();
   const error = ref("");
   const notice = ref("");
+  const releasedSaveAvailable = ref(hasReleasedSave());
 
   function commit(candidate: GameState) {
     try {
-      localStorage.setItem(KEY, serialize(candidate));
+      const key = saveKey(candidate.rulesVersion)!;
+      localStorage.setItem(key, serialize(candidate));
+      if (key === RELEASE_KEY) releasedSaveAvailable.value = true;
       state.value = candidate;
       pending.value = undefined;
       error.value = "";
@@ -61,10 +78,13 @@ export const useGameStore = defineStore("game", () => {
     if (candidate && commit(candidate)) notice.value = "保存しました";
   }
 
-  function load(json?: string) {
+  function load(json?: string, released = false) {
     if (pending.value) return;
     try {
-      const raw = json ?? localStorage.getItem(KEY);
+      const currentSave =
+        json === undefined && !released ? localStorage.getItem(KEY) : null;
+      const key = currentSave !== null ? KEY : RELEASE_KEY;
+      const raw = json ?? currentSave ?? localStorage.getItem(RELEASE_KEY);
       const legacyError =
         "ルール版が一致しません。旧セーブは元の保存枠に保持されています。";
       if (!raw)
@@ -73,7 +93,8 @@ export const useGameStore = defineStore("game", () => {
             ? legacyError
             : "保存データがありません",
         );
-      if (!hasGoalDrivenRewards(JSON.parse(raw)?.state ?? {}))
+      const loadedKey = saveKey(JSON.parse(raw)?.state?.rulesVersion);
+      if (!loadedKey || (json === undefined && loadedKey !== key))
         throw Error(legacyError);
       const loaded = deserialize(raw);
       if (json && !commit(loaded)) return;
@@ -85,5 +106,15 @@ export const useGameStore = defineStore("game", () => {
     }
   }
 
-  return { state, pending, error, notice, act, start, save, load };
+  return {
+    state,
+    pending,
+    error,
+    notice,
+    releasedSaveAvailable,
+    act,
+    start,
+    save,
+    load,
+  };
 });

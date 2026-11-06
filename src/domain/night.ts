@@ -33,6 +33,19 @@ export const NIGHT_RECIPES = [
   },
   { id: "might", name: "剛力の薬", materials: ["herb", "sand"], level: 3 },
 ];
+export const NIGHT_RECIPE_EFFECTS: Record<string, string> = {
+  abundance: "使用した日の公開採集で獲得素材＋1個。",
+  scholarship: "使用した日の公開研究で能力の成長＋1。",
+  bargaining: "使用した日の購買部の交換で必要素材−1個。",
+  flame: "火を選んだラウンドの与ダメージ＋1。",
+  ice: "水を選んだラウンドの与ダメージ＋1。",
+  tornado: "風を選んだラウンドの与ダメージ＋1。",
+  purification: "呪詛を受けたとき、自動で1個消費してその呪詛を無効化。",
+  invisibility:
+    "偵察を受けたとき、自動で1個消費して偵察とそれによる戦闘を阻止。",
+  might:
+    "相手の警戒補正が＋1以上の戦闘で、自動で1個消費してその戦闘の警戒補正を無効化。",
+};
 export const nightRecipe = (id: string) =>
   NIGHT_RECIPES.find((r) => r.id === id);
 export const usable = (s: GameState, p: Player) =>
