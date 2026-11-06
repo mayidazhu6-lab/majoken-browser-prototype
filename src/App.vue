@@ -136,6 +136,12 @@ const actionLabels: Record<string, string> = {
   duel: "決闘",
 };
 const menu = ref("");
+const menuOpener = ref<HTMLElement>();
+function openMenu(event: MouseEvent, section: "inventory" | "goals") {
+  menuOpener.value = event.currentTarget as HTMLElement;
+  menu.value = section;
+  menuTab.value = section === "inventory" ? "materials" : "daily";
+}
 const ruleGuideOpener = ref<HTMLElement>();
 function openRuleGuide(event: MouseEvent) {
   if (!blockingModal.value)
@@ -598,10 +604,22 @@ const describeTrade = (items: Record<string, number>) =>
     .filter(([, count]) => count > 0)
     .map(([kind, count]) => `${itemName(kind)} ×${count}`)
     .join("・") || "なし";
-function act(a: Action) {
+let pendingAction: Action | undefined;
+function retrySave() {
+  if (pendingAction) act(pendingAction, true);
+  else store.save();
+}
+function act(a: Action, retry = false) {
+  if (!retry && store.pending) return;
   const previous = s.value;
   const seq = previous?.logs.at(-1)?.seq ?? 0;
-  store.act(a);
+  if (retry) store.save();
+  else store.act(a);
+  if (store.pending) {
+    pendingAction = a;
+    return;
+  }
+  pendingAction = undefined;
   if (s.value !== previous) {
     if (s.value.combat?.id !== previous?.combat?.id)
       battleStep.value = s.value.combat?.done ? "end" : "intro";
@@ -874,8 +892,6 @@ watch(
       creation.value,
       actionScreen.value,
       actionResult.value.length,
-      menu.value,
-      menuTab.value,
       battleStep.value,
       combat.value?.id,
       !!eventResult.value,
@@ -1137,8 +1153,8 @@ watch(
         class="game-grid"
         :class="{ 'battle-screen': !!combat, 'action-detail': !!actionScreen }"
       >
-        <aside v-if="!combat && !actionScreen" class="left-column">
-          <section class="panel">
+        <aside v-if="!combat" class="left-column">
+          <section v-if="!actionScreen" class="panel">
             <div class="section-heading">
               <h2>研究室の魔女たち</h2>
               <small>公開情報</small>
@@ -1181,24 +1197,12 @@ watch(
             </article>
           </section>
           <nav v-if="!s.result" class="common-menu" aria-label="共通メニュー">
-            <button
-              @click="
-                menu = 'inventory';
-                menuTab = 'materials';
-              "
-            >
+            <button @click="openMenu($event, 'inventory')">
               🎒<br />持ち物
             </button>
-            <button
-              @click="
-                menu = 'goals';
-                menuTab = 'daily';
-              "
-            >
-              📜<br />課題
-            </button>
+            <button @click="openMenu($event, 'goals')">📜<br />課題</button>
           </nav>
-          <details class="panel level-guide">
+          <details v-if="!actionScreen" class="panel level-guide">
             <summary>あなたの能力Lvと解禁効果</summary>
             <p v-for="k in STATS" :key="k" :data-stat="k">
               {{ LABELS[k] }} {{ me.stats[k] }} / Lv{{ level(me.stats[k])
@@ -3056,12 +3060,13 @@ watch(
     <BlockingDialog v-if="store.pending" title="保存に失敗しました">
       <p>保存が完了するまで進行できません。確定済みの操作を再保存します。</p>
       <template #actions>
-        <button class="primary" @click="store.save()">保存を再試行</button>
+        <button class="primary" @click="retrySave">保存を再試行</button>
       </template>
     </BlockingDialog>
     <BlockingDialog
       v-if="menu && me && !store.pending"
       :title="menu === 'inventory' ? '持ち物' : '課題'"
+      :return-focus="menuOpener"
     >
       <nav class="tabs" v-if="menu === 'inventory'">
         <button

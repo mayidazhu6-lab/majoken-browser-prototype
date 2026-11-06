@@ -157,3 +157,80 @@ test("通算2失敗のE06を、残りのAIが1・2・1点を仮納品して救�
   }, key);
   expect(firstReservations).toEqual([1, 2, 1]);
 });
+
+test("取引の保存を再試行すると内訳が表示され、取引は一度だけ成立する", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 740 });
+  await start(page, "v20-smoke-1");
+  for (let round = 1; round <= 2; round++) {
+    await settleScreens(page);
+    await page.getByRole("button", { name: "採集", exact: true }).click();
+    await page.getByRole("button", { name: "採集 1AP" }).click();
+    await settleScreens(page);
+    await page.getByRole("button", { name: /手番終了 \/ パス/ }).click();
+  }
+  const trade = page.getByRole("dialog", { name: /からの取引提案/ });
+  await expect(trade).toBeVisible();
+  const received = (await trade.getByText(/受け取る：/).textContent())!
+    .split("：")[1]
+    .split(" ×")[0];
+  const before = await page.evaluate((key) => {
+    const set = Storage.prototype.setItem;
+    let failed = false;
+    Storage.prototype.setItem = function (name, value) {
+      if (name === key && !failed) {
+        failed = true;
+        throw new DOMException("forced", "QuotaExceededError");
+      }
+      set.call(this, name, value);
+    };
+    return localStorage.getItem(key);
+  }, key);
+
+  await trade.getByRole("button", { name: "受諾", exact: true }).click();
+  const retry = page.getByRole("dialog", { name: "保存に失敗しました" });
+  await expect(retry).toBeVisible();
+  expect(await page.evaluate((key) => localStorage.getItem(key), key)).toBe(
+    before,
+  );
+  await retry.getByRole("button", { name: "保存を再試行" }).click();
+  await page
+    .getByRole("dialog", { name: "共通イベントの結果" })
+    .getByRole("button", { name: "確認した" })
+    .click();
+  const notice = page.locator(".alert").filter({ hasText: "と取引成立" });
+  await expect(notice).toContainText("渡した品：なし");
+  await expect(notice).toContainText("受け取った品：" + received);
+  const saved = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!).state,
+    key,
+  );
+  expect(
+    saved.actions.filter((a: Action) => a.type === "tradeReply"),
+  ).toHaveLength(1);
+});
+
+test("取引の入力を保ったまま持ち物と課題を確認できる", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 740 });
+  await start(page, "v20-smoke-1");
+  await page.getByRole("button", { name: "魔女間取引", exact: true }).click();
+  const target = page.getByRole("combobox", { name: "相手", exact: true });
+  await target.selectOption("2");
+  await page.getByText("提供と要求の個数を入力", { exact: true }).click();
+  const request = page.getByRole("spinbutton", { name: "黒曜石 要求数" });
+  await request.fill("2");
+
+  const menu = page.getByRole("navigation", { name: "共通メニュー" });
+  for (const name of ["持ち物", "課題"]) {
+    const opener = menu.getByRole("button", { name: new RegExp(name) });
+    await opener.click();
+    const dialog = page.getByRole("dialog", { name, exact: true });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "閉じる", exact: true }).click();
+    await expect(opener).toBeFocused();
+    await expect(target).toHaveValue("2");
+    await expect(request).toBeVisible();
+    await expect(request).toHaveValue("2");
+  }
+});

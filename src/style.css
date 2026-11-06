@@ -1208,6 +1208,9 @@ footer > span:first-child {
   flex: 1;
   min-height: 50px;
 }
+.action-detail .left-column {
+  order: -1;
+}
 .action-detail,
 .battle-screen {
   display: block;
