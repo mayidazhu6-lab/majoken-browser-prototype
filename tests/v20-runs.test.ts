@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { V20_RULES_VERSION } from "../src/domain/config";
+import { V20_PLAYTEST_RULES_VERSION } from "../src/domain/config";
 import { deserialize, serialize } from "../src/domain/persistence";
 import { createGame, dispatch } from "../src/domain/reducer";
 import type { Action, Setup } from "../src/domain/types";
@@ -7,7 +7,7 @@ import runs from "./fixtures/v20-runs.json" with { type: "json" };
 
 for (const run of runs) {
   it(`固定シードと操作列で ${run.result.reason} を再現する（${run.setup.seed}）`, () => {
-    let s = createGame(run.setup as Setup, V20_RULES_VERSION);
+    let s = createGame(run.setup as Setup, V20_PLAYTEST_RULES_VERSION);
     for (const [index, action] of run.actions.entries()) {
       s = dispatch(s, action as Action);
       if (index === Math.floor(run.actions.length / 2))

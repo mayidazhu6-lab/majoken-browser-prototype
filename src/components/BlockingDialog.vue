@@ -1,24 +1,30 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
-defineProps<{ title: string }>();
+const props = defineProps<{
+  title: string;
+  dismissible?: boolean;
+  returnFocus?: HTMLElement;
+}>();
+const emit = defineEmits<{ close: [] }>();
 const panel = ref<HTMLElement>();
 let previous: HTMLElement | null = null;
 onMounted(() => {
-  previous = document.activeElement as HTMLElement | null;
+  previous =
+    props.returnFocus ?? (document.activeElement as HTMLElement | null);
   panel.value?.focus({ preventScroll: true });
   if (panel.value) panel.value.scrollTop = 0;
 });
 onBeforeUnmount(() => {
   void nextTick(() => {
-    if (previous?.isConnected) previous.focus();
+    if (previous?.isConnected) previous.focus({ preventScroll: true });
   });
 });
 function trap(event: KeyboardEvent) {
   const controls = Array.from(
     panel.value?.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), select:not(:disabled), input:not(:disabled), [tabindex="0"]',
+      'button:not(:disabled), select:not(:disabled), input:not(:disabled), summary, [tabindex="0"]',
     ) ?? [],
-  );
+  ).filter((control) => control.getClientRects().length > 0);
   const first = controls[0],
     last = controls.at(-1);
   if (!first) {
@@ -47,7 +53,7 @@ function trap(event: KeyboardEvent) {
         :aria-label="title"
         class="panel blocking-dialog"
         tabindex="-1"
-        @keydown.esc.prevent.stop
+        @keydown.esc.prevent.stop="dismissible && emit('close')"
         @keydown.tab="trap"
       >
         <h2>{{ title }}</h2>

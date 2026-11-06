@@ -22,7 +22,25 @@ for (const [seed, expected] of [
       .getByRole("button", { name: /公開行動の試遊をはじめる/ })
       .click();
     await settleScreens(page);
+    await expect(page.locator(".event-preview")).toContainText(
+      "今日の共通イベント",
+    );
+    await expect(page.locator(".witch-card .fp")).toHaveCount(4);
+    await expect(page.locator(".witch-card.you")).not.toContainText("AP");
+    const menu = page.getByRole("navigation", { name: "共通メニュー" });
+    await menu.getByRole("button", { name: /持ち物/ }).click();
+    const inventory = page.getByRole("dialog", { name: "持ち物" });
+    await expect(
+      inventory.getByRole("button", { name: "素材", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    const potions = inventory.getByRole("button", { name: "薬", exact: true });
+    await potions.click();
+    await expect(potions).toHaveAttribute("aria-pressed", "true");
+    await inventory
+      .getByRole("button", { name: "閉じる", exact: true })
+      .click();
     for (let round = 1; round <= 2; round++) {
+      await settleScreens(page);
       await expect(page.locator(".persistent-turn")).toContainText(
         `第${round}巡`,
       );
@@ -31,8 +49,13 @@ for (const [seed, expected] of [
       await settleScreens(page);
       await page.getByRole("button", { name: /手番終了 \/ パス/ }).click();
     }
-    const result = page.getByRole("dialog");
-    const pending = page.getByRole("button", { name: "拒否", exact: true });
+    const result = page.getByRole("dialog", { name: "共通イベントの結果" });
+    const tradeDialog = page.getByRole("dialog", { name: /からの取引提案/ });
+    await expect(tradeDialog).toBeVisible();
+    const pending = tradeDialog.getByRole("button", {
+      name: "拒否",
+      exact: true,
+    });
     await expect(pending).toHaveCount(1);
     await expect(page.locator(".persistent-turn")).toContainText(
       "取引の返答待ち",
@@ -64,7 +87,7 @@ test("公開済みv2.0を旧ルールのまま再開し、修正版とは別に�
   page,
 }) => {
   const oldKey = "majoken-save-rules-2.0-final";
-  const newKey = "majoken-save-rules-2.0.1";
+  const newKey = "majoken-save-rules-2.0.2";
   const original = createGame(
     {
       name: "アリア",
@@ -86,10 +109,10 @@ test("公開済みv2.0を旧ルールのまま再開し、修正版とは別に�
   );
   await page.goto("/");
   await page.getByRole("button", { name: "続きから", exact: true }).click();
-  await expect(page.locator(".persistent-turn")).toContainText("第2巡");
   await settleScreens(page);
+  await expect(page.locator(".persistent-turn")).toContainText("第2巡");
   await page.getByRole("button", { name: /手番終了 \/ パス/ }).click();
-  // The same seed in the tests above waits for a trade reply under 2.0.1.
+  // The same seed in the tests above waits for a trade reply under 2.0.2.
   await expect(
     page.getByRole("dialog", { name: "共通イベントの結果" }),
   ).toContainText("成功");

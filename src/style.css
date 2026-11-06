@@ -1200,17 +1200,16 @@ footer > span:first-child {
   margin-top: 1rem;
 }
 .common-menu {
-  position: fixed;
-  right: 16px;
-  top: 200px;
   display: flex;
-  flex-direction: column;
   gap: 10px;
-  z-index: 10;
+  margin-block: 12px;
 }
 .common-menu button {
-  min-width: 72px;
-  min-height: 64px;
+  flex: 1;
+  min-height: 50px;
+}
+.action-detail .left-column {
+  order: -1;
 }
 .action-detail,
 .battle-screen {
@@ -1273,16 +1272,6 @@ footer > span:first-child {
     order: 2;
     width: 100%;
   }
-  .common-menu {
-    top: auto;
-    bottom: 10px;
-    right: 10px;
-    flex-direction: column;
-  }
-  .common-menu button {
-    min-height: 50px;
-    padding: 6px;
-  }
   .focus-screen {
     margin: 1rem 0;
     padding: 1rem;
@@ -1296,15 +1285,6 @@ footer > span:first-child {
   }
 }
 @media (max-width: 760px) {
-  .game-grid {
-    padding-right: 78px;
-  }
-  .battle-screen {
-    padding-right: 0;
-  }
-  .common-menu {
-    right: 8px;
-  }
   .action-menu {
     grid-template-columns: 1fr;
   }
@@ -1312,4 +1292,147 @@ footer > span:first-child {
     max-width: none;
     flex-wrap: wrap;
   }
+}
+
+/* Play surfaces */
+.turn-status.persistent-turn {
+  position: static;
+  margin: 0;
+  padding: 0 0 0 12px;
+  background: transparent;
+  border: 0;
+  border-left: 2px solid var(--mint);
+  box-shadow: none;
+  border-radius: 0;
+}
+.turn-status h2 {
+  font-size: 1rem;
+  margin: 0;
+}
+.turn-status p {
+  margin: 0;
+}
+.event-preview {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  gap: 0.6rem;
+  width: 100%;
+  margin-block: 1rem;
+  min-height: 190px;
+  padding: 1.3rem clamp(1rem, 3vw, 2rem);
+  padding-right: 21%;
+  text-align: left;
+  border: 1px solid #767194;
+  background:
+    radial-gradient(ellipse at 100% 15%, #614568, transparent 66%),
+    linear-gradient(135deg, #242843, #252031);
+}
+.event-preview[data-difficulty="Easy"] {
+  background:
+    radial-gradient(ellipse at 100% 15%, #365f54, transparent 66%),
+    linear-gradient(135deg, #20333c, #252031);
+}
+.event-preview[data-difficulty="Hard"] {
+  background:
+    radial-gradient(ellipse at 100% 15%, #713c4e, transparent 66%),
+    linear-gradient(135deg, #312037, #252031);
+}
+.event-preview strong {
+  font-size: clamp(1.25rem, 3vw, 1.9rem);
+}
+.event-preview small {
+  color: var(--mint);
+}
+.event-emblem {
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 0 auto;
+  width: 27%;
+  display: grid;
+  place-items: center;
+  font-size: clamp(3rem, 9vw, 8rem);
+  color: #ead5f38f;
+  background: repeating-radial-gradient(
+    circle at 80% 45%,
+    transparent 0 15px,
+    #fff1 16px 17px,
+    transparent 18px 32px
+  );
+}
+.duel-scoreboard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+.duel-fighter {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid #a86b83;
+  border-radius: 0.75rem;
+  background: #352435;
+}
+.duel-fighter.you {
+  border-color: var(--mint);
+  background: #233a37;
+}
+.duel-hp {
+  display: block;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  line-height: 1.2;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.duel-hp small {
+  font-size: 0.9rem;
+}
+.tabs button[aria-pressed="true"],
+.night-panel .action-menu button[aria-pressed="true"] {
+  color: #132b25;
+  background: var(--mint);
+  border-color: var(--mint);
+  font-weight: 700;
+}
+.night-effect {
+  padding: 0.75rem;
+  border-left: 2px solid var(--mint);
+  background: #1c302f;
+}
+.dawn-summary {
+  margin-bottom: 1rem;
+}
+
+.intro-rules {
+  margin-top: 12px;
+}
+.rule-guide {
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.rule-guide details {
+  border: 1px solid #514459;
+  border-radius: 8px;
+  margin: 0 0 8px;
+  padding: 0 12px;
+}
+.rule-guide summary {
+  color: var(--mint);
+  cursor: pointer;
+  padding: 10px 0;
+  font-weight: 700;
+}
+.rule-guide ol,
+.rule-guide ul {
+  padding-inline-start: 1.45em;
+}
+.rule-guide li + li {
+  margin-top: 12px;
+}
+.rule-guide li p {
+  margin: 2px 0 0;
+}
+.blocking-dialog:has(.rule-guide) .dialog-content {
+  overscroll-behavior: contain;
 }

@@ -7,7 +7,14 @@ import {
   reservationRoom,
 } from "./events";
 import { canRecipe, materialIds, RECIPES } from "./items";
-import { CONFIG, hasNightRules, RESEARCH, STATS, V20_RESEARCH } from "./config";
+import {
+  CONFIG,
+  hasNightRules,
+  hasRevisedNightRules,
+  RESEARCH,
+  STATS,
+  V20_RESEARCH,
+} from "./config";
 import { publicResearchCost, publicModifiers, rewardOptions } from "./night";
 
 function simulationResearch(s: GameState) {
@@ -70,8 +77,14 @@ export function simulationAction(s: GameState): Action {
     if (s.phase === "rewards") {
       const reward = rewardOptions(s)!;
       return reward.items.length
-        ? { type: "nightReward", player: 0, item: reward.items[0].id }
-        : { type: "nightReward", player: 0, command: "gather" };
+        ? hasRevisedNightRules(s)
+          ? { type: "nightReward", player: 0, randomLoot: true }
+          : { type: "nightReward", player: 0, item: reward.items[0].id }
+        : {
+            type: "nightReward",
+            player: 0,
+            command: hasRevisedNightRules(s) ? "choice" : "gather",
+          };
     }
     if (s.phase === "night") return { type: "advance" };
   }

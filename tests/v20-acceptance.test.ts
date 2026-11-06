@@ -983,7 +983,8 @@ describe("第8日の終了順", () => {
     const s = finalDay();
     s.day = 7;
     const dawn = dispatch(s, { type: "advance" });
-    expect(dawn.phase).toBe("dawn");
+    expect(dawn.day).toBe(8);
+    expect(dawn.phase).toBe("public");
     expect(dawn.finalComparison).toBeUndefined();
     expect(dawn.players[0].longGoal.achieved).toBe(false);
   });
