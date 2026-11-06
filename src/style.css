@@ -1400,3 +1400,36 @@ footer > span:first-child {
 .dawn-summary {
   margin-bottom: 1rem;
 }
+
+.intro-rules {
+  margin-top: 12px;
+}
+.rule-guide {
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.rule-guide details {
+  border: 1px solid #514459;
+  border-radius: 8px;
+  margin: 0 0 8px;
+  padding: 0 12px;
+}
+.rule-guide summary {
+  color: var(--mint);
+  cursor: pointer;
+  padding: 10px 0;
+  font-weight: 700;
+}
+.rule-guide ol,
+.rule-guide ul {
+  padding-inline-start: 1.45em;
+}
+.rule-guide li + li {
+  margin-top: 12px;
+}
+.rule-guide li p {
+  margin: 2px 0 0;
+}
+.blocking-dialog:has(.rule-guide) .dialog-content {
+  overscroll-behavior: contain;
+}

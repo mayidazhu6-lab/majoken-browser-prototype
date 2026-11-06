@@ -4,6 +4,7 @@ import { combatReason, revealedActions } from "./ui/combatPresentation";
 import { plannedMaterials, potionDescription } from "./ui/alchemy";
 import TaskBriefing from "./components/TaskBriefing.vue";
 import BlockingDialog from "./components/BlockingDialog.vue";
+import RuleGuide from "./components/RuleGuide.vue";
 import GroupedItems from "./components/GroupedItems.vue";
 import { ELEMENT_POTIONS, elementPotion } from "./domain/elementCombat";
 import {
@@ -135,6 +136,11 @@ const actionLabels: Record<string, string> = {
   duel: "決闘",
 };
 const menu = ref("");
+const ruleGuideOpener = ref<HTMLElement>();
+function openRuleGuide(event: MouseEvent) {
+  if (!blockingModal.value)
+    ruleGuideOpener.value = event.currentTarget as HTMLElement;
+}
 const menuTab = ref("materials");
 const deferredTrades = ref<string[]>([]);
 const NIGHT_ACTIONS: NightKind[] = ["raid", "curse", "guard", "rest", "scout"];
@@ -387,6 +393,7 @@ const challengeNotice = computed(() =>
 const blockingModal = computed(
   () =>
     !!store.pending ||
+    !!ruleGuideOpener.value ||
     !!menu.value ||
     !!tradeNotice.value ||
     !!challengeNotice.value ||
@@ -908,6 +915,9 @@ watch(
         >
           旧v2.0.1の続きから
         </button>
+        <button v-if="s" aria-haspopup="dialog" @click="openRuleGuide">
+          遊び方・ルール説明
+        </button>
         <template v-if="s"
           ><button @click="store.save()">保存</button
           ><button @click="download">JSON保存</button></template
@@ -941,6 +951,11 @@ watch(
         <button class="primary start-button" @click="creation = true">
           ゲーム開始 →
         </button>
+        <div class="intro-rules">
+          <button aria-haspopup="dialog" @click="openRuleGuide">
+            遊び方・ルール説明
+          </button>
+        </div>
         <div class="intro-notes">
           <span>01　共同研究を成功させる</span
           ><span>02　卒業課題で卒業を目指す</span
@@ -2890,19 +2905,6 @@ watch(
               撤回
             </button>
           </section>
-          <details class="panel quick-guide">
-            <summary>遊び方・勝敗条件</summary>
-            <p>
-              毎日2巡、手番ごとに1APで採集・研究・購買部を利用します。公開決闘は1AP、勝者に1FP。取引・仮納品・模擬戦は0AP。錬金は夜だけです。
-            </p>
-            <p>
-              イベント3失敗で全員敗北。8日を終え、卒業課題達成で卒業。卒業者だけを最終FPで順位付けします。FPが同点なら日次課題の達成数を比較し、それも同じなら同率です。最高順位が複数なら共同首席です。
-            </p>
-            <p>
-              夜は固有魔法と秘匿行動。休息は翌日の育成を助け、襲撃・呪詛・偵察はライバルへの干渉です。
-            </p>
-            <p>保存は操作ごとに自動実行。JSON保存も利用できます。</p>
-          </details>
           <section class="panel developer-toggle">
             <label class="checkbox-row"
               ><input v-model="debug" type="checkbox" />開発者モード</label
@@ -3045,6 +3047,12 @@ watch(
         </button>
       </template>
     </BlockingDialog>
+    <RuleGuide
+      v-if="ruleGuideOpener"
+      :rules-version="s?.rulesVersion ?? V20_RULES_VERSION"
+      :opener="ruleGuideOpener"
+      @close="ruleGuideOpener = undefined"
+    />
     <BlockingDialog v-if="store.pending" title="保存に失敗しました">
       <p>保存が完了するまで進行できません。確定済みの操作を再保存します。</p>
       <template #actions>

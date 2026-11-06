@@ -92,11 +92,15 @@ test("休息・研鑽の研究プレビューが支払いと成長に一致し�
     state.players[0].inventory = [{ id: state.nextItem++, kind: "obsidian" }];
     store.state = state;
   });
-  await page.getByText("遊び方・勝敗条件", { exact: true }).click();
-  await expect(page.locator(".quick-guide")).toContainText(
-    "FPが同点なら日次課題の達成数",
-  );
-  await expect(page.locator(".quick-guide")).toContainText("共同首席");
+  await page.getByRole("button", { name: "遊び方・ルール説明" }).click();
+  const guide = page.getByRole("dialog", { name: "遊び方・ルール説明" });
+  await guide.getByText("名声ポイント（FP）", { exact: true }).click();
+  await expect(
+    guide.getByText(/同点なら「今日の課題」の達成日数/),
+  ).toBeVisible();
+  await guide.getByText("エンディングと勝利条件", { exact: true }).click();
+  await expect(guide.getByText(/1位が複数なら共同首席/)).toBeVisible();
+  await guide.getByRole("button", { name: "閉じる", exact: true }).click();
   await page.getByRole("button", { name: "研究", exact: true }).click();
   const card = page
     .locator(".action-card")
