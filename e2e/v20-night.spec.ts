@@ -47,7 +47,9 @@ test("秘匿決闘の入力確定後と強奪の選択前後に再開する", as
   await expect(night.locator(".night-effect")).toContainText("火Lv");
   await night.getByLabel("対象").selectOption("2");
   await night.getByRole("button", { name: "夜間行動と錬金を確定" }).click();
-  await settleScreens(page);
+  await expect(page.locator(".action-result")).toHaveCount(0);
+  await reload();
+  await expect(page.locator(".action-result")).toHaveCount(0);
   await page.getByRole("button", { name: /秘匿行動を解決/ }).click();
   const combat = page.locator(".combat-panel");
   await expect(combat.getByRole("heading", { name: "秘匿決闘" })).toBeVisible();
@@ -81,7 +83,18 @@ test("秘匿決闘の入力確定後と強奪の選択前後に再開する", as
   const dawn = page.getByRole("region", { name: "夜明けのまとめ" });
   await expect(dawn).toContainText(/今日の課題：(達成|失敗)/);
   await expect(dawn).toContainText("持ち物・名声の増減");
-  await expect(page.getByRole("heading", { name: /第 2 日/ })).toBeVisible();
+  await expect(dawn).toContainText("第1日のまとめ");
+  const saved = () =>
+    page.evaluate(() => localStorage.getItem("majoken-save-rules-2.0.2"));
+  const before = await saved();
   await reload();
   await expect(dawn).toBeVisible();
+  expect(await saved()).toBe(before);
+  await page.getByRole("button", { name: /次の日へ/ }).click();
+  await expect(dawn).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: /第 2 日/ })).toBeVisible();
+  const after = await saved();
+  await reload();
+  await expect(dawn).toHaveCount(0);
+  expect(await saved()).toBe(after);
 });
