@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import QuantitySpinner from "./QuantitySpinner.vue";
 import type { Item } from "../domain/types";
 import { LABELS } from "../domain/config";
 import { recipe } from "../domain/items";
@@ -33,16 +34,20 @@ function quantity(kind: string, input: HTMLInputElement) {
       >{{ LABELS[g.kind] ?? recipe(g.kind)?.name ?? g.kind }}（所持{{
         g.items.length
       }}個）
-      <input
-        :aria-label="`${LABELS[g.kind] ?? recipe(g.kind)?.name ?? g.kind}の数量`"
-        type="number"
-        min="0"
-        :max="g.items.length"
-        :value="
-          modelValue.filter((id) => g.items.some((i) => i.id === id)).length
-        "
-        @input="quantity(g.kind, $event.target as HTMLInputElement)"
-      />
+      <QuantitySpinner
+        :label="`${LABELS[g.kind] ?? recipe(g.kind)?.name ?? g.kind}の数量`"
+        ><input
+          :aria-label="`${LABELS[g.kind] ?? recipe(g.kind)?.name ?? g.kind}の数量`"
+          type="number"
+          inputmode="numeric"
+          step="1"
+          min="0"
+          :max="g.items.length"
+          :value="
+            modelValue.filter((id) => g.items.some((i) => i.id === id)).length
+          "
+          @input="quantity(g.kind, $event.target as HTMLInputElement)"
+      /></QuantitySpinner>
     </label>
     <p v-if="!groups.length">選択できる品物はありません。</p>
   </div>

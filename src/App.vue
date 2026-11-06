@@ -6,6 +6,7 @@ import TaskBriefing from "./components/TaskBriefing.vue";
 import BlockingDialog from "./components/BlockingDialog.vue";
 import RuleGuide from "./components/RuleGuide.vue";
 import GroupedItems from "./components/GroupedItems.vue";
+import QuantitySpinner from "./components/QuantitySpinner.vue";
 import AttributeDetails from "./components/AttributeDetails.vue";
 import ResearchPreview from "./components/ResearchPreview.vue";
 import { ELEMENT_POTIONS, elementPotion } from "./domain/elementCombat";
@@ -687,7 +688,10 @@ function act(a: Action, retry = false) {
   if (s.value !== previous) {
     if (s.value.combat?.id !== previous?.combat?.id)
       battleStep.value = s.value.combat?.done ? "end" : "intro";
-    if (a.type === "reward" || a.type === "combatAck") {
+    if (
+      a.type === "reward" ||
+      (a.type === "combatAck" && previous.combat?.kind !== "public")
+    ) {
       const lines = s.value.logs
         .filter(
           (l) =>
@@ -1146,47 +1150,6 @@ watch(
         </div>
       </div>
       <section
-        v-if="dawnSummary"
-        class="panel dawn-summary"
-        aria-label="夜明けのまとめ"
-      >
-        <p class="eyebrow">第{{ dawnSummary.day }}日のまとめ</p>
-        <h2>今日の課題：{{ dawnSummary.task.achieved ? "達成" : "失敗" }}</h2>
-        <p>
-          {{
-            goalDescription(
-              {
-                id: dawnSummary.task.id,
-                targets: [],
-                achieved: dawnSummary.task.achieved,
-              },
-              false,
-            ).name
-          }}
-        </p>
-        <h3>夜間行動の結果</h3>
-        <ul v-if="dawnSummary.actions.length">
-          <li v-for="entry in dawnSummary.actions" :key="entry.seq">
-            {{ uiText(entry.text) }}
-          </li>
-        </ul>
-        <p v-else>判定結果の通知なし</p>
-        <h3>持ち物・名声の増減</h3>
-        <p>
-          夜間の持ち物：{{
-            dawnSummary.inventory
-              .map(
-                ([kind, delta]) =>
-                  itemName(kind) + " " + (delta > 0 ? "+" : "") + delta,
-              )
-              .join("・") || "増減なし"
-          }}
-        </p>
-        <p>
-          1日の名声：{{ dawnSummary.fp > 0 ? "+" : "" }}{{ dawnSummary.fp }} FP
-        </p>
-      </section>
-      <section
         v-if="
           !modernNight && s.event.resolved && s.event.acknowledged && !s.result
         "
@@ -1627,7 +1590,7 @@ watch(
               </button>
             </template>
             <CombatRounds
-              v-if="combat.elemental.rounds.length"
+              v-if="combat.elemental.rounds.length && !combat.done"
               :combat="combat"
               :sides="[mySide, 1 - mySide]"
               :names="combat.participants.map((id) => s.players[id].name)"
@@ -1641,6 +1604,23 @@ watch(
                     : s.players[combat.winner!].name + "の勝利"
                 }}
               </h3>
+              <p v-if="combat.kind === 'public'" class="combat-fp">
+                <span v-for="id in combat.participants" :key="id">
+                  {{ s.players[id].name }}：名声（FP）
+                  {{ s.players[id].fp - Number(combat.winner === id) }} →
+                  {{ s.players[id].fp }} （{{
+                    combat.winner === id ? "+1" : "増減なし"
+                  }}）
+                </span>
+              </p>
+              <details class="combat-details">
+                <summary>戦闘の詳細を見る</summary>
+                <CombatRounds
+                  :combat="combat"
+                  :sides="[mySide, 1 - mySide]"
+                  :names="combat.participants.map((id) => s.players[id].name)"
+                />
+              </details>
               <button
                 class="primary"
                 @click="act({ type: 'combatAck', player: 0 })"
@@ -2239,46 +2219,49 @@ watch(
               <div v-if="event?.stats" class="stat-inputs">
                 <label v-for="k in STATS" :key="k"
                   >{{ LABELS[k]
-                  }}<input
-                    v-model.number="reserveStats[k]"
-                    type="number"
-                    min="0"
-                    :max="me.stats[k] - 1"
-                    placeholder="0"
-                /></label>
+                  }}<QuantitySpinner :label="LABELS[k] + 'の納品数'"
+                    ><input
+                      v-model.number="reserveStats[k]"
+                      :aria-label="LABELS[k] + 'の納品数'"
+                      type="number"
+                      inputmode="numeric"
+                      step="1"
+                      min="0"
+                      :max="me.stats[k] - 1"
+                      placeholder="0" /></QuantitySpinner
+                ></label>
               </div>
-              <button
-                class="primary"
-                :disabled="
-                  (!selected.length &&
-                    !Object.values(reserveStats).some((n) => n)) ||
-                  !can({
-                    type: 'reserve',
-                    player: 0,
-                    items: selected,
-                    stats: reserveStats,
-                  })
-                "
-                @click="
-                  act({
-                    type: 'reserve',
-                    player: 0,
-                    items: selected,
-                    stats: reserveStats,
-                  });
-                  reserveStats = {};
-                "
-              >
-                仮納品する（0AP）
-              </button>
-              <button @click="act({ type: 'withdraw', player: 0 })">
-                自分の予約をすべて撤回（0AP）
-              </button>
+              <div class="delivery-actions">
+                <button
+                  class="primary"
+                  :disabled="
+                    (!selected.length &&
+                      !Object.values(reserveStats).some((n) => n)) ||
+                    !can({
+                      type: 'reserve',
+                      player: 0,
+                      items: selected,
+                      stats: reserveStats,
+                    })
+                  "
+                  @click="
+                    act({
+                      type: 'reserve',
+                      player: 0,
+                      items: selected,
+                      stats: reserveStats,
+                    });
+                    reserveStats = {};
+                  "
+                >
+                  仮納品する（0AP）
+                </button>
+                <button @click="act({ type: 'withdraw', player: 0 })">
+                  自分の予約をすべて撤回（0AP）
+                </button>
+              </div>
               <p v-if="reserveReason" class="operation-reason" role="status">
                 {{ reserveReason }}
-              </p>
-              <p v-if="!donationCandidates.length" class="muted">
-                このイベントに納品できる未予約の品物がありません。必要条件・予約済みの数量も確認してください。
               </p>
             </template>
             <template v-if="actionScreen && tab === 'shop'">
@@ -2342,20 +2325,26 @@ watch(
                   class="trade-row"
                 >
                   <span>{{ itemName(kind) }}</span
-                  ><input
-                    v-model.number="tradeOffer[kind]"
-                    type="number"
-                    min="0"
-                    :max="inventory[kind]?.free ?? 0"
-                    :aria-label="`${itemName(kind)} 提供数`"
-                    placeholder="0"
-                  /><input
-                    v-model.number="tradeRequest[kind]"
-                    type="number"
-                    min="0"
-                    :aria-label="`${itemName(kind)} 要求数`"
-                    placeholder="0"
-                  />
+                  ><QuantitySpinner :label="itemName(kind) + ' 提供数'"
+                    ><input
+                      v-model.number="tradeOffer[kind]"
+                      type="number"
+                      inputmode="numeric"
+                      step="1"
+                      min="0"
+                      :max="inventory[kind]?.free ?? 0"
+                      :aria-label="`${itemName(kind)} 提供数`"
+                      placeholder="0" /></QuantitySpinner
+                  ><QuantitySpinner :label="itemName(kind) + ' 要求数'"
+                    ><input
+                      v-model.number="tradeRequest[kind]"
+                      type="number"
+                      inputmode="numeric"
+                      step="1"
+                      min="0"
+                      :aria-label="`${itemName(kind)} 要求数`"
+                      placeholder="0"
+                  /></QuantitySpinner>
                 </div>
               </details>
               <button
@@ -2816,8 +2805,53 @@ watch(
             <p class="muted">未選択で進めると休息します。</p>
           </section>
           <section
+            v-if="dawnSummary"
+            class="panel phase-message dawn-summary"
+            aria-label="夜明けのまとめ"
+          >
+            <h2>課題判定・夜明け</h2>
+            <p class="eyebrow">第{{ dawnSummary.day }}日のまとめ</p>
+            <h2>
+              今日の課題：{{ dawnSummary.task.achieved ? "達成" : "失敗" }}
+            </h2>
+            <p>
+              {{
+                goalDescription(
+                  {
+                    id: dawnSummary.task.id,
+                    targets: [],
+                    achieved: dawnSummary.task.achieved,
+                  },
+                  false,
+                ).name
+              }}
+            </p>
+            <h3>夜間行動の結果</h3>
+            <ul v-if="dawnSummary.actions.length">
+              <li v-for="entry in dawnSummary.actions" :key="entry.seq">
+                {{ uiText(entry.text) }}
+              </li>
+            </ul>
+            <p v-else>判定結果の通知なし</p>
+            <h3>持ち物・名声の増減</h3>
+            <p>
+              夜間の持ち物：{{
+                dawnSummary.inventory
+                  .map(
+                    ([kind, delta]) =>
+                      itemName(kind) + " " + (delta > 0 ? "+" : "") + delta,
+                  )
+                  .join("・") || "増減なし"
+              }}
+            </p>
+            <p>
+              1日の名声：{{ dawnSummary.fp > 0 ? "+" : ""
+              }}{{ dawnSummary.fp }} FP
+            </p>
+          </section>
+          <section
             v-if="
-              ['duels', 'results', 'ho', 'dawn'].includes(s.phase) &&
+              ['duels', 'results', 'ho'].includes(s.phase) &&
               !combat &&
               !s.challenge
             "
@@ -2829,23 +2863,11 @@ watch(
                 {
                   duels: "闇の中で、研究は続く。",
                   results: "夜の出来事を振り返る",
-                  ho: "今日の研究成果を判定",
-                  dawn: "新しい朝がやってきた。",
+                  ho: "課題判定・夜明け",
                 }[s.phase as "duels"]
               }}
             </h2>
-            <p>
-              {{
-                s.phase === "dawn"
-                  ? "今日のまとめを確認し、次の日へ進みましょう。"
-                  : "下の進行ボタンで結果を確定します。"
-              }}
-            </p>
-            <p v-if="s.phase === 'dawn'">
-              今日の課題：<strong>{{
-                me.dailyGoal.achieved ? "達成 ✓" : "未達成"
-              }}</strong>
-            </p>
+            <p>下の進行ボタンで結果を確定します。</p>
           </section>
           <section
             v-if="
