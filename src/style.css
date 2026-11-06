@@ -257,7 +257,6 @@ label small {
 .intro-notes {
   display: grid;
   gap: 12px;
-  border-top: 1px solid var(--border);
   padding: 25px 0;
   color: var(--mint);
 }
@@ -1521,4 +1520,34 @@ input[type="number"]::-webkit-inner-spin-button {
 
 .duel-fighter .stats {
   flex-wrap: wrap;
+}
+
+.dawn-summary {
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.dawn-summary h2 {
+  font-size: 22px;
+}
+.dawn-summary h3 {
+  font-size: 16px;
+  margin: 0 0 8px;
+}
+.dawn-summary h4 {
+  font-size: 14px;
+  margin: 16px 0 8px;
+}
+.review-section {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  margin-top: 20px;
+}
+.review-section ul {
+  padding-inline-start: 1.4em;
+}
+.review-section li {
+  margin-block: 6px;
+}
+.dawn-summary > button {
+  margin-top: 20px;
 }

@@ -15,6 +15,11 @@ for (const width of [1440, 390]) {
     expect(await start.evaluate((el) => getComputedStyle(el).textAlign)).toBe(
       "center",
     );
+    expect(
+      await page
+        .locator(".intro-notes")
+        .evaluate((el) => getComputedStyle(el).borderTopWidth),
+    ).toBe("0px");
     await page.screenshot({
       path: testInfo.outputPath("title.png"),
       fullPage: true,

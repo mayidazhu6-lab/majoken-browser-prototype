@@ -54,7 +54,6 @@ for (const width of [1440, 390]) {
     await expect(page.locator(".action-result")).toHaveCount(0);
     await reload();
     await expect(page.locator(".action-result")).toHaveCount(0);
-    await page.getByRole("button", { name: /秘匿行動を解決/ }).click();
     const combat = page.locator(".combat-panel");
     await expect(
       combat.getByRole("heading", { name: "秘匿決闘" }),
@@ -92,8 +91,11 @@ for (const width of [1440, 390]) {
     await expect(reward).toHaveCount(0);
     await page.getByRole("button", { name: /課題を判定して夜明けへ/ }).click();
     const dawn = page.getByRole("region", { name: "夜明けのまとめ" });
-    await expect(dawn).toContainText(/今日の課題：(達成|失敗)/);
-    await expect(dawn).toContainText("持ち物・名声の増減");
+    await expect(dawn).toContainText(/今日の課題：(成功|失敗)/);
+    await expect(dawn).toContainText("持ち物の増減（1日全体）");
+    await expect(
+      dawn.getByRole("region", { name: "名声の増減", exact: true }),
+    ).toBeVisible();
     await expect(dawn).toContainText("第1日のまとめ");
     await expect(
       dawn.getByRole("heading", { name: "課題判定・夜明け", exact: true }),
@@ -101,7 +103,7 @@ for (const width of [1440, 390]) {
     await expect(
       page.getByText("新しい朝がやってきた。", { exact: true }),
     ).toHaveCount(0);
-    await expect(page.locator(".phase-message")).toHaveCount(1);
+    await expect(page.locator(".phase-message")).toHaveCount(0);
     const saved = () =>
       page.evaluate(() => localStorage.getItem("majoken-save-rules-2.0.3"));
     await expect(dawn).toHaveCount(1);
