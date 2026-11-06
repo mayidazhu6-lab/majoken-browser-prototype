@@ -60,6 +60,7 @@ import {
   dailyProgress as describeDailyProgress,
 } from "./domain/ho";
 import { graduationProgress } from "./ui/graduationProgress";
+import { dailyReview } from "./ui/dailyReview";
 import { uiText } from "./ui/text";
 import { dispatch, currentPlayer } from "./domain/reducer";
 import { serialize } from "./domain/persistence";
@@ -491,21 +492,14 @@ const dawnSummary = computed(() => {
   if (!s.value || !hasRevisedNightRules(s.value)) return;
   const day = s.value.day;
   if (!["dawn", "ended"].includes(s.value.phase)) return;
-  const logs = visibleLogs.value.filter(
-    (l) => l.day === day && (l.actor === 0 || l.target === 0),
-  );
-  const inventory = logs.find((l) => l.type === "nightInventory");
+  const logs = visibleLogs.value
+    .filter((l) => l.day === day && (l.actor === 0 || l.target === 0))
+    .sort((a, b) => a.seq - b.seq);
   const task = me.value.dailyHistory.find((h) => h.day === day);
-  if (!inventory || !task) return;
+  if (!logs.some((l) => l.type === "nightInventory") || !task) return;
   return {
-    day,
+    ...dailyReview(s.value),
     task,
-    inventory: Object.entries(
-      (inventory.data?.items ?? {}) as Record<string, number>,
-    ),
-    fp: logs
-      .filter((l) => l.type === "fp" && l.actor === 0)
-      .reduce((sum, l) => sum + (l.amount ?? 0), 0),
     actions: logs.filter(
       (l) =>
         ["night", "duels", "rewards", "results"].includes(l.phase) &&
@@ -523,6 +517,8 @@ const dawnSummary = computed(() => {
           "scoutBlocked",
           "loot",
           "command",
+          "brew",
+          "usePotion",
         ].includes(l.type) &&
         (l.type !== "combat" || l.actor === 0),
     ),
@@ -691,7 +687,9 @@ function act(a: Action, retry = false) {
       battleStep.value = s.value.combat?.done ? "end" : "intro";
     if (
       a.type === "reward" ||
-      (a.type === "combatAck" && previous.combat?.kind !== "public")
+      (a.type === "combatAck" &&
+        !modernNight.value &&
+        previous.combat?.kind !== "public")
     ) {
       const lines = s.value.logs
         .filter(
@@ -784,6 +782,13 @@ function act(a: Action, retry = false) {
   }
   selected.value = [];
   battlePotion.value = undefined;
+  if (
+    a.type === "night" &&
+    modernNight.value &&
+    s.value.phase === "night" &&
+    me.value.night
+  )
+    act({ type: "advance" });
 }
 function actionError(a: Action) {
   if (!s.value) return "研究を開始してください";
@@ -2014,10 +2019,18 @@ watch(
                 可能な0AP操作を続けるか、手番を終了できます。
               </p>
             </div>
-            <div v-if="modernNight && currentPlayer(s) === 0">
+            <div v-if="modernNight && currentPlayer(s) === 0 && actionScreen">
               <button
                 v-for="item in usable(s, me).filter(
-                  (i) => modernRecipe(i.kind)?.level === 1,
+                  (i) =>
+                    i.kind ===
+                    (
+                      {
+                        gather: 'abundance',
+                        research: 'scholarship',
+                        shop: 'bargaining',
+                      } as Record<string, string>
+                    )[actionScreen],
                 )"
                 :key="item.id"
                 :disabled="
@@ -2813,48 +2826,95 @@ watch(
           </section>
           <section
             v-if="dawnSummary"
-            class="panel phase-message dawn-summary"
+            class="panel dawn-summary"
             aria-label="夜明けのまとめ"
           >
             <h2>課題判定・夜明け</h2>
             <p class="eyebrow">第{{ dawnSummary.day }}日のまとめ</p>
-            <h2>
-              今日の課題：{{ dawnSummary.task.achieved ? "達成" : "失敗" }}
-            </h2>
-            <p>
-              {{
-                goalDescription(
-                  {
-                    id: dawnSummary.task.id,
-                    targets: [],
-                    achieved: dawnSummary.task.achieved,
-                  },
-                  false,
-                ).name
-              }}
+            <section class="review-section" aria-label="課題判定">
+              <h3>
+                今日の課題：{{ dawnSummary.task.achieved ? "成功" : "失敗" }}
+              </h3>
+              <p>
+                {{
+                  goalDescription(
+                    {
+                      id: dawnSummary.task.id,
+                      targets: [],
+                      achieved: dawnSummary.task.achieved,
+                    },
+                    false,
+                  ).name
+                }}
+              </p>
+              <h3>卒業課題：{{ goalDescription(me.longGoal, true).name }}</h3>
+              <p>{{ goalDescription(me.longGoal, true).condition }}</p>
+              <ul>
+                <li v-for="line in graduationProgress(s)" :key="line">
+                  {{ line }}
+                </li>
+              </ul>
+            </section>
+            <section class="review-section" aria-label="夜間行動の結果">
+              <h3>夜間行動の結果</h3>
+              <ul v-if="dawnSummary.actions.length">
+                <li v-for="entry in dawnSummary.actions" :key="entry.seq">
+                  {{ uiText(entry.text) }}
+                </li>
+              </ul>
+              <p v-else>判定結果の通知なし</p>
+            </section>
+            <p v-if="dawnSummary.error" role="status">
+              {{ dawnSummary.error }}
             </p>
-            <h3>夜間行動の結果</h3>
-            <ul v-if="dawnSummary.actions.length">
-              <li v-for="entry in dawnSummary.actions" :key="entry.seq">
-                {{ uiText(entry.text) }}
-              </li>
-            </ul>
-            <p v-else>判定結果の通知なし</p>
-            <h3>持ち物・名声の増減</h3>
-            <p>
-              夜間の持ち物：{{
-                dawnSummary.inventory
-                  .map(
-                    ([kind, delta]) =>
-                      itemName(kind) + " " + (delta > 0 ? "+" : "") + delta,
-                  )
-                  .join("・") || "増減なし"
-              }}
-            </p>
-            <p>
-              1日の名声：{{ dawnSummary.fp > 0 ? "+" : ""
-              }}{{ dawnSummary.fp }} FP
-            </p>
+            <template v-else>
+              <section class="review-section" aria-label="持ち物の増減">
+                <h3>持ち物の増減（1日全体）</h3>
+                <ul v-if="dawnSummary.items.length">
+                  <li v-for="(row, index) in dawnSummary.items" :key="index">
+                    {{ row.cause }}：{{ itemName(row.kind) }}
+                    {{ row.amount > 0 ? "+" : "" }}{{ row.amount }}個
+                  </li>
+                </ul>
+                <p v-else>増減なし</p>
+                <h4>品物ごとの開始・終了・差引</h4>
+                <ul>
+                  <li v-for="(amount, kind) in dawnSummary.totals" :key="kind">
+                    {{ itemName(String(kind)) }}：{{
+                      dawnSummary.inventoryStart[kind] ?? 0
+                    }}
+                    → {{ dawnSummary.inventoryEnd[kind] ?? 0 }}個（差引
+                    {{ amount > 0 ? "+" : "" }}{{ amount }}個）
+                  </li>
+                </ul>
+              </section>
+              <section class="review-section" aria-label="名声の増減">
+                <h3>名声（FP）の増減</h3>
+                <ul v-if="dawnSummary.fpEntries.length">
+                  <li v-for="row in dawnSummary.fpEntries" :key="row.seq">
+                    {{ row.cause }}：{{ row.amount > 0 ? "+" : ""
+                    }}{{ row.amount }} FP
+                  </li>
+                </ul>
+                <p v-else>増減なし</p>
+                <p>
+                  本日の合計：{{
+                    dawnSummary.fpEnd - dawnSummary.fpStart > 0 ? "+" : ""
+                  }}{{ dawnSummary.fpEnd - dawnSummary.fpStart }} FP（{{
+                    dawnSummary.fpStart
+                  }}
+                  → {{ dawnSummary.fpEnd }}）
+                </p>
+              </section>
+            </template>
+            <button
+              v-if="s.phase === 'dawn'"
+              class="primary"
+              :disabled="!!store.pending || me.pendingRecipe"
+              @click="next"
+            >
+              次の日へ →
+            </button>
           </section>
           <section
             v-if="
@@ -2883,7 +2943,8 @@ watch(
               s.phase !== 'rewards' &&
               !combat &&
               !s.challenge &&
-              !actionScreen
+              !actionScreen &&
+              !dawnSummary
             "
             class="panel progression"
           >
