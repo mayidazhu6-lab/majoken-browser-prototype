@@ -6,6 +6,8 @@ import TaskBriefing from "./components/TaskBriefing.vue";
 import BlockingDialog from "./components/BlockingDialog.vue";
 import RuleGuide from "./components/RuleGuide.vue";
 import GroupedItems from "./components/GroupedItems.vue";
+import AttributeDetails from "./components/AttributeDetails.vue";
+import ResearchPreview from "./components/ResearchPreview.vue";
 import { ELEMENT_POTIONS, elementPotion } from "./domain/elementCombat";
 import {
   NIGHT_RECIPES,
@@ -26,6 +28,8 @@ import {
   V20_LABELS,
   V20_MAGICS,
   V20_RESEARCH,
+  RESEARCH,
+  isV20,
   V20_RULES_VERSION,
   V20_RELEASE_RULES_VERSION,
   V20_PLAYTEST_RULES_VERSION,
@@ -37,7 +41,7 @@ import {
   MATERIALS,
   STATS,
   level,
-  nextLevel,
+  levelEffect,
 } from "./domain/config";
 import { EVENTS, eventProgress, reservationUnits } from "./domain/events";
 import {
@@ -60,6 +64,7 @@ import { serialize } from "./domain/persistence";
 import type {
   Action,
   Combat,
+  Log,
   Magic,
   NightKind,
   Setup,
@@ -137,7 +142,7 @@ const publicActions = {
 } as const;
 const menu = ref("");
 const menuOpener = ref<HTMLElement>();
-function openMenu(event: MouseEvent, section: "inventory" | "goals") {
+function openMenu(event: MouseEvent, section: "inventory" | "goals" | "attributes") {
   menuOpener.value = event.currentTarget as HTMLElement;
   menu.value = section;
   menuTab.value = section === "inventory" ? "materials" : "daily";
@@ -181,6 +186,7 @@ function cancelAction() {
   reserveStats.value = {};
   nightPlan.value = [];
   actionPotion.value = undefined;
+  researchPayment.value = {};
 }
 function openAction(id: string) {
   cancelAction();
@@ -576,11 +582,47 @@ const nightDraft = computed<Action>(() => ({
   },
 }));
 function researchCost(stat: Stat) {
-  const cost = publicResearchCost(me.value, stat, researchPayment.value[stat]);
+  const cost = modernNight.value
+    ? publicResearchCost(me.value, stat, researchPayment.value[stat])
+    : (isV20(s.value) ? V20_RESEARCH : RESEARCH)[stat];
   if (!cost) return null;
   return [...new Set(cost)].map(
     (kind) => [kind, cost.filter((item) => item === kind).length] as const,
   );
+}
+const scholarshipActive = computed(
+  () => modernNight.value && !!me.value?.publicPotions?.includes("scholarship"),
+);
+function researchGrowth(stat: Stat, forced = false) {
+  if (modernNight.value) return publicResearchGrowth(me.value);
+  // Older rules can change growth when a potion is selected with the action.
+  try {
+    const next = dispatch(
+      s.value,
+      forced
+        ? { type: "forced", player: 0, kind: "research", stat }
+        : { type: "research", player: 0, stat, potion: actionPotion.value },
+    );
+    return next.players[0].stats[stat] - me.value.stats[stat];
+  } catch {
+    return undefined;
+  }
+}
+const researchGrowthByStat = computed(() =>
+  Object.fromEntries(STATS.map((stat) => [stat, researchGrowth(stat)])),
+);
+const forcedResearchGrowth = computed(() =>
+  researchGrowth(forcedStat.value, true),
+);
+function logText(entry: Log) {
+  // Modern level effects are shown from current rules in the attribute UI.
+  if (modernNight.value && entry.type === "levelUp" && entry.amount) {
+    const suffix = levelEffect(entry.kind as Stat, entry.amount);
+    return entry.text.endsWith(suffix)
+      ? entry.text.slice(0, -suffix.length)
+      : entry.text;
+  }
+  return entry.text;
 }
 const modifiers = computed(() =>
   me.value ? publicModifiers(me.value) : { gather: 0, research: 0, shop: 0 },
@@ -651,7 +693,7 @@ function act(a: Action, retry = false) {
             (l.audience === "public" ||
               (Array.isArray(l.audience) && l.audience.includes(0))),
         )
-        .map((l) => l.text);
+        .map(logText);
       const changes = s.value.players
         .map((p, i) =>
           p.inventory.length !== previous.players[i].inventory.length ||
@@ -723,7 +765,7 @@ function act(a: Action, retry = false) {
             (l.audience === "public" ||
               (Array.isArray(l.audience) && l.audience.includes(0))),
         )
-        .map((l) => l.text);
+        .map(logText);
       if (!actionResult.value.length)
         actionResult.value = ["行動を確定しました。"];
       actionScreen.value = "";
@@ -1238,19 +1280,20 @@ watch(
             <button @click="openMenu($event, 'inventory')">
               🎒<br />持ち物
             </button>
+            <button @click="openMenu($event, 'attributes')">✦<br />能力値</button>
             <button @click="openMenu($event, 'goals')">📜<br />課題</button>
           </nav>
           <details v-if="!actionScreen" class="panel level-guide">
             <summary>あなたの能力Lvと解禁効果</summary>
-            <p v-for="k in STATS" :key="k" :data-stat="k">
-              {{ LABELS[k] }} {{ me.stats[k] }} / Lv{{ level(me.stats[k])
-              }}<br />
-              {{
-                nextLevel(me.stats[k]) === null
-                  ? "最高Lvです"
-                  : `次のLvまであと${nextLevel(me.stats[k])! - me.stats[k]}（能力値${nextLevel(me.stats[k])}）`
-              }}
-            </p>
+            <AttributeDetails
+              v-for="k in STATS"
+              :key="k"
+              :label="LABELS[k]"
+              :stat="k"
+              :value="me.stats[k]"
+              :rules-version="s.rulesVersion"
+              :recipes="me.recipes"
+            />
           </details>
         </aside>
         <main class="center-column">
@@ -1865,7 +1908,7 @@ watch(
               @click="act({ type: 'forced', player: 0, kind: 'gather' })"
             >
               命令の採集を実行（1AP）</button
-            ><select v-model="forcedStat">
+            ><select v-model="forcedStat" aria-label="命令研究の属性">
               <option v-for="k in STATS" :key="k" :value="k">
                 {{ LABELS[k] }}
               </option>
@@ -1884,6 +1927,26 @@ watch(
                 {{ itemName(kind) }}
               </option>
             </select>
+            <p v-if="researchCost(forcedStat)">
+              <span
+                v-for="[kind, needed] in researchCost(forcedStat)"
+                :key="kind"
+                class="material-count"
+              >
+                {{ itemName(kind) }}：必要{{ needed }} / 使用可能{{
+                  inventory[kind]?.free ?? 0
+                }}
+              </span>
+            </p>
+            <ResearchPreview
+              v-if="forcedResearchGrowth !== undefined"
+              :growth="forcedResearchGrowth!"
+              :scholarship="scholarshipActive"
+              :stat="forcedStat"
+              :value="me.stats[forcedStat]"
+              :rules-version="s.rulesVersion"
+              :recipes="me.recipes"
+            />
             <button
               :disabled="
                 !can({
@@ -2023,31 +2086,17 @@ watch(
               }}
             </h3>
             <template v-if="actionScreen && tab === 'field'"
-              ><label
+              ><label v-if="!modernNight"
                 >行動と同時に使う薬<select v-model="actionPotion">
                   <option :value="undefined">なし</option>
                   <option
-                    v-for="i in available(me).filter((i) =>
-                      ['gather', 'research'].includes(
-                        recipe(i.kind)?.effect ?? '',
-                      ),
+                    v-for="i in available(me).filter(
+                      (i) => recipe(i.kind)?.effect === actionScreen,
                     )"
                     :key="i.id"
                     :value="i.id"
                   >
                     {{ itemName(i.kind) }}
-                  </option></select
-                ><select
-                  v-if="modernNight && modifiers.research"
-                  v-model="researchPayment[forcedStat]"
-                  aria-label="命令研究の素材"
-                >
-                  <option
-                    v-for="kind in V20_RESEARCH[forcedStat]"
-                    :key="kind"
-                    :value="kind"
-                  >
-                    {{ itemName(kind) }}
                   </option>
                 </select></label
               >
@@ -2093,7 +2142,7 @@ watch(
               <div
                 v-for="k in actionScreen === 'research' ? STATS : []"
                 :key="k"
-                class="action-card"
+                class="action-card research-card"
               >
                 <div>
                   <h3>{{ LABELS[k] }}を研究</h3>
@@ -2113,11 +2162,30 @@ watch(
                       modifiers.research > 0 ? "追加素材" : "支払う素材"
                     }}を選ぶと必要数を表示します。
                   </p>
-                  <p>成長：+{{ publicResearchGrowth(me) }}</p>
+                  <ResearchPreview
+                    v-if="researchGrowthByStat[k] !== undefined"
+                    :growth="researchGrowthByStat[k]!"
+                    :scholarship="scholarshipActive"
+                    :stat="k"
+                    :value="me.stats[k]"
+                    :rules-version="s.rulesVersion"
+                    :recipes="me.recipes"
+                  />
+                  <details class="research-attribute-details">
+                    <summary>現在の効果と次のLv</summary>
+                    <AttributeDetails
+                      :label="LABELS[k]"
+                      :stat="k"
+                      :value="me.stats[k]"
+                      :rules-version="s.rulesVersion"
+                      :recipes="me.recipes"
+                    />
+                  </details>
                 </div>
                 <label v-if="modernNight && modifiers.research"
                   >{{ modifiers.research > 0 ? "追加素材" : "支払う素材" }}
                   <select v-model="researchPayment[k]">
+                    <option :value="undefined">素材を選択</option>
                     <option
                       v-for="kind in V20_RESEARCH[k]"
                       :key="kind"
@@ -2816,7 +2884,7 @@ watch(
               v-for="l in s.logs.filter((l) => l.type === 'eventResult')"
               :key="l.seq"
             >
-              <h3>第{{ l.day }}日：{{ uiText(l.text) }}</h3>
+              <h3>第{{ l.day }}日：{{ uiText(logText(l)) }}</h3>
               <p>{{ EVENTS[Number(l.data?.event) - 1]?.description }}</p>
             </article>
           </details>
@@ -2834,8 +2902,8 @@ watch(
               >
                 {{
                   l.type === "win"
-                    ? `${s.players[l.actor!].name}：${uiText(l.text)}`
-                    : uiText(l.text)
+                    ? `${s.players[l.actor!].name}：${uiText(logText(l))}`
+                    : uiText(logText(l))
                 }}
                 <small v-if="l.type === 'turnEnd'">
                   · 残AP {{ l.data?.remainingAP }}</small
@@ -2863,9 +2931,11 @@ watch(
               >
             </p>
             <p v-for="l in personalResults" :key="l.seq">
-              {{ uiText(l.text) }}
+              {{ uiText(logText(l)) }}
             </p>
-            <p v-for="l in nightResults" :key="l.seq">{{ uiText(l.text) }}</p>
+            <p v-for="l in nightResults" :key="l.seq">
+              {{ uiText(logText(l)) }}
+            </p>
           </section>
           <details v-if="history.length && !combat" class="panel">
             <summary>対戦の履歴（秘匿決闘は本人参加分のみ）</summary>
@@ -2916,7 +2986,7 @@ watch(
                   <span>DAY {{ l.day }} · {{ LABELS[l.phase] }}</span
                   ><small v-if="l.audience !== 'public'">個人通知</small>
                 </div>
-                <p>{{ uiText(l.text) }}</p>
+                <p>{{ uiText(logText(l)) }}</p>
               </article>
             </div>
           </details>
@@ -3120,7 +3190,7 @@ watch(
     </BlockingDialog>
     <BlockingDialog
       v-if="menu && me && !store.pending"
-      :title="menu === 'inventory' ? '持ち物' : '課題'"
+      :title="menu === 'attributes' ? '能力値' : menu === 'inventory' ? '持ち物' : '課題'"
       :return-focus="menuOpener"
     >
       <nav class="tabs" v-if="menu === 'inventory'">
@@ -3138,7 +3208,7 @@ watch(
           薬
         </button>
       </nav>
-      <nav class="tabs" v-else>
+      <nav class="tabs" v-else-if="menu === 'goals'">
         <button
           :class="{ active: menuTab === 'daily' }"
           :aria-pressed="menuTab === 'daily'"
@@ -3153,7 +3223,18 @@ watch(
           卒業課題
         </button>
       </nav>
-      <template v-if="menu === 'inventory'">
+      <template v-if="menu === 'attributes'">
+        <AttributeDetails
+          v-for="k in STATS"
+          :key="k"
+          :label="LABELS[k]"
+          :stat="k"
+          :value="me.stats[k]"
+          :rules-version="s.rulesVersion"
+          :recipes="me.recipes"
+        />
+      </template>
+      <template v-else-if="menu === 'inventory'">
         <p v-if="!me.inventory.length">所持品なし</p>
         <article
           v-for="(count, kind) in Object.fromEntries(
@@ -3371,7 +3452,7 @@ watch(
         )"
         :key="l.seq"
       >
-        {{ uiText(l.text) }}
+        {{ uiText(logText(l)) }}
       </p>
       <p v-if="s.result?.reason === 'collapse'">
         イベント3回失敗により研究所が崩壊しました。全員敗北です。当日の日次HOは判定なし・報酬なしです。
