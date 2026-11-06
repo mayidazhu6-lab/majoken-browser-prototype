@@ -96,9 +96,21 @@ it("resumes the locked round and pending reward without repeating HP, items or r
   expect(() =>
     dispatch(s, { type: "nightReward", player: 0, item: stolen }),
   ).toThrow();
-  act({ type: "advance" });
+  act({ type: "advance", pauseAtDawn: true });
+  expect(s.phase).toBe("dawn");
+  expect(s.day).toBe(1);
+  const dawn = serialize(s);
   reload();
+  expect(serialize(s)).toBe(dawn);
   expect(s.players.every((p) => p.dailyHistory.length === 1)).toBe(true);
+  expect(s.logs.filter((l) => l.type === "dailyHO")).toHaveLength(4);
+  act({ type: "advance", pauseAtDawn: true });
+  expect(s.day).toBe(2);
+  expect(s.players.every((p) => p.dailyHistory.length === 1)).toBe(true);
+  expect(s.logs.filter((l) => l.type === "dailyHO")).toHaveLength(4);
+  const next = serialize(s);
+  reload();
+  expect(serialize(s)).toBe(next);
 });
 
 it("registers only surviving directions, with barrier before available defensive potions", () => {

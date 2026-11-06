@@ -336,4 +336,4 @@ export type Action =
   | { type: "unlock"; player: number; recipe: string }
   | { type: "endTurn"; player: number }
   | { type: "aiPublic" }
-  | { type: "advance" };
+  | { type: "advance"; pauseAtDawn?: boolean };

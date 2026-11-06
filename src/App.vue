@@ -142,7 +142,10 @@ const publicActions = {
 } as const;
 const menu = ref("");
 const menuOpener = ref<HTMLElement>();
-function openMenu(event: MouseEvent, section: "inventory" | "goals" | "attributes") {
+function openMenu(
+  event: MouseEvent,
+  section: "inventory" | "goals" | "attributes",
+) {
   menuOpener.value = event.currentTarget as HTMLElement;
   menu.value = section;
   menuTab.value = section === "inventory" ? "materials" : "daily";
@@ -377,7 +380,7 @@ const donationCandidates = computed(() =>
 );
 const reserveReason = computed(() =>
   !selected.value.length && !Object.values(reserveStats.value).some(Boolean)
-    ? "納品する品物・能力を選択してください。"
+    ? ""
     : actionError({
         type: "reserve",
         player: 0,
@@ -484,8 +487,8 @@ const personalResults = computed(
 
 const dawnSummary = computed(() => {
   if (!s.value || !hasRevisedNightRules(s.value)) return;
-  const day = s.value.phase === "ended" ? s.value.day : s.value.day - 1;
-  if (s.value.phase !== "ended" && !briefing.value) return;
+  const day = s.value.day;
+  if (!["dawn", "ended"].includes(s.value.phase)) return;
   const logs = visibleLogs.value.filter(
     (l) => l.day === day && (l.actor === 0 || l.target === 0),
   );
@@ -732,6 +735,9 @@ function act(a: Action, retry = false) {
               l.type === "tradeRejected" && (l.actor === 0 || l.target === 0),
           )?.text ?? "取引を提案しました。");
       actionScreen.value = "";
+    } else if (a.type === "night") {
+      actionScreen.value = "";
+      menu.value = "";
     } else if (a.type === "nightReward") {
       const reward = s.value.logs.find(
         (l) =>
@@ -752,7 +758,6 @@ function act(a: Action, retry = false) {
         "reserve",
         "withdraw",
         "shop",
-        "night",
         "magic",
         "usePotion",
       ].includes(a.type)
@@ -814,9 +819,11 @@ function restorePresentation(json?: string) {
       return;
     graduation.value = view.graduation === true;
     hoNoticeDay.value = Number.isInteger(view.day) ? view.day : 0;
-    actionResult.value = Array.isArray(view.actionResult)
-      ? view.actionResult.filter((x: unknown) => typeof x === "string")
-      : [];
+    actionResult.value =
+      s.value.actions.at(-1)?.type !== "night" &&
+      Array.isArray(view.actionResult)
+        ? view.actionResult.filter((x: unknown) => typeof x === "string")
+        : [];
     if (
       ["intro", "choose", "reveal", "judgment", "end"].includes(view.battleStep)
     )
@@ -923,7 +930,7 @@ function next() {
   act(
     s.value?.phase === "public" && s.value.publicTurn.round <= 2
       ? { type: "endTurn", player: 0 }
-      : { type: "advance" },
+      : { type: "advance", pauseAtDawn: true },
   );
 }
 const nextLabel = computed(
@@ -1280,7 +1287,9 @@ watch(
             <button @click="openMenu($event, 'inventory')">
               🎒<br />持ち物
             </button>
-            <button @click="openMenu($event, 'attributes')">✦<br />能力値</button>
+            <button @click="openMenu($event, 'attributes')">
+              ✦<br />能力値
+            </button>
             <button @click="openMenu($event, 'goals')">📜<br />課題</button>
           </nav>
           <details v-if="!actionScreen" class="panel level-guide">
@@ -2262,7 +2271,7 @@ watch(
               >
                 仮納品する（0AP）
               </button>
-              ><button @click="act({ type: 'withdraw', player: 0 })">
+              <button @click="act({ type: 'withdraw', player: 0 })">
                 自分の予約をすべて撤回（0AP）
               </button>
               <p v-if="reserveReason" class="operation-reason" role="status">
@@ -2272,8 +2281,7 @@ watch(
                 このイベントに納品できる未予約の品物がありません。必要条件・予約済みの数量も確認してください。
               </p>
             </template>
-            <template v-if="actionScreen && tab === 'shop'"
-              ><h3>購買部 <span class="tag">1AP</span></h3>
+            <template v-if="actionScreen && tab === 'shop'">
               <p class="muted">
                 任意の素材{{ 3 + (modernNight ? modifiers.shop : 0) }}個 →
                 指定素材1個
@@ -2377,19 +2385,21 @@ watch(
               <p>
                 公開決闘：挑戦者1AP、被挑戦者0AP。勝者FP+1、能力移転なし。<br />模擬戦：イベント用。勝敗は達成条件に影響しません。
               </p>
-              <button
-                :disabled="!can({ type: 'duel', player: 0, target })"
-                @click="act({ type: 'duel', player: 0, target })"
-              >
-                公開決闘 <small>1AP</small></button
-              ><button
-                :disabled="
-                  !can({ type: 'duel', player: 0, target, mock: true })
-                "
-                @click="act({ type: 'duel', player: 0, target, mock: true })"
-              >
-                イベント模擬戦 <small>0AP</small>
-              </button></template
+              <div class="duel-actions">
+                <button
+                  :disabled="!can({ type: 'duel', player: 0, target })"
+                  @click="act({ type: 'duel', player: 0, target })"
+                >
+                  公開決闘 <small>1AP</small></button
+                ><button
+                  :disabled="
+                    !can({ type: 'duel', player: 0, target, mock: true })
+                  "
+                  @click="act({ type: 'duel', player: 0, target, mock: true })"
+                >
+                  イベント模擬戦 <small>0AP</small>
+                </button>
+              </div></template
             >
           </section>
           <section
@@ -2827,7 +2837,7 @@ watch(
             <p>
               {{
                 s.phase === "dawn"
-                  ? "下の1日のまとめを確認し、次の日へ進みましょう。"
+                  ? "今日のまとめを確認し、次の日へ進みましょう。"
                   : "下の進行ボタンで結果を確定します。"
               }}
             </p>
@@ -3190,7 +3200,13 @@ watch(
     </BlockingDialog>
     <BlockingDialog
       v-if="menu && me && !store.pending"
-      :title="menu === 'attributes' ? '能力値' : menu === 'inventory' ? '持ち物' : '課題'"
+      :title="
+        menu === 'attributes'
+          ? '能力値'
+          : menu === 'inventory'
+            ? '持ち物'
+            : '課題'
+      "
       :return-focus="menuOpener"
     >
       <nav class="tabs" v-if="menu === 'inventory'">

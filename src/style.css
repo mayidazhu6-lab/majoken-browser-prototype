@@ -1489,3 +1489,17 @@ footer > span:first-child {
 .blocking-dialog:has(.rule-guide) .dialog-content {
   overscroll-behavior: contain;
 }
+
+.duel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.duel-actions button {
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .duel-actions {
+    flex-direction: column;
+  }
+}

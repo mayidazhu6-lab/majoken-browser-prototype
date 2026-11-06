@@ -1164,7 +1164,7 @@ function forced(
     },
   );
 }
-function advance(s: GameState) {
+function advance(s: GameState, pauseAtDawn = false) {
   assert(!s.combat && !s.challenge, "戦闘・挑戦への返答を完了してください");
   assert(
     !s.players.some((p) => p.pendingRecipe),
@@ -1334,7 +1334,8 @@ function advance(s: GameState) {
             data: { items },
           });
         }
-        if (!s.result) nextDay(s);
+        // Preserve historical action replay; the UI explicitly waits at dawn.
+        if (!s.result && !pauseAtDawn) nextDay(s);
       }
       break;
     case "dawn":
@@ -1536,7 +1537,7 @@ function apply(s: GameState, a: Action) {
     return;
   }
   if (a.type === "advance") {
-    advance(s);
+    advance(s, a.pauseAtDawn);
     return;
   }
   if (a.type === "aiPublic") {
