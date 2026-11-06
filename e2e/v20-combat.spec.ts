@@ -52,7 +52,7 @@ test("届いた決闘はモーダルで応答し、受ける側でも自分が�
   await page.goto("/");
   await page.getByRole("button", { name: /ゲーム開始/ }).click();
   await page.getByRole("checkbox", { name: "開発者モード" }).check();
-  await page.getByLabel(/乱数シード/).fill("v20-finish-2");
+  await page.getByLabel(/乱数シード/).fill("v20-finish-0");
   await page.getByRole("button", { name: "研究開始", exact: true }).click();
   await settleScreens(page);
   await page.getByRole("button", { name: /手番終了 \/ パス/ }).click();

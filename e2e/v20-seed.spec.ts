@@ -10,7 +10,7 @@ async function openCreation(page: Page) {
 
 async function savedState(page: Page): Promise<GameState> {
   return page.evaluate(() => {
-    const save = localStorage.getItem("majoken-save-rules-2.0.2");
+    const save = localStorage.getItem("majoken-save-rules-2.0.3");
     if (!save) throw new Error("保存データがありません");
     return JSON.parse(save).state;
   });

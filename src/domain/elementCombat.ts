@@ -1,5 +1,6 @@
-import { CONFIG, level, STATS, V20_LABELS } from "./config";
+import { CONFIG, hasRandomElementAI, level, STATS, V20_LABELS } from "./config";
 import { log } from "./core";
+import { pick } from "./rng";
 import { available, consume } from "./items";
 import type { Combat, GameState, Player, Stat } from "./types";
 
@@ -98,6 +99,17 @@ export function chooseElement(c: Combat, s: GameState, side: number): Stat {
         Math.min(c.hp[side], received.total)
       );
     }, 0);
+  if (hasRandomElementAI(s)) {
+    const scores = STATS.map((element) => ({ element, score: score(element) }));
+    const highest = Math.max(...scores.map((candidate) => candidate.score));
+    const candidates = scores
+      .filter((candidate) => candidate.score === highest)
+      .map((candidate) => candidate.element);
+    return candidates.length === 1
+      ? candidates[0]
+      : pick(s, candidates, "NPC戦闘属性の最高評価同点抽選");
+  }
+  // Historical saves must keep their original choices and RNG progression.
   return STATS.reduce((best, element) =>
     score(element) > score(best) ? element : best,
   );

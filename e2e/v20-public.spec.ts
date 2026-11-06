@@ -5,7 +5,7 @@ import { createGame, dispatch } from "../src/domain/reducer";
 import { settleScreens } from "./helpers";
 
 for (const [seed, expected] of [
-  ["v20-smoke-1", "成功"],
+  ["v20-smoke-6", "成功"],
   ["v20-smoke-20", "失敗"],
 ]) {
   test(`v2.0で公開2巡を完了し、イベント${expected}から再開できる`, async ({
@@ -134,7 +134,7 @@ test("公開済みv2.0を旧ルールのまま再開し、修正版とは別に�
   page,
 }) => {
   const oldKey = "majoken-save-rules-2.0-final";
-  const newKey = "majoken-save-rules-2.0.2";
+  const newKey = "majoken-save-rules-2.0.3";
   const original = createGame(
     {
       name: "アリア",

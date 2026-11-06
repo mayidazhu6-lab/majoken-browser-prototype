@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { settleScreens } from "./helpers";
 import type { Action } from "../src/domain/types";
 
-const key = "majoken-save-rules-2.0.2";
+const key = "majoken-save-rules-2.0.3";
 const [run] = JSON.parse(
   readFileSync("tests/fixtures/v20-runs.json", "utf8"),
 ) as { setup: { seed: string }; actions: Action[] }[];
@@ -20,6 +20,7 @@ async function start(page: Page, seed: string) {
 test("イベント結果確認の保存に失敗してもダイアログから同じ結果を再保存できる", async ({
   page,
 }) => {
+  const key = "majoken-save-rules-2.0.2";
   await start(page, run.setup.seed);
   await page.evaluate(
     async ({ actions, key }) => {
@@ -27,6 +28,14 @@ test("イベント結果確認の保存に失敗してもダイアログから�
         "return import('/src/stores/game.ts')",
       )();
       const store = useGameStore();
+      // This fixed historical action list belongs to the pre-tiebreak engine.
+      const { createGame } = await new Function(
+        "return import('/src/domain/reducer.ts')",
+      )();
+      const { serialize } = await new Function(
+        "return import('/src/domain/persistence.ts')",
+      )();
+      store.load(serialize(createGame(store.state.setup, "browser-2.0.2")));
       for (const action of actions) {
         store.act(action);
         if (store.error || store.pending) throw Error(store.error);
@@ -72,7 +81,7 @@ test("イベント結果確認の保存に失敗してもダイアログから�
   expect(writes[0]).toBe(writes[1]);
   await expect(retry).toHaveCount(0);
   await page.reload();
-  await page.getByRole("button", { name: "続きから" }).click();
+  await page.getByRole("button", { name: "旧v2.0.2の続きから" }).click();
   await expect(
     page.getByRole("heading", { name: "今夜、固有魔法を使いますか？" }),
   ).toBeVisible();
@@ -167,7 +176,7 @@ test("取引の保存を再試行すると内訳が表示され、取引は一�
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 740 });
-  await start(page, "v20-smoke-1");
+  await start(page, "v20-smoke-6");
   for (let round = 1; round <= 2; round++) {
     await settleScreens(page);
     await page
