@@ -29,6 +29,19 @@ for (const [seed, expected] of [
       await page.getByRole("button", { name: /手番終了 \/ パス/ }).click();
     }
     const result = page.getByRole("dialog");
+    const pending = page.getByRole("button", { name: "拒否", exact: true });
+    if (await pending.first().isVisible()) {
+      await expect(page.locator(".persistent-turn")).toContainText(
+        "取引の返答待ち",
+      );
+      await expect(result).toBeHidden();
+      await page.reload();
+      await page.getByRole("button", { name: "続きから" }).click();
+      await expect(page.locator(".persistent-turn")).toContainText(
+        "取引の返答待ち",
+      );
+      while (await pending.first().isVisible()) await pending.first().click();
+    }
     await expect(result).toContainText(expected);
     await page.reload();
     await page.getByRole("button", { name: "続きから" }).click();

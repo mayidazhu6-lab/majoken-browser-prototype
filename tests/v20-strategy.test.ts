@@ -155,6 +155,10 @@ describe("予知の候補と投票", () => {
     expect(cast.foresight).toEqual(expected);
     expect(new Set(cast.foresight).size).toBe(3);
     expect(cast.usedEvents).toEqual(s.usedEvents);
+    expect(() => dispatch(cast, { type: "magic", player: 1 })).toThrow(
+      "自分の固有魔法だけを使用できます",
+    );
+    cast.players[1].ai = false;
     const shared = dispatch(cast, { type: "magic", player: 1 });
     expect(shared.foresight).toEqual(expected);
     expect(shared.draws).toBe(cast.draws);

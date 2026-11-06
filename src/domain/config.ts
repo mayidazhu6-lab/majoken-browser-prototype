@@ -6,9 +6,12 @@ export const V20_NIGHT_RULES_VERSION = "browser-2.0-night";
 export const V20_GOALS_RULES_VERSION = "browser-2.0-goals";
 export const V20_STRATEGY_RULES_VERSION = "browser-2.0-strategy";
 export const V20_REVIEW_RULES_VERSION = "browser-2.0-review";
-export const V20_RULES_VERSION = "browser-2.0";
-export const hasGoalDrivenRewards = (s: { rulesVersion: string }) =>
+export const V20_RELEASE_RULES_VERSION = "browser-2.0";
+export const V20_RULES_VERSION = "browser-2.0.1";
+export const hasPlaytestRules = (s: { rulesVersion: string }) =>
   s.rulesVersion === V20_RULES_VERSION;
+export const hasGoalDrivenRewards = (s: { rulesVersion: string }) =>
+  hasPlaytestRules(s) || s.rulesVersion === V20_RELEASE_RULES_VERSION;
 export const hasSharedCrisisPlanning = (s: { rulesVersion: string }) =>
   hasGoalDrivenRewards(s) || s.rulesVersion === V20_REVIEW_RULES_VERSION;
 export const hasStrategyRules = (s: { rulesVersion: string }) =>
@@ -143,6 +146,7 @@ export const supportedRulesVersion = (version: string) =>
   version === CONFIG.rulesVersion ||
   version === LEGACY_RULES_VERSION ||
   version === V20_RULES_VERSION ||
+  version === V20_RELEASE_RULES_VERSION ||
   version === V20_REVIEW_RULES_VERSION ||
   version === V20_STRATEGY_RULES_VERSION ||
   version === V20_GOALS_RULES_VERSION ||

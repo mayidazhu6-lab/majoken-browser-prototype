@@ -17,6 +17,7 @@ import {
   hasStrategyRules,
   hasSharedCrisisPlanning,
   hasGoalDrivenRewards,
+  hasPlaytestRules,
   V20_MAGICS,
   V20_LABELS,
   V20_RESEARCH,
@@ -1163,6 +1164,10 @@ function advance(s: GameState) {
   switch (s.phase) {
     case "public":
       assert(
+        !hasPlaytestRules(s) || !s.trades.length,
+        "未回答の取引を解決してから公開行動を終了してください",
+      );
+      assert(
         s.publicTurn.round === 4 &&
           (isV20(s) || !s.trades.length) &&
           !s.event.resolved,
@@ -1868,6 +1873,7 @@ function apply(s: GameState, a: Action) {
       applyReward(s, p, a.kind, a.stat);
       break;
     case "magic":
+      assert(!hasPlaytestRules(s) || !p.ai, "自分の固有魔法だけを使用できます");
       magic(s, p, a.target);
       break;
     case "vote":
@@ -2210,7 +2216,8 @@ function runPublicAI(s: GameState) {
       return;
     const id = currentPlayer(s);
     if (id === undefined) {
-      if (!s.event.resolved) advance(s);
+      if (!s.event.resolved && (!hasPlaytestRules(s) || !s.trades.length))
+        advance(s);
       return;
     }
     const p = s.players[id],

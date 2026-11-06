@@ -2,11 +2,12 @@ import { defineStore } from "pinia";
 import { shallowRef, ref } from "vue";
 import type { Action, GameState, Setup } from "../domain/types";
 import { createGame, dispatch } from "../domain/reducer";
-import { hasGoalDrivenRewards, V20_RULES_VERSION } from "../domain/config";
+import { hasPlaytestRules, V20_RULES_VERSION } from "../domain/config";
 import { deserialize, serialize } from "../domain/persistence";
 
-const KEY = "majoken-save-rules-2.0-final";
+const KEY = "majoken-save-rules-2.0.1";
 const LEGACY_KEYS = [
+  "majoken-save-rules-2.0-final",
   "majoken-save-rules-2.0-review",
   "majoken-save-rules-2.0-strategy",
   "majoken-save-rules-2.0-goals",
@@ -73,7 +74,7 @@ export const useGameStore = defineStore("game", () => {
             ? legacyError
             : "保存データがありません",
         );
-      if (!hasGoalDrivenRewards(JSON.parse(raw)?.state ?? {}))
+      if (!hasPlaytestRules(JSON.parse(raw)?.state ?? {}))
         throw Error(legacyError);
       const loaded = deserialize(raw);
       if (json && !commit(loaded)) return;

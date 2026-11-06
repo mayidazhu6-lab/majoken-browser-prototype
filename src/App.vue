@@ -8,6 +8,7 @@ import GroupedItems from "./components/GroupedItems.vue";
 import { ELEMENT_POTIONS, elementPotion } from "./domain/elementCombat";
 import {
   NIGHT_RECIPES,
+  NIGHT_RECIPE_EFFECTS,
   nightRecipe as modernRecipe,
   publicModifiers,
   publicResearchCost,
@@ -250,6 +251,12 @@ const publicHistory = computed(
     ) ?? [],
 );
 const combat = computed(() => s.value?.combat ?? mockResult.value);
+const waitingForTrades = computed(
+  () =>
+    s.value?.phase === "public" &&
+    s.value.publicTurn.round === 4 &&
+    s.value.trades.length > 0,
+);
 const incomingTrades = computed(
   () => s.value?.trades.filter((t) => t.to === 0) ?? [],
 );
@@ -346,6 +353,8 @@ const hoProgress = computed(() =>
   s.value ? dailyProgress(s.value, me.value) : undefined,
 );
 const interruptReason = computed(() => {
+  if (waitingForTrades.value)
+    return "公開行動の終了待ちです。残っている取引を受諾・拒否、または撤回してください。";
   if (secretResult.value)
     return `${secretResult.value.kind === "public" ? "公開" : "秘匿"}決闘の結果確認待ちです。内容を確認して確認したを押してください。`;
   if (combat.value)
@@ -862,7 +871,9 @@ watch(
         <strong>{{
           s.publicTurn.round <= 2
             ? `公開行動・第${s.publicTurn.round}巡`
-            : "公開行動完了"
+            : waitingForTrades
+              ? "取引の返答待ち"
+              : "公開行動完了"
         }}</strong>
         <span v-if="currentPlayer(s) !== undefined"
           >現在の手番：{{ s.players[currentPlayer(s)!].name }}</span
@@ -2101,7 +2112,8 @@ watch(
               "
               @click="act({ type: 'magic', player: 0, target })"
             >
-              魔法を確定 <small>再使用まで {{ MAGICS[me.magic].cd }}日</small>
+              自分の{{ MAGICS[me.magic].name }}を使う
+              <small>再使用まで {{ MAGICS[me.magic].cd }}日</small>
             </button>
             <p v-if="me.activeMagic" class="mint">使用を確定しました。</p>
             <p class="muted">使用せずに次へ進むこともできます。</p>
@@ -2113,7 +2125,10 @@ watch(
             "
             class="panel"
           >
-            <h2>予知 · 明日のイベントを選ぶ</h2>
+            <h2>予知の投票 · 明日のイベントを選ぶ</h2>
+            <p v-if="me.magic !== 'foresight' || !me.activeMagic">
+              他の魔女の予知で出た候補です。あなたは投票だけ行います。
+            </p>
             <button
               v-for="id in s.foresight"
               :key="id"
@@ -2131,24 +2146,25 @@ watch(
           >
             <h2>夜間行動と錬金</h2>
             <template v-if="!me.night">
-              <label
-                >夜間行動
-                <select v-model="night">
-                  <option
-                    v-for="kind in [
-                      'rest',
-                      'raid',
-                      'scout',
-                      'curse',
-                      'guard',
-                    ] as NightKind[]"
-                    :key="kind"
-                    :value="kind"
-                  >
-                    {{ LABELS[kind] }}
-                  </option>
-                </select>
-              </label>
+              <div class="action-menu" role="group" aria-label="夜間行動">
+                <button
+                  v-for="kind in [
+                    'rest',
+                    'raid',
+                    'scout',
+                    'curse',
+                    'guard',
+                  ] as NightKind[]"
+                  :key="kind"
+                  type="button"
+                  :class="{ active: night === kind }"
+                  :aria-pressed="night === kind"
+                  :disabled="kind === 'raid' && me.lastRaid === s.day - 1"
+                  @click="night = kind"
+                >
+                  {{ LABELS[kind] }}
+                </button>
+              </div>
               <label v-if="['raid', 'scout', 'curse'].includes(night)"
                 >対象
                 <select v-model="target">
@@ -2176,6 +2192,18 @@ watch(
                   </option>
                 </select>
               </label>
+              <p v-if="modernRecipe(nightRecipe)" class="recipe-preview">
+                {{ NIGHT_RECIPE_EFFECTS[nightRecipe] }}
+              </p>
+              <details>
+                <summary>すべての薬の効果</summary>
+                <ul>
+                  <li v-for="r in NIGHT_RECIPES" :key="r.id">
+                    <strong>{{ r.name }}</strong> —
+                    {{ NIGHT_RECIPE_EFFECTS[r.id] }}
+                  </li>
+                </ul>
+              </details>
               <button
                 :disabled="!me.recipes.includes(nightRecipe)"
                 @click="nightPlan.push(nightRecipe)"
@@ -2493,6 +2521,7 @@ watch(
             <button
               class="primary"
               :disabled="
+                waitingForTrades ||
                 me.pendingRecipe ||
                 !!s.combat ||
                 !!s.challenge ||
