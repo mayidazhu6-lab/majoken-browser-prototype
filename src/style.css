@@ -1120,10 +1120,56 @@ footer > span:first-child {
 .results-summary {
   border-color: var(--mint);
 }
-.level-guide p {
-  margin-top: 14px;
-  font-size: 12px;
-  line-height: 1.8;
+.attribute-details {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #514459;
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.attribute-details h4 {
+  margin: 0 0 8px;
+  color: var(--mint);
+}
+.attribute-details p,
+.research-card .attribute-details p {
+  margin: 8px 0 4px;
+  font-weight: 700;
+  font-size: inherit;
+}
+.attribute-details ul,
+.research-preview ul {
+  padding-inline-start: 1.25em;
+  margin: 4px 0;
+}
+.attribute-details,
+.research-preview,
+.research-card .research-preview p {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.research-preview {
+  border-inline-start: 2px solid var(--mint);
+  background: #1c302f;
+  padding: 8px 12px;
+  margin: 10px 0;
+}
+.research-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+.research-card > div {
+  grid-column: 1 / -1;
+}
+.research-card button {
+  grid-column: 2;
+}
+.research-card .material-count {
+  font-size: 0.875rem;
+}
+.research-attribute-details {
+  margin-top: 8px;
 }
 
 .blocking-dialog h2 {

@@ -80,7 +80,7 @@ test("イベント結果確認の保存に失敗してもダイアログから�
 
 test("休息・研鑽の研究プレビューが支払いと成長に一致し、手引きに首席の同点条件がある", async ({
   page,
-}) => {
+}, testInfo) => {
   await start(page, "v20-smoke-1");
   await page.evaluate(async () => {
     const { useGameStore } = await new Function(
@@ -89,6 +89,7 @@ test("休息・研鑽の研究プレビューが支払いと成長に一致し�
     const store = useGameStore();
     const state = structuredClone(store.state);
     state.players[0].rest = 2;
+    state.players[0].stats.attack = 4;
     state.players[0].publicPotions = ["scholarship"];
     state.players[0].inventory = [{ id: state.nextItem++, kind: "obsidian" }];
     store.state = state;
@@ -106,16 +107,19 @@ test("休息・研鑽の研究プレビューが支払いと成長に一致し�
   const card = page
     .locator(".action-card")
     .filter({ has: page.getByRole("heading", { name: "火を研究" }) });
-  await expect(card).toContainText("成長：+2");
+  await expect(card).toContainText("恒久能力値 4 → 6（＋2、研鑽の薬 ＋1込み）");
+  await expect(card).toContainText("Lv1 → Lv2");
+  await expect(card).toContainText("襲撃ボーナスがさらに ＋1");
   await card.getByRole("combobox").selectOption("obsidian");
   await expect(card).toContainText("黒曜石：必要1");
   await expect(card).not.toContainText("魔力結晶：必要");
+  await card.screenshot({ path: testInfo.outputPath("research-desktop.png") });
   await card.getByRole("button", { name: "研究 1AP" }).click();
   const result = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!).state.players[0],
     key,
   );
-  expect(result.stats.attack).toBe(5);
+  expect(result.stats.attack).toBe(6);
   expect(result.inventory).toEqual([]);
 });
 
