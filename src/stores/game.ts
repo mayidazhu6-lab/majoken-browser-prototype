@@ -4,12 +4,14 @@ import type { Action, GameState, Setup } from "../domain/types";
 import { createGame, dispatch } from "../domain/reducer";
 import {
   V20_PLAYTEST_RULES_VERSION,
+  V20_PREVIOUS_RULES_VERSION,
   V20_RELEASE_RULES_VERSION,
   V20_RULES_VERSION,
 } from "../domain/config";
 import { deserialize, serialize } from "../domain/persistence";
 
-const KEY = "majoken-save-rules-2.0.2";
+const KEY = "majoken-save-rules-2.0.3";
+const PREVIOUS_KEY = "majoken-save-rules-2.0.2";
 const PLAYTEST_KEY = "majoken-save-rules-2.0.1";
 const RELEASE_KEY = "majoken-save-rules-2.0-final";
 const LEGACY_KEYS = [
@@ -25,6 +27,7 @@ const LEGACY_KEYS = [
 
 function saveKey(rulesVersion: string) {
   if (rulesVersion === V20_RULES_VERSION) return KEY;
+  if (rulesVersion === V20_PREVIOUS_RULES_VERSION) return PREVIOUS_KEY;
   if (rulesVersion === V20_PLAYTEST_RULES_VERSION) return PLAYTEST_KEY;
   if (rulesVersion === V20_RELEASE_RULES_VERSION) return RELEASE_KEY;
 }
@@ -42,6 +45,7 @@ export const useGameStore = defineStore("game", () => {
   const pending = shallowRef<GameState>();
   const error = ref("");
   const notice = ref("");
+  const previousSaveAvailable = ref(hasSave(PREVIOUS_KEY));
   const releasedSaveAvailable = ref(hasSave(RELEASE_KEY));
   const playtestSaveAvailable = ref(hasSave(PLAYTEST_KEY));
 
@@ -49,6 +53,7 @@ export const useGameStore = defineStore("game", () => {
     try {
       const key = saveKey(candidate.rulesVersion)!;
       localStorage.setItem(key, serialize(candidate));
+      if (key === PREVIOUS_KEY) previousSaveAvailable.value = true;
       if (key === PLAYTEST_KEY) playtestSaveAvailable.value = true;
       if (key === RELEASE_KEY) releasedSaveAvailable.value = true;
       state.value = candidate;
@@ -92,7 +97,9 @@ export const useGameStore = defineStore("game", () => {
       let key = rulesVersion ? saveKey(rulesVersion) : undefined;
       let raw = json;
       if (json === undefined) {
-        for (const slot of key ? [key] : [KEY, PLAYTEST_KEY, RELEASE_KEY]) {
+        for (const slot of key
+          ? [key]
+          : [KEY, PREVIOUS_KEY, PLAYTEST_KEY, RELEASE_KEY]) {
           const saved = localStorage.getItem(slot);
           if (saved !== null) {
             key = slot;
@@ -126,6 +133,7 @@ export const useGameStore = defineStore("game", () => {
     pending,
     error,
     notice,
+    previousSaveAvailable,
     releasedSaveAvailable,
     playtestSaveAvailable,
     act,

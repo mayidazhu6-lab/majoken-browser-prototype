@@ -32,6 +32,7 @@ import {
   RESEARCH,
   isV20,
   V20_RULES_VERSION,
+  V20_PREVIOUS_RULES_VERSION,
   V20_RELEASE_RULES_VERSION,
   V20_PLAYTEST_RULES_VERSION,
   hasNightRules,
@@ -1005,6 +1006,12 @@ watch(
           @click="loadSave(undefined, V20_RELEASE_RULES_VERSION)"
         >
           旧v2.0の続きから
+        </button>
+        <button
+          v-if="store.previousSaveAvailable"
+          @click="loadSave(undefined, V20_PREVIOUS_RULES_VERSION)"
+        >
+          旧v2.0.2の続きから
         </button>
         <button
           v-if="store.playtestSaveAvailable"

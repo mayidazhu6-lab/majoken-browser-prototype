@@ -1,0 +1,1767 @@
+{
+  "save": {
+    "format": "majoken-save",
+    "version": 2,
+    "state": {
+      "version": 2,
+      "rulesVersion": "browser-2.0.2",
+      "setup": {
+        "seed": "v20-battle-36",
+        "name": "アリア",
+        "magic": "barrier",
+        "stats": { "attack": 3, "defense": 3, "insight": 3 }
+      },
+      "seed": "v20-battle-36",
+      "rng": 1246517602,
+      "draws": 36,
+      "day": 1,
+      "phase": "public",
+      "players": [
+        {
+          "id": 0,
+          "name": "アリア",
+          "ai": false,
+          "stats": { "attack": 3, "defense": 3, "insight": 3 },
+          "ap": 1,
+          "fp": 0,
+          "peakFp": 0,
+          "inventory": [
+            { "id": 1, "kind": "water" },
+            { "id": 2, "kind": "herb" },
+            { "id": 3, "kind": "dew" }
+          ],
+          "magic": "barrier",
+          "availableDay": 1,
+          "activeMagic": false,
+          "longGoal": { "id": 10, "targets": [], "achieved": false },
+          "dailyGoal": { "id": 11, "targets": [], "achieved": false },
+          "dailyHistory": [],
+          "recipes": ["abundance", "scholarship", "bargaining"],
+          "unlocks": [],
+          "pendingRecipe": false,
+          "rest": 0,
+          "curse": 0,
+          "immune": false,
+          "lastRaid": -10,
+          "commands": [],
+          "changedMagic": false
+        },
+        {
+          "id": 1,
+          "name": "リラ",
+          "ai": true,
+          "stats": { "attack": 2, "defense": 4, "insight": 3 },
+          "ap": 2,
+          "fp": 0,
+          "peakFp": 0,
+          "inventory": [
+            { "id": 4, "kind": "obsidian" },
+            { "id": 5, "kind": "dew" },
+            { "id": 6, "kind": "obsidian" }
+          ],
+          "magic": "barrier",
+          "availableDay": 1,
+          "activeMagic": false,
+          "longGoal": { "id": 9, "targets": [0], "achieved": false },
+          "dailyGoal": { "id": 14, "targets": [], "achieved": false },
+          "dailyHistory": [],
+          "recipes": ["abundance", "scholarship", "bargaining"],
+          "unlocks": [],
+          "pendingRecipe": false,
+          "rest": 0,
+          "curse": 0,
+          "immune": false,
+          "lastRaid": -10,
+          "commands": [],
+          "changedMagic": false
+        },
+        {
+          "id": 2,
+          "name": "ネム",
+          "ai": true,
+          "stats": { "attack": 3, "defense": 3, "insight": 3 },
+          "ap": 2,
+          "fp": 0,
+          "peakFp": 0,
+          "inventory": [
+            { "id": 7, "kind": "obsidian" },
+            { "id": 8, "kind": "obsidian" },
+            { "id": 9, "kind": "water" }
+          ],
+          "magic": "barrier",
+          "availableDay": 1,
+          "activeMagic": false,
+          "longGoal": { "id": 1, "targets": [3], "achieved": false },
+          "dailyGoal": { "id": 21, "targets": [], "achieved": false },
+          "dailyHistory": [],
+          "recipes": ["abundance", "scholarship", "bargaining"],
+          "unlocks": [],
+          "pendingRecipe": false,
+          "rest": 0,
+          "curse": 0,
+          "immune": false,
+          "lastRaid": -10,
+          "commands": [],
+          "changedMagic": false
+        },
+        {
+          "id": 3,
+          "name": "シオン",
+          "ai": true,
+          "stats": { "attack": 5, "defense": 2, "insight": 2 },
+          "ap": 2,
+          "fp": 0,
+          "peakFp": 0,
+          "inventory": [
+            { "id": 10, "kind": "dew" },
+            { "id": 11, "kind": "herb" },
+            { "id": 12, "kind": "herb" }
+          ],
+          "magic": "barrier",
+          "availableDay": 1,
+          "activeMagic": false,
+          "longGoal": { "id": 8, "targets": [], "achieved": false },
+          "dailyGoal": { "id": 22, "targets": [], "achieved": false },
+          "dailyHistory": [],
+          "recipes": ["abundance", "scholarship", "bargaining"],
+          "unlocks": [],
+          "pendingRecipe": false,
+          "rest": 0,
+          "curse": 0,
+          "immune": false,
+          "lastRaid": -10,
+          "commands": [],
+          "changedMagic": false
+        }
+      ],
+      "failed": 0,
+      "usedEvents": [4],
+      "event": {
+        "id": 4,
+        "specified": "obsidian",
+        "reservations": [],
+        "mock": [],
+        "resolved": false
+      },
+      "foresight": [],
+      "votes": {},
+      "barriers": [],
+      "logs": [
+        {
+          "seq": 1,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "AI固有魔法",
+          "data": {
+            "draw": 1,
+            "candidates": ["foresight", "barrier"],
+            "index": 1,
+            "result": "barrier"
+          }
+        },
+        {
+          "seq": 2,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "AI初期配分",
+          "data": {
+            "draw": 2,
+            "candidates": ["attack", "defense", "insight"],
+            "index": 1,
+            "result": "defense"
+          }
+        },
+        {
+          "seq": 3,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "AI初期配分",
+          "data": {
+            "draw": 3,
+            "candidates": ["attack", "defense", "insight"],
+            "index": 1,
+            "result": "defense"
+          }
+        },
+        {
+          "seq": 4,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "AI初期配分",
+          "data": {
+            "draw": 4,
+            "candidates": ["attack", "defense", "insight"],
+            "index": 2,
+            "result": "insight"
+          }
+        },
+        {
+          "seq": 5,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "AI固有魔法",
+          "data": {
+            "draw": 5,
+            "candidates": ["foresight", "barrier"],
+            "index": 1,
+            "result": "barrier"
+          }
+        },
+        {
+          "seq": 6,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "AI初期配分",
+          "data": {
+            "draw": 6,
+            "candidates": ["attack", "defense", "insight"],
+            "index": 0,
+            "result": "attack"
+          }
+        },
+        {
+          "seq": 7,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "AI初期配分",
+          "data": {
+            "draw": 7,
+            "candidates": ["attack", "defense", "insight"],
+            "index": 2,
+            "result": "insight"
+          }
+        },
+        {
+          "seq": 8,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "AI初期配分",
+          "data": {
+            "draw": 8,
+            "candidates": ["attack", "defense", "insight"],
+            "index": 1,
+            "result": "defense"
+          }
+        },
+        {
+          "seq": 9,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "AI固有魔法",
+          "data": {
+            "draw": 9,
+            "candidates": ["foresight", "barrier"],
+            "index": 1,
+            "result": "barrier"
+          }
+        },
+        {
+          "seq": 10,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "AI初期配分",
+          "data": {
+            "draw": 10,
+            "candidates": ["attack", "defense", "insight"],
+            "index": 0,
+            "result": "attack"
+          }
+        },
+        {
+          "seq": 11,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "AI初期配分",
+          "data": {
+            "draw": 11,
+            "candidates": ["attack", "defense", "insight"],
+            "index": 0,
+            "result": "attack"
+          }
+        },
+        {
+          "seq": 12,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "AI初期配分",
+          "data": {
+            "draw": 12,
+            "candidates": ["attack", "defense", "insight"],
+            "index": 0,
+            "result": "attack"
+          }
+        },
+        {
+          "seq": 13,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "初期素材",
+          "data": {
+            "draw": 13,
+            "candidates": [
+              "obsidian",
+              "crystal",
+              "herb",
+              "sand",
+              "water",
+              "dew"
+            ],
+            "index": 4,
+            "result": "water"
+          }
+        },
+        {
+          "seq": 14,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "初期素材",
+          "data": {
+            "draw": 14,
+            "candidates": [
+              "obsidian",
+              "crystal",
+              "herb",
+              "sand",
+              "water",
+              "dew"
+            ],
+            "index": 2,
+            "result": "herb"
+          }
+        },
+        {
+          "seq": 15,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "初期素材",
+          "data": {
+            "draw": 15,
+            "candidates": [
+              "obsidian",
+              "crystal",
+              "herb",
+              "sand",
+              "water",
+              "dew"
+            ],
+            "index": 5,
+            "result": "dew"
+          }
+        },
+        {
+          "seq": 16,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "初期素材",
+          "data": {
+            "draw": 16,
+            "candidates": [
+              "obsidian",
+              "crystal",
+              "herb",
+              "sand",
+              "water",
+              "dew"
+            ],
+            "index": 0,
+            "result": "obsidian"
+          }
+        },
+        {
+          "seq": 17,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "初期素材",
+          "data": {
+            "draw": 17,
+            "candidates": [
+              "obsidian",
+              "crystal",
+              "herb",
+              "sand",
+              "water",
+              "dew"
+            ],
+            "index": 5,
+            "result": "dew"
+          }
+        },
+        {
+          "seq": 18,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "初期素材",
+          "data": {
+            "draw": 18,
+            "candidates": [
+              "obsidian",
+              "crystal",
+              "herb",
+              "sand",
+              "water",
+              "dew"
+            ],
+            "index": 0,
+            "result": "obsidian"
+          }
+        },
+        {
+          "seq": 19,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "初期素材",
+          "data": {
+            "draw": 19,
+            "candidates": [
+              "obsidian",
+              "crystal",
+              "herb",
+              "sand",
+              "water",
+              "dew"
+            ],
+            "index": 0,
+            "result": "obsidian"
+          }
+        },
+        {
+          "seq": 20,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "初期素材",
+          "data": {
+            "draw": 20,
+            "candidates": [
+              "obsidian",
+              "crystal",
+              "herb",
+              "sand",
+              "water",
+              "dew"
+            ],
+            "index": 0,
+            "result": "obsidian"
+          }
+        },
+        {
+          "seq": 21,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "初期素材",
+          "data": {
+            "draw": 21,
+            "candidates": [
+              "obsidian",
+              "crystal",
+              "herb",
+              "sand",
+              "water",
+              "dew"
+            ],
+            "index": 4,
+            "result": "water"
+          }
+        },
+        {
+          "seq": 22,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "初期素材",
+          "data": {
+            "draw": 22,
+            "candidates": [
+              "obsidian",
+              "crystal",
+              "herb",
+              "sand",
+              "water",
+              "dew"
+            ],
+            "index": 5,
+            "result": "dew"
+          }
+        },
+        {
+          "seq": 23,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "初期素材",
+          "data": {
+            "draw": 23,
+            "candidates": [
+              "obsidian",
+              "crystal",
+              "herb",
+              "sand",
+              "water",
+              "dew"
+            ],
+            "index": 2,
+            "result": "herb"
+          }
+        },
+        {
+          "seq": 24,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "初期素材",
+          "data": {
+            "draw": 24,
+            "candidates": [
+              "obsidian",
+              "crystal",
+              "herb",
+              "sand",
+              "water",
+              "dew"
+            ],
+            "index": 2,
+            "result": "herb"
+          }
+        },
+        {
+          "seq": 25,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "長期HO配布",
+          "data": {
+            "draw": 25,
+            "candidates": [
+              {
+                "id": 1,
+                "name": "真の功労者",
+                "condition": "終了時、HO判定前FPが指定魔女のFP＋2以上。"
+              },
+              {
+                "id": 2,
+                "name": "歪んだ友情",
+                "condition": "指定魔女との成立取引累計2回以上、かつ同魔女との公開／秘匿決闘勝利累計1回以上。順序不問。"
+              },
+              {
+                "id": 3,
+                "name": "秘密の徴収人",
+                "condition": "自分以外の3魔女それぞれから、成立取引・譲渡・通常窃盗・決闘戦利品等でアイテム累計2個以上獲得。以後の消費／再譲渡は実績を取り消さない。"
+              },
+              {
+                "id": 5,
+                "name": "宿敵認定",
+                "condition": "指定魔女との公開／秘匿決闘の勝利累計2回以上。降参提示受諾は勝利に数えない。"
+              },
+              {
+                "id": 6,
+                "name": "献身の仮面",
+                "condition": "終了時、成功したイベントに対する有効貢献イベント数が全4魔女中単独最多。同じイベントに複数貢献しても1回、失敗イベントは0回、模擬戦単独参加も対象。"
+              },
+              {
+                "id": 7,
+                "name": "秘密を知る者",
+                "condition": "指定魔女への情報確認が1個以上の成功偵察が累計2回以上、かつ同魔女との成立取引1回以上。順序不問。"
+              },
+              {
+                "id": 8,
+                "name": "善意の実験台",
+                "condition": "成立した取引で他の魔女へ薬を累計3個以上渡す。無償譲渡可、相手重複可、素材はカウントしない。"
+              },
+              {
+                "id": 9,
+                "name": "強欲な収集家",
+                "condition": "8日目の行動・夜処理終了、HO報酬前の所持アイテム（素材＋薬）個数が指定魔女より1個以上多い。"
+              },
+              {
+                "id": 10,
+                "name": "影の指導者",
+                "condition": "異なる2魔女に各1回以上秘匿決闘で勝利し、各相手へ選択した翌公開フェーズの強制AP命令を実際に実行させる。命令は7日目夜まで、実行は8日目まで。"
+              },
+              {
+                "id": 11,
+                "name": "呪われた好敵手",
+                "condition": "指定魔女への呪詛命中累計1回以上、かつ同魔女との公開／秘匿決闘勝利累計1回以上。順序不問。"
+              },
+              {
+                "id": 12,
+                "name": "二枚舌の仲介人",
+                "condition": "異なる2魔女それぞれについて、成立取引の後に通常窃盗を1回以上成功させる。相手ごとに取引→窃盗が必要。"
+              },
+              {
+                "id": 13,
+                "name": "不和の種",
+                "condition": "A：自分以外から指定された異なる2魔女が互いに公開決闘を1回以上実施。B：自分が他の3魔女全員と各1回以上公開／秘匿決闘を実施。いずれかで達成。模擬戦除外。"
+              },
+              {
+                "id": 16,
+                "name": "漁夫の利",
+                "condition": "A：自分が参加しなかった公開決闘で敗れた魔女から、決闘終了後の通常窃盗を1回以上成功。B：自分から開始し勝利した公開／秘匿決闘の相手（複数可）から、各対象への勝利確定後のフェーズ以降に通常窃盗を累計3回成功。アイテム数でなく成功回数。"
+              },
+              {
+                "id": 17,
+                "name": "第三の勝者",
+                "condition": "A：自分以外から指定された異なる2魔女が、それぞれ公開決闘で1回以上敗北し、終了時の自分のFPがその2人のFPをそれぞれ上回る。B：終了時の自分のFPが全4魔女中単独最多。いずれかで達成。"
+              },
+              {
+                "id": 20,
+                "name": "不可侵の魔女",
+                "condition": "A：警戒で通常窃盗を阻止した事件、または秘匿決闘に防衛側として勝利した事件を異なる事象で累計2件以上（同一事件の重複計上不可）。B：終了時の恒久防御が全4魔女中単独最多。"
+              },
+              {
+                "id": 21,
+                "name": "静寂を愛する魔女",
+                "condition": "8夜のうち異なる3夜で休息に成功。自動休息も可。途中で別の夜に休息失敗しても成功実績は残る。3夜達成後も取り消されない。"
+              },
+              {
+                "id": 22,
+                "name": "研鑽の魔女",
+                "condition": "8日目終了時の恒久攻撃／恒久防御／恒久洞察のいずれかが全4魔女中単独最多。各能力値の同率最多はその能力では未達成。"
+              },
+              {
+                "id": 23,
+                "name": "薬漬けの魔女",
+                "condition": "自分がゲーム中に使用し実際に発動した異なる種類の薬が累計3種以上。浄化の薬の自動消費、才能変化薬の使用、完全浄化の薬の手動使用を含み、同種複数回は1種。"
+              },
+              {
+                "id": 24,
+                "name": "敗北の美学",
+                "condition": "自分が異なる2魔女それぞれとの公開／秘匿決闘で累計1回以上敗北。引き分け、模擬戦、降参交渉は対象外。"
+              },
+              {
+                "id": 25,
+                "name": "貧乏魔女",
+                "condition": "8日目終了時、所持アイテム合計が2個以下、かつ全4魔女中最少。同率最少可。"
+              },
+              {
+                "id": 18,
+                "name": "黒幕の後援者",
+                "condition": "指定魔女へ成立取引（無償譲渡含む）でアイテム累計3個以上を渡し、終了時HO報酬前のFPが全4魔女中最多（同率可）。"
+              },
+              {
+                "id": 19,
+                "name": "復讐の誓約",
+                "condition": "指定魔女との公開／秘匿決闘で累計2勝以上、かつ同魔女への通常窃盗を1回以上成功。順序不問。戦利品強奪は通常窃盗ではない。"
+              }
+            ],
+            "index": 8,
+            "result": {
+              "id": 10,
+              "name": "影の指導者",
+              "condition": "異なる2魔女に各1回以上秘匿決闘で勝利し、各相手へ選択した翌公開フェーズの強制AP命令を実際に実行させる。命令は7日目夜まで、実行は8日目まで。"
+            }
+          }
+        },
+        {
+          "seq": 26,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "長期HO配布",
+          "data": {
+            "draw": 26,
+            "candidates": [
+              {
+                "id": 1,
+                "name": "真の功労者",
+                "condition": "終了時、HO判定前FPが指定魔女のFP＋2以上。"
+              },
+              {
+                "id": 2,
+                "name": "歪んだ友情",
+                "condition": "指定魔女との成立取引累計2回以上、かつ同魔女との公開／秘匿決闘勝利累計1回以上。順序不問。"
+              },
+              {
+                "id": 3,
+                "name": "秘密の徴収人",
+                "condition": "自分以外の3魔女それぞれから、成立取引・譲渡・通常窃盗・決闘戦利品等でアイテム累計2個以上獲得。以後の消費／再譲渡は実績を取り消さない。"
+              },
+              {
+                "id": 5,
+                "name": "宿敵認定",
+                "condition": "指定魔女との公開／秘匿決闘の勝利累計2回以上。降参提示受諾は勝利に数えない。"
+              },
+              {
+                "id": 6,
+                "name": "献身の仮面",
+                "condition": "終了時、成功したイベントに対する有効貢献イベント数が全4魔女中単独最多。同じイベントに複数貢献しても1回、失敗イベントは0回、模擬戦単独参加も対象。"
+              },
+              {
+                "id": 7,
+                "name": "秘密を知る者",
+                "condition": "指定魔女への情報確認が1個以上の成功偵察が累計2回以上、かつ同魔女との成立取引1回以上。順序不問。"
+              },
+              {
+                "id": 8,
+                "name": "善意の実験台",
+                "condition": "成立した取引で他の魔女へ薬を累計3個以上渡す。無償譲渡可、相手重複可、素材はカウントしない。"
+              },
+              {
+                "id": 9,
+                "name": "強欲な収集家",
+                "condition": "8日目の行動・夜処理終了、HO報酬前の所持アイテム（素材＋薬）個数が指定魔女より1個以上多い。"
+              },
+              {
+                "id": 11,
+                "name": "呪われた好敵手",
+                "condition": "指定魔女への呪詛命中累計1回以上、かつ同魔女との公開／秘匿決闘勝利累計1回以上。順序不問。"
+              },
+              {
+                "id": 12,
+                "name": "二枚舌の仲介人",
+                "condition": "異なる2魔女それぞれについて、成立取引の後に通常窃盗を1回以上成功させる。相手ごとに取引→窃盗が必要。"
+              },
+              {
+                "id": 13,
+                "name": "不和の種",
+                "condition": "A：自分以外から指定された異なる2魔女が互いに公開決闘を1回以上実施。B：自分が他の3魔女全員と各1回以上公開／秘匿決闘を実施。いずれかで達成。模擬戦除外。"
+              },
+              {
+                "id": 16,
+                "name": "漁夫の利",
+                "condition": "A：自分が参加しなかった公開決闘で敗れた魔女から、決闘終了後の通常窃盗を1回以上成功。B：自分から開始し勝利した公開／秘匿決闘の相手（複数可）から、各対象への勝利確定後のフェーズ以降に通常窃盗を累計3回成功。アイテム数でなく成功回数。"
+              },
+              {
+                "id": 17,
+                "name": "第三の勝者",
+                "condition": "A：自分以外から指定された異なる2魔女が、それぞれ公開決闘で1回以上敗北し、終了時の自分のFPがその2人のFPをそれぞれ上回る。B：終了時の自分のFPが全4魔女中単独最多。いずれかで達成。"
+              },
+              {
+                "id": 20,
+                "name": "不可侵の魔女",
+                "condition": "A：警戒で通常窃盗を阻止した事件、または秘匿決闘に防衛側として勝利した事件を異なる事象で累計2件以上（同一事件の重複計上不可）。B：終了時の恒久防御が全4魔女中単独最多。"
+              },
+              {
+                "id": 21,
+                "name": "静寂を愛する魔女",
+                "condition": "8夜のうち異なる3夜で休息に成功。自動休息も可。途中で別の夜に休息失敗しても成功実績は残る。3夜達成後も取り消されない。"
+              },
+              {
+                "id": 22,
+                "name": "研鑽の魔女",
+                "condition": "8日目終了時の恒久攻撃／恒久防御／恒久洞察のいずれかが全4魔女中単独最多。各能力値の同率最多はその能力では未達成。"
+              },
+              {
+                "id": 23,
+                "name": "薬漬けの魔女",
+                "condition": "自分がゲーム中に使用し実際に発動した異なる種類の薬が累計3種以上。浄化の薬の自動消費、才能変化薬の使用、完全浄化の薬の手動使用を含み、同種複数回は1種。"
+              },
+              {
+                "id": 24,
+                "name": "敗北の美学",
+                "condition": "自分が異なる2魔女それぞれとの公開／秘匿決闘で累計1回以上敗北。引き分け、模擬戦、降参交渉は対象外。"
+              },
+              {
+                "id": 25,
+                "name": "貧乏魔女",
+                "condition": "8日目終了時、所持アイテム合計が2個以下、かつ全4魔女中最少。同率最少可。"
+              },
+              {
+                "id": 18,
+                "name": "黒幕の後援者",
+                "condition": "指定魔女へ成立取引（無償譲渡含む）でアイテム累計3個以上を渡し、終了時HO報酬前のFPが全4魔女中最多（同率可）。"
+              },
+              {
+                "id": 19,
+                "name": "復讐の誓約",
+                "condition": "指定魔女との公開／秘匿決闘で累計2勝以上、かつ同魔女への通常窃盗を1回以上成功。順序不問。戦利品強奪は通常窃盗ではない。"
+              }
+            ],
+            "index": 7,
+            "result": {
+              "id": 9,
+              "name": "強欲な収集家",
+              "condition": "8日目の行動・夜処理終了、HO報酬前の所持アイテム（素材＋薬）個数が指定魔女より1個以上多い。"
+            }
+          }
+        },
+        {
+          "seq": 27,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "長期HO配布",
+          "data": {
+            "draw": 27,
+            "candidates": [
+              {
+                "id": 1,
+                "name": "真の功労者",
+                "condition": "終了時、HO判定前FPが指定魔女のFP＋2以上。"
+              },
+              {
+                "id": 2,
+                "name": "歪んだ友情",
+                "condition": "指定魔女との成立取引累計2回以上、かつ同魔女との公開／秘匿決闘勝利累計1回以上。順序不問。"
+              },
+              {
+                "id": 3,
+                "name": "秘密の徴収人",
+                "condition": "自分以外の3魔女それぞれから、成立取引・譲渡・通常窃盗・決闘戦利品等でアイテム累計2個以上獲得。以後の消費／再譲渡は実績を取り消さない。"
+              },
+              {
+                "id": 5,
+                "name": "宿敵認定",
+                "condition": "指定魔女との公開／秘匿決闘の勝利累計2回以上。降参提示受諾は勝利に数えない。"
+              },
+              {
+                "id": 6,
+                "name": "献身の仮面",
+                "condition": "終了時、成功したイベントに対する有効貢献イベント数が全4魔女中単独最多。同じイベントに複数貢献しても1回、失敗イベントは0回、模擬戦単独参加も対象。"
+              },
+              {
+                "id": 7,
+                "name": "秘密を知る者",
+                "condition": "指定魔女への情報確認が1個以上の成功偵察が累計2回以上、かつ同魔女との成立取引1回以上。順序不問。"
+              },
+              {
+                "id": 8,
+                "name": "善意の実験台",
+                "condition": "成立した取引で他の魔女へ薬を累計3個以上渡す。無償譲渡可、相手重複可、素材はカウントしない。"
+              },
+              {
+                "id": 11,
+                "name": "呪われた好敵手",
+                "condition": "指定魔女への呪詛命中累計1回以上、かつ同魔女との公開／秘匿決闘勝利累計1回以上。順序不問。"
+              },
+              {
+                "id": 12,
+                "name": "二枚舌の仲介人",
+                "condition": "異なる2魔女それぞれについて、成立取引の後に通常窃盗を1回以上成功させる。相手ごとに取引→窃盗が必要。"
+              },
+              {
+                "id": 13,
+                "name": "不和の種",
+                "condition": "A：自分以外から指定された異なる2魔女が互いに公開決闘を1回以上実施。B：自分が他の3魔女全員と各1回以上公開／秘匿決闘を実施。いずれかで達成。模擬戦除外。"
+              },
+              {
+                "id": 16,
+                "name": "漁夫の利",
+                "condition": "A：自分が参加しなかった公開決闘で敗れた魔女から、決闘終了後の通常窃盗を1回以上成功。B：自分から開始し勝利した公開／秘匿決闘の相手（複数可）から、各対象への勝利確定後のフェーズ以降に通常窃盗を累計3回成功。アイテム数でなく成功回数。"
+              },
+              {
+                "id": 17,
+                "name": "第三の勝者",
+                "condition": "A：自分以外から指定された異なる2魔女が、それぞれ公開決闘で1回以上敗北し、終了時の自分のFPがその2人のFPをそれぞれ上回る。B：終了時の自分のFPが全4魔女中単独最多。いずれかで達成。"
+              },
+              {
+                "id": 20,
+                "name": "不可侵の魔女",
+                "condition": "A：警戒で通常窃盗を阻止した事件、または秘匿決闘に防衛側として勝利した事件を異なる事象で累計2件以上（同一事件の重複計上不可）。B：終了時の恒久防御が全4魔女中単独最多。"
+              },
+              {
+                "id": 21,
+                "name": "静寂を愛する魔女",
+                "condition": "8夜のうち異なる3夜で休息に成功。自動休息も可。途中で別の夜に休息失敗しても成功実績は残る。3夜達成後も取り消されない。"
+              },
+              {
+                "id": 22,
+                "name": "研鑽の魔女",
+                "condition": "8日目終了時の恒久攻撃／恒久防御／恒久洞察のいずれかが全4魔女中単独最多。各能力値の同率最多はその能力では未達成。"
+              },
+              {
+                "id": 23,
+                "name": "薬漬けの魔女",
+                "condition": "自分がゲーム中に使用し実際に発動した異なる種類の薬が累計3種以上。浄化の薬の自動消費、才能変化薬の使用、完全浄化の薬の手動使用を含み、同種複数回は1種。"
+              },
+              {
+                "id": 24,
+                "name": "敗北の美学",
+                "condition": "自分が異なる2魔女それぞれとの公開／秘匿決闘で累計1回以上敗北。引き分け、模擬戦、降参交渉は対象外。"
+              },
+              {
+                "id": 25,
+                "name": "貧乏魔女",
+                "condition": "8日目終了時、所持アイテム合計が2個以下、かつ全4魔女中最少。同率最少可。"
+              },
+              {
+                "id": 18,
+                "name": "黒幕の後援者",
+                "condition": "指定魔女へ成立取引（無償譲渡含む）でアイテム累計3個以上を渡し、終了時HO報酬前のFPが全4魔女中最多（同率可）。"
+              },
+              {
+                "id": 19,
+                "name": "復讐の誓約",
+                "condition": "指定魔女との公開／秘匿決闘で累計2勝以上、かつ同魔女への通常窃盗を1回以上成功。順序不問。戦利品強奪は通常窃盗ではない。"
+              }
+            ],
+            "index": 0,
+            "result": {
+              "id": 1,
+              "name": "真の功労者",
+              "condition": "終了時、HO判定前FPが指定魔女のFP＋2以上。"
+            }
+          }
+        },
+        {
+          "seq": 28,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "長期HO配布",
+          "data": {
+            "draw": 28,
+            "candidates": [
+              {
+                "id": 2,
+                "name": "歪んだ友情",
+                "condition": "指定魔女との成立取引累計2回以上、かつ同魔女との公開／秘匿決闘勝利累計1回以上。順序不問。"
+              },
+              {
+                "id": 3,
+                "name": "秘密の徴収人",
+                "condition": "自分以外の3魔女それぞれから、成立取引・譲渡・通常窃盗・決闘戦利品等でアイテム累計2個以上獲得。以後の消費／再譲渡は実績を取り消さない。"
+              },
+              {
+                "id": 5,
+                "name": "宿敵認定",
+                "condition": "指定魔女との公開／秘匿決闘の勝利累計2回以上。降参提示受諾は勝利に数えない。"
+              },
+              {
+                "id": 6,
+                "name": "献身の仮面",
+                "condition": "終了時、成功したイベントに対する有効貢献イベント数が全4魔女中単独最多。同じイベントに複数貢献しても1回、失敗イベントは0回、模擬戦単独参加も対象。"
+              },
+              {
+                "id": 7,
+                "name": "秘密を知る者",
+                "condition": "指定魔女への情報確認が1個以上の成功偵察が累計2回以上、かつ同魔女との成立取引1回以上。順序不問。"
+              },
+              {
+                "id": 8,
+                "name": "善意の実験台",
+                "condition": "成立した取引で他の魔女へ薬を累計3個以上渡す。無償譲渡可、相手重複可、素材はカウントしない。"
+              },
+              {
+                "id": 11,
+                "name": "呪われた好敵手",
+                "condition": "指定魔女への呪詛命中累計1回以上、かつ同魔女との公開／秘匿決闘勝利累計1回以上。順序不問。"
+              },
+              {
+                "id": 12,
+                "name": "二枚舌の仲介人",
+                "condition": "異なる2魔女それぞれについて、成立取引の後に通常窃盗を1回以上成功させる。相手ごとに取引→窃盗が必要。"
+              },
+              {
+                "id": 13,
+                "name": "不和の種",
+                "condition": "A：自分以外から指定された異なる2魔女が互いに公開決闘を1回以上実施。B：自分が他の3魔女全員と各1回以上公開／秘匿決闘を実施。いずれかで達成。模擬戦除外。"
+              },
+              {
+                "id": 16,
+                "name": "漁夫の利",
+                "condition": "A：自分が参加しなかった公開決闘で敗れた魔女から、決闘終了後の通常窃盗を1回以上成功。B：自分から開始し勝利した公開／秘匿決闘の相手（複数可）から、各対象への勝利確定後のフェーズ以降に通常窃盗を累計3回成功。アイテム数でなく成功回数。"
+              },
+              {
+                "id": 17,
+                "name": "第三の勝者",
+                "condition": "A：自分以外から指定された異なる2魔女が、それぞれ公開決闘で1回以上敗北し、終了時の自分のFPがその2人のFPをそれぞれ上回る。B：終了時の自分のFPが全4魔女中単独最多。いずれかで達成。"
+              },
+              {
+                "id": 20,
+                "name": "不可侵の魔女",
+                "condition": "A：警戒で通常窃盗を阻止した事件、または秘匿決闘に防衛側として勝利した事件を異なる事象で累計2件以上（同一事件の重複計上不可）。B：終了時の恒久防御が全4魔女中単独最多。"
+              },
+              {
+                "id": 21,
+                "name": "静寂を愛する魔女",
+                "condition": "8夜のうち異なる3夜で休息に成功。自動休息も可。途中で別の夜に休息失敗しても成功実績は残る。3夜達成後も取り消されない。"
+              },
+              {
+                "id": 22,
+                "name": "研鑽の魔女",
+                "condition": "8日目終了時の恒久攻撃／恒久防御／恒久洞察のいずれかが全4魔女中単独最多。各能力値の同率最多はその能力では未達成。"
+              },
+              {
+                "id": 23,
+                "name": "薬漬けの魔女",
+                "condition": "自分がゲーム中に使用し実際に発動した異なる種類の薬が累計3種以上。浄化の薬の自動消費、才能変化薬の使用、完全浄化の薬の手動使用を含み、同種複数回は1種。"
+              },
+              {
+                "id": 24,
+                "name": "敗北の美学",
+                "condition": "自分が異なる2魔女それぞれとの公開／秘匿決闘で累計1回以上敗北。引き分け、模擬戦、降参交渉は対象外。"
+              },
+              {
+                "id": 25,
+                "name": "貧乏魔女",
+                "condition": "8日目終了時、所持アイテム合計が2個以下、かつ全4魔女中最少。同率最少可。"
+              },
+              {
+                "id": 18,
+                "name": "黒幕の後援者",
+                "condition": "指定魔女へ成立取引（無償譲渡含む）でアイテム累計3個以上を渡し、終了時HO報酬前のFPが全4魔女中最多（同率可）。"
+              },
+              {
+                "id": 19,
+                "name": "復讐の誓約",
+                "condition": "指定魔女との公開／秘匿決闘で累計2勝以上、かつ同魔女への通常窃盗を1回以上成功。順序不問。戦利品強奪は通常窃盗ではない。"
+              }
+            ],
+            "index": 5,
+            "result": {
+              "id": 8,
+              "name": "善意の実験台",
+              "condition": "成立した取引で他の魔女へ薬を累計3個以上渡す。無償譲渡可、相手重複可、素材はカウントしない。"
+            }
+          }
+        },
+        {
+          "seq": 29,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "HO指定対象",
+          "data": {
+            "draw": 29,
+            "candidates": [0, 2, 3],
+            "index": 0,
+            "result": 0
+          }
+        },
+        {
+          "seq": 30,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "HO指定対象",
+          "data": {
+            "draw": 30,
+            "candidates": [0, 1, 3],
+            "index": 2,
+            "result": 3
+          }
+        },
+        {
+          "seq": 31,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "日次HO配布",
+          "data": {
+            "draw": 31,
+            "candidates": [
+              {
+                "id": 1,
+                "name": "勤勉な研究員",
+                "condition": "当日研究を1回以上正常成立させ、その研究による恒久能力の実成長が1以上。呪詛で成長0なら未達成。"
+              },
+              {
+                "id": 2,
+                "name": "森の拾いもの",
+                "condition": "当日公開フェーズで採集を正常成立した後、公開研究または同日夜の錬金を正常成立させる。先に採集した素材を材料に使う必要はない。逆順のみなら未達成。"
+              },
+              {
+                "id": 3,
+                "name": "見習い薬師",
+                "condition": "当日の錬金で完成済み薬を累計1個以上作成。"
+              },
+              {
+                "id": 4,
+                "name": "研究熱心",
+                "condition": "当日、研究の実成長量を合算して2以上。攻撃・防御・洞察合算可。決闘の奪取等の増加は対象外。"
+              },
+              {
+                "id": 5,
+                "name": "魔法薬の蒐集家",
+                "condition": "当日の行動結果をすべて反映するまでに、錬金・取引・通常窃盗・決闘報酬等の任意の経路から薬1個以上獲得。獲得後の使用・譲渡で実績消滅なし。"
+              },
+              {
+                "id": 6,
+                "name": "星の収穫祭",
+                "condition": "当日の採集行動に由来する素材獲得を累計2個以上。休息・採集薬の追加分を含む。取引・窃盗・決闘報酬分は含まない。"
+              },
+              {
+                "id": 7,
+                "name": "善良な研究員",
+                "condition": "当日成功した協力イベントに有効貢献1件以上。複合イベントの模擬戦だけの参加も有効貢献。"
+              },
+              {
+                "id": 8,
+                "name": "気前のよい魔女",
+                "condition": "当日成立した取引で、自分から他魔女へアイテム累計1個以上移動。受領がある交換取引でもよい。"
+              },
+              {
+                "id": 9,
+                "name": "交換日記",
+                "condition": "当日、異なる他魔女2人以上とそれぞれ1件以上取引を成立。"
+              },
+              {
+                "id": 10,
+                "name": "おすそわけ",
+                "condition": "当日成立した取引で、自分から相手へアイテム1個以上渡し、同じ取引で相手から0個受領。申し出のみは不可。"
+              },
+              {
+                "id": 11,
+                "name": "研究所の救世主",
+                "condition": "当日成功したイベントへ有効貢献し、同日公開フェーズに研究／採集のいずれかを1回以上正常成立。"
+              },
+              {
+                "id": 12,
+                "name": "名声への一歩",
+                "condition": "当日、HO報酬ではない方法でFPを1以上獲得。崩壊日の未判定の日次HOは報酬なし。"
+              },
+              {
+                "id": 13,
+                "name": "夜の観察者",
+                "condition": "当夜の偵察が成立し、対象所持アイテムを実際に1個以上確認。能力・薬・影渡りの有無不問。0個確認では未達成。"
+              },
+              {
+                "id": 14,
+                "name": "こっそり拝借",
+                "condition": "当夜の通常窃盗（影渡り強化含む）でアイテム1個以上獲得。決闘報酬の強奪は除外。"
+              },
+              {
+                "id": 15,
+                "name": "静かな夜",
+                "condition": "当夜に休息し、当夜の秘匿決闘で敗北・引き分けがない。襲撃なし／襲撃全勝なら成功。窃盗・呪詛のみの被害は不問。自動休息も対象。"
+              },
+              {
+                "id": 16,
+                "name": "夜の挑戦者",
+                "condition": "当夜、自分が「襲撃」を選んで開始した秘匿決闘で1回以上勝利。警戒迎撃の防衛側勝利は除外。"
+              },
+              {
+                "id": 17,
+                "name": "呪いのお届け",
+                "condition": "当夜、自分の呪詛が対象に1回以上命中。対象が既に呪詛状態でも重複を問わず達成。結界等で遮断なら未達成。"
+              },
+              {
+                "id": 18,
+                "name": "用心深い魔女",
+                "condition": "当夜「警戒」を自ら選択・確定し、正常に実行。襲撃・窃盗の有無不問。自動補完による警戒は対象外。"
+              },
+              {
+                "id": 19,
+                "name": "決闘愛好家",
+                "condition": "当日の実際に開始した公開決闘へ、挑戦者または被挑戦者として1回以上参加。降参成立で決闘未実施なら未達成。模擬戦除外。"
+              },
+              {
+                "id": 20,
+                "name": "勝利の美酒",
+                "condition": "当日、実際に行った公開決闘で3ラウンド合計点が相手を上回り1回以上勝利。降参成立・引分・模擬戦は対象外。"
+              },
+              {
+                "id": 21,
+                "name": "負けるが勝ち",
+                "condition": "当日の公開決闘で少なくとも1ラウンド、自分の得点が相手得点を下回る。決闘全体の勝敗不問。各ラウンド同点は敗北に含まない。"
+              },
+              {
+                "id": 22,
+                "name": "勝者の戦利品",
+                "condition": "当夜の秘匿決闘勝利後、1〜7日目は翌日の命令報酬を選択確定、または戦利品1個以上を実獲得。8日目は命令を選択できず、実際の戦利品獲得が必要。"
+              },
+              {
+                "id": 23,
+                "name": "危険な友情",
+                "condition": "当日に取引1件以上成立し、同日実際の公開決闘へ1回以上参加。行動順・取引相手と決闘相手の一致不問。降参のみ・模擬戦は除外。"
+              },
+              {
+                "id": 24,
+                "name": "戦術の探究者",
+                "condition": "当日の同一公開決闘または当夜の同一秘匿決闘1戦で3ラウンド全部同じ戦法を自分で選ぶ。複数決闘の合算不可。幻惑改変前の手で判定。模擬戦除外。"
+              }
+            ],
+            "index": 10,
+            "result": {
+              "id": 11,
+              "name": "研究所の救世主",
+              "condition": "当日成功したイベントへ有効貢献し、同日公開フェーズに研究／採集のいずれかを1回以上正常成立。"
+            }
+          }
+        },
+        {
+          "seq": 32,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "日次HO配布",
+          "data": {
+            "draw": 32,
+            "candidates": [
+              {
+                "id": 1,
+                "name": "勤勉な研究員",
+                "condition": "当日研究を1回以上正常成立させ、その研究による恒久能力の実成長が1以上。呪詛で成長0なら未達成。"
+              },
+              {
+                "id": 2,
+                "name": "森の拾いもの",
+                "condition": "当日公開フェーズで採集を正常成立した後、公開研究または同日夜の錬金を正常成立させる。先に採集した素材を材料に使う必要はない。逆順のみなら未達成。"
+              },
+              {
+                "id": 3,
+                "name": "見習い薬師",
+                "condition": "当日の錬金で完成済み薬を累計1個以上作成。"
+              },
+              {
+                "id": 4,
+                "name": "研究熱心",
+                "condition": "当日、研究の実成長量を合算して2以上。攻撃・防御・洞察合算可。決闘の奪取等の増加は対象外。"
+              },
+              {
+                "id": 5,
+                "name": "魔法薬の蒐集家",
+                "condition": "当日の行動結果をすべて反映するまでに、錬金・取引・通常窃盗・決闘報酬等の任意の経路から薬1個以上獲得。獲得後の使用・譲渡で実績消滅なし。"
+              },
+              {
+                "id": 6,
+                "name": "星の収穫祭",
+                "condition": "当日の採集行動に由来する素材獲得を累計2個以上。休息・採集薬の追加分を含む。取引・窃盗・決闘報酬分は含まない。"
+              },
+              {
+                "id": 7,
+                "name": "善良な研究員",
+                "condition": "当日成功した協力イベントに有効貢献1件以上。複合イベントの模擬戦だけの参加も有効貢献。"
+              },
+              {
+                "id": 8,
+                "name": "気前のよい魔女",
+                "condition": "当日成立した取引で、自分から他魔女へアイテム累計1個以上移動。受領がある交換取引でもよい。"
+              },
+              {
+                "id": 9,
+                "name": "交換日記",
+                "condition": "当日、異なる他魔女2人以上とそれぞれ1件以上取引を成立。"
+              },
+              {
+                "id": 10,
+                "name": "おすそわけ",
+                "condition": "当日成立した取引で、自分から相手へアイテム1個以上渡し、同じ取引で相手から0個受領。申し出のみは不可。"
+              },
+              {
+                "id": 12,
+                "name": "名声への一歩",
+                "condition": "当日、HO報酬ではない方法でFPを1以上獲得。崩壊日の未判定の日次HOは報酬なし。"
+              },
+              {
+                "id": 13,
+                "name": "夜の観察者",
+                "condition": "当夜の偵察が成立し、対象所持アイテムを実際に1個以上確認。能力・薬・影渡りの有無不問。0個確認では未達成。"
+              },
+              {
+                "id": 14,
+                "name": "こっそり拝借",
+                "condition": "当夜の通常窃盗（影渡り強化含む）でアイテム1個以上獲得。決闘報酬の強奪は除外。"
+              },
+              {
+                "id": 15,
+                "name": "静かな夜",
+                "condition": "当夜に休息し、当夜の秘匿決闘で敗北・引き分けがない。襲撃なし／襲撃全勝なら成功。窃盗・呪詛のみの被害は不問。自動休息も対象。"
+              },
+              {
+                "id": 16,
+                "name": "夜の挑戦者",
+                "condition": "当夜、自分が「襲撃」を選んで開始した秘匿決闘で1回以上勝利。警戒迎撃の防衛側勝利は除外。"
+              },
+              {
+                "id": 17,
+                "name": "呪いのお届け",
+                "condition": "当夜、自分の呪詛が対象に1回以上命中。対象が既に呪詛状態でも重複を問わず達成。結界等で遮断なら未達成。"
+              },
+              {
+                "id": 18,
+                "name": "用心深い魔女",
+                "condition": "当夜「警戒」を自ら選択・確定し、正常に実行。襲撃・窃盗の有無不問。自動補完による警戒は対象外。"
+              },
+              {
+                "id": 19,
+                "name": "決闘愛好家",
+                "condition": "当日の実際に開始した公開決闘へ、挑戦者または被挑戦者として1回以上参加。降参成立で決闘未実施なら未達成。模擬戦除外。"
+              },
+              {
+                "id": 20,
+                "name": "勝利の美酒",
+                "condition": "当日、実際に行った公開決闘で3ラウンド合計点が相手を上回り1回以上勝利。降参成立・引分・模擬戦は対象外。"
+              },
+              {
+                "id": 21,
+                "name": "負けるが勝ち",
+                "condition": "当日の公開決闘で少なくとも1ラウンド、自分の得点が相手得点を下回る。決闘全体の勝敗不問。各ラウンド同点は敗北に含まない。"
+              },
+              {
+                "id": 22,
+                "name": "勝者の戦利品",
+                "condition": "当夜の秘匿決闘勝利後、1〜7日目は翌日の命令報酬を選択確定、または戦利品1個以上を実獲得。8日目は命令を選択できず、実際の戦利品獲得が必要。"
+              },
+              {
+                "id": 23,
+                "name": "危険な友情",
+                "condition": "当日に取引1件以上成立し、同日実際の公開決闘へ1回以上参加。行動順・取引相手と決闘相手の一致不問。降参のみ・模擬戦は除外。"
+              },
+              {
+                "id": 24,
+                "name": "戦術の探究者",
+                "condition": "当日の同一公開決闘または当夜の同一秘匿決闘1戦で3ラウンド全部同じ戦法を自分で選ぶ。複数決闘の合算不可。幻惑改変前の手で判定。模擬戦除外。"
+              }
+            ],
+            "index": 12,
+            "result": {
+              "id": 14,
+              "name": "こっそり拝借",
+              "condition": "当夜の通常窃盗（影渡り強化含む）でアイテム1個以上獲得。決闘報酬の強奪は除外。"
+            }
+          }
+        },
+        {
+          "seq": 33,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "日次HO配布",
+          "data": {
+            "draw": 33,
+            "candidates": [
+              {
+                "id": 1,
+                "name": "勤勉な研究員",
+                "condition": "当日研究を1回以上正常成立させ、その研究による恒久能力の実成長が1以上。呪詛で成長0なら未達成。"
+              },
+              {
+                "id": 2,
+                "name": "森の拾いもの",
+                "condition": "当日公開フェーズで採集を正常成立した後、公開研究または同日夜の錬金を正常成立させる。先に採集した素材を材料に使う必要はない。逆順のみなら未達成。"
+              },
+              {
+                "id": 3,
+                "name": "見習い薬師",
+                "condition": "当日の錬金で完成済み薬を累計1個以上作成。"
+              },
+              {
+                "id": 4,
+                "name": "研究熱心",
+                "condition": "当日、研究の実成長量を合算して2以上。攻撃・防御・洞察合算可。決闘の奪取等の増加は対象外。"
+              },
+              {
+                "id": 5,
+                "name": "魔法薬の蒐集家",
+                "condition": "当日の行動結果をすべて反映するまでに、錬金・取引・通常窃盗・決闘報酬等の任意の経路から薬1個以上獲得。獲得後の使用・譲渡で実績消滅なし。"
+              },
+              {
+                "id": 6,
+                "name": "星の収穫祭",
+                "condition": "当日の採集行動に由来する素材獲得を累計2個以上。休息・採集薬の追加分を含む。取引・窃盗・決闘報酬分は含まない。"
+              },
+              {
+                "id": 7,
+                "name": "善良な研究員",
+                "condition": "当日成功した協力イベントに有効貢献1件以上。複合イベントの模擬戦だけの参加も有効貢献。"
+              },
+              {
+                "id": 8,
+                "name": "気前のよい魔女",
+                "condition": "当日成立した取引で、自分から他魔女へアイテム累計1個以上移動。受領がある交換取引でもよい。"
+              },
+              {
+                "id": 9,
+                "name": "交換日記",
+                "condition": "当日、異なる他魔女2人以上とそれぞれ1件以上取引を成立。"
+              },
+              {
+                "id": 10,
+                "name": "おすそわけ",
+                "condition": "当日成立した取引で、自分から相手へアイテム1個以上渡し、同じ取引で相手から0個受領。申し出のみは不可。"
+              },
+              {
+                "id": 12,
+                "name": "名声への一歩",
+                "condition": "当日、HO報酬ではない方法でFPを1以上獲得。崩壊日の未判定の日次HOは報酬なし。"
+              },
+              {
+                "id": 13,
+                "name": "夜の観察者",
+                "condition": "当夜の偵察が成立し、対象所持アイテムを実際に1個以上確認。能力・薬・影渡りの有無不問。0個確認では未達成。"
+              },
+              {
+                "id": 15,
+                "name": "静かな夜",
+                "condition": "当夜に休息し、当夜の秘匿決闘で敗北・引き分けがない。襲撃なし／襲撃全勝なら成功。窃盗・呪詛のみの被害は不問。自動休息も対象。"
+              },
+              {
+                "id": 16,
+                "name": "夜の挑戦者",
+                "condition": "当夜、自分が「襲撃」を選んで開始した秘匿決闘で1回以上勝利。警戒迎撃の防衛側勝利は除外。"
+              },
+              {
+                "id": 17,
+                "name": "呪いのお届け",
+                "condition": "当夜、自分の呪詛が対象に1回以上命中。対象が既に呪詛状態でも重複を問わず達成。結界等で遮断なら未達成。"
+              },
+              {
+                "id": 18,
+                "name": "用心深い魔女",
+                "condition": "当夜「警戒」を自ら選択・確定し、正常に実行。襲撃・窃盗の有無不問。自動補完による警戒は対象外。"
+              },
+              {
+                "id": 19,
+                "name": "決闘愛好家",
+                "condition": "当日の実際に開始した公開決闘へ、挑戦者または被挑戦者として1回以上参加。降参成立で決闘未実施なら未達成。模擬戦除外。"
+              },
+              {
+                "id": 20,
+                "name": "勝利の美酒",
+                "condition": "当日、実際に行った公開決闘で3ラウンド合計点が相手を上回り1回以上勝利。降参成立・引分・模擬戦は対象外。"
+              },
+              {
+                "id": 21,
+                "name": "負けるが勝ち",
+                "condition": "当日の公開決闘で少なくとも1ラウンド、自分の得点が相手得点を下回る。決闘全体の勝敗不問。各ラウンド同点は敗北に含まない。"
+              },
+              {
+                "id": 22,
+                "name": "勝者の戦利品",
+                "condition": "当夜の秘匿決闘勝利後、1〜7日目は翌日の命令報酬を選択確定、または戦利品1個以上を実獲得。8日目は命令を選択できず、実際の戦利品獲得が必要。"
+              },
+              {
+                "id": 23,
+                "name": "危険な友情",
+                "condition": "当日に取引1件以上成立し、同日実際の公開決闘へ1回以上参加。行動順・取引相手と決闘相手の一致不問。降参のみ・模擬戦は除外。"
+              },
+              {
+                "id": 24,
+                "name": "戦術の探究者",
+                "condition": "当日の同一公開決闘または当夜の同一秘匿決闘1戦で3ラウンド全部同じ戦法を自分で選ぶ。複数決闘の合算不可。幻惑改変前の手で判定。模擬戦除外。"
+              }
+            ],
+            "index": 18,
+            "result": {
+              "id": 21,
+              "name": "負けるが勝ち",
+              "condition": "当日の公開決闘で少なくとも1ラウンド、自分の得点が相手得点を下回る。決闘全体の勝敗不問。各ラウンド同点は敗北に含まない。"
+            }
+          }
+        },
+        {
+          "seq": 34,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "日次HO配布",
+          "data": {
+            "draw": 34,
+            "candidates": [
+              {
+                "id": 1,
+                "name": "勤勉な研究員",
+                "condition": "当日研究を1回以上正常成立させ、その研究による恒久能力の実成長が1以上。呪詛で成長0なら未達成。"
+              },
+              {
+                "id": 2,
+                "name": "森の拾いもの",
+                "condition": "当日公開フェーズで採集を正常成立した後、公開研究または同日夜の錬金を正常成立させる。先に採集した素材を材料に使う必要はない。逆順のみなら未達成。"
+              },
+              {
+                "id": 3,
+                "name": "見習い薬師",
+                "condition": "当日の錬金で完成済み薬を累計1個以上作成。"
+              },
+              {
+                "id": 4,
+                "name": "研究熱心",
+                "condition": "当日、研究の実成長量を合算して2以上。攻撃・防御・洞察合算可。決闘の奪取等の増加は対象外。"
+              },
+              {
+                "id": 5,
+                "name": "魔法薬の蒐集家",
+                "condition": "当日の行動結果をすべて反映するまでに、錬金・取引・通常窃盗・決闘報酬等の任意の経路から薬1個以上獲得。獲得後の使用・譲渡で実績消滅なし。"
+              },
+              {
+                "id": 6,
+                "name": "星の収穫祭",
+                "condition": "当日の採集行動に由来する素材獲得を累計2個以上。休息・採集薬の追加分を含む。取引・窃盗・決闘報酬分は含まない。"
+              },
+              {
+                "id": 7,
+                "name": "善良な研究員",
+                "condition": "当日成功した協力イベントに有効貢献1件以上。複合イベントの模擬戦だけの参加も有効貢献。"
+              },
+              {
+                "id": 8,
+                "name": "気前のよい魔女",
+                "condition": "当日成立した取引で、自分から他魔女へアイテム累計1個以上移動。受領がある交換取引でもよい。"
+              },
+              {
+                "id": 9,
+                "name": "交換日記",
+                "condition": "当日、異なる他魔女2人以上とそれぞれ1件以上取引を成立。"
+              },
+              {
+                "id": 10,
+                "name": "おすそわけ",
+                "condition": "当日成立した取引で、自分から相手へアイテム1個以上渡し、同じ取引で相手から0個受領。申し出のみは不可。"
+              },
+              {
+                "id": 12,
+                "name": "名声への一歩",
+                "condition": "当日、HO報酬ではない方法でFPを1以上獲得。崩壊日の未判定の日次HOは報酬なし。"
+              },
+              {
+                "id": 13,
+                "name": "夜の観察者",
+                "condition": "当夜の偵察が成立し、対象所持アイテムを実際に1個以上確認。能力・薬・影渡りの有無不問。0個確認では未達成。"
+              },
+              {
+                "id": 15,
+                "name": "静かな夜",
+                "condition": "当夜に休息し、当夜の秘匿決闘で敗北・引き分けがない。襲撃なし／襲撃全勝なら成功。窃盗・呪詛のみの被害は不問。自動休息も対象。"
+              },
+              {
+                "id": 16,
+                "name": "夜の挑戦者",
+                "condition": "当夜、自分が「襲撃」を選んで開始した秘匿決闘で1回以上勝利。警戒迎撃の防衛側勝利は除外。"
+              },
+              {
+                "id": 17,
+                "name": "呪いのお届け",
+                "condition": "当夜、自分の呪詛が対象に1回以上命中。対象が既に呪詛状態でも重複を問わず達成。結界等で遮断なら未達成。"
+              },
+              {
+                "id": 18,
+                "name": "用心深い魔女",
+                "condition": "当夜「警戒」を自ら選択・確定し、正常に実行。襲撃・窃盗の有無不問。自動補完による警戒は対象外。"
+              },
+              {
+                "id": 19,
+                "name": "決闘愛好家",
+                "condition": "当日の実際に開始した公開決闘へ、挑戦者または被挑戦者として1回以上参加。降参成立で決闘未実施なら未達成。模擬戦除外。"
+              },
+              {
+                "id": 20,
+                "name": "勝利の美酒",
+                "condition": "当日、実際に行った公開決闘で3ラウンド合計点が相手を上回り1回以上勝利。降参成立・引分・模擬戦は対象外。"
+              },
+              {
+                "id": 22,
+                "name": "勝者の戦利品",
+                "condition": "当夜の秘匿決闘勝利後、1〜7日目は翌日の命令報酬を選択確定、または戦利品1個以上を実獲得。8日目は命令を選択できず、実際の戦利品獲得が必要。"
+              },
+              {
+                "id": 23,
+                "name": "危険な友情",
+                "condition": "当日に取引1件以上成立し、同日実際の公開決闘へ1回以上参加。行動順・取引相手と決闘相手の一致不問。降参のみ・模擬戦は除外。"
+              },
+              {
+                "id": 24,
+                "name": "戦術の探究者",
+                "condition": "当日の同一公開決闘または当夜の同一秘匿決闘1戦で3ラウンド全部同じ戦法を自分で選ぶ。複数決闘の合算不可。幻惑改変前の手で判定。模擬戦除外。"
+              }
+            ],
+            "index": 18,
+            "result": {
+              "id": 22,
+              "name": "勝者の戦利品",
+              "condition": "当夜の秘匿決闘勝利後、1〜7日目は翌日の命令報酬を選択確定、または戦利品1個以上を実獲得。8日目は命令を選択できず、実際の戦利品獲得が必要。"
+            }
+          }
+        },
+        {
+          "seq": 35,
+          "day": 1,
+          "phase": "public",
+          "type": "rng",
+          "audience": "dev",
+          "text": "イベント抽選",
+          "data": {
+            "draw": 36,
+            "candidates": [
+              {
+                "id": 1,
+                "name": "魔力灯の修理",
+                "difficulty": "Easy",
+                "description": "任意素材4個を納品",
+                "materials": 4,
+                "fp": 1
+              },
+              {
+                "id": 2,
+                "name": "使い魔の大脱走",
+                "difficulty": "Easy",
+                "description": "月光草または星の砂を合計4個",
+                "materials": 4,
+                "allowed": ["herb", "sand"],
+                "fp": 1
+              },
+              {
+                "id": 3,
+                "name": "魔導書の整理整頓",
+                "difficulty": "Easy",
+                "description": "採集・研究の成立回数が全体で4回以上",
+                "actions": ["gather", "research"],
+                "count": 4,
+                "fp": 1
+              },
+              {
+                "id": 4,
+                "name": "公開模擬戦",
+                "difficulty": "Easy",
+                "description": "異なる2人で模擬戦を完了。成功時、参加者に素材2個",
+                "mock": true,
+                "fp": 0
+              }
+            ],
+            "index": 3,
+            "result": {
+              "id": 4,
+              "name": "公開模擬戦",
+              "difficulty": "Easy",
+              "description": "異なる2人で模擬戦を完了。成功時、参加者に素材2個",
+              "mock": true,
+              "fp": 0
+            }
+          }
+        },
+        {
+          "seq": 36,
+          "day": 1,
+          "phase": "public",
+          "type": "event",
+          "audience": "public",
+          "text": "第1日：公開模擬戦"
+        },
+        {
+          "seq": 37,
+          "day": 1,
+          "phase": "public",
+          "type": "audit",
+          "audience": "dev",
+          "text": "ルール browser-2.0.2 / HO除外なし"
+        },
+        {
+          "seq": 38,
+          "day": 1,
+          "phase": "public",
+          "type": "combatStart",
+          "audience": "public",
+          "text": "アリア vs リラ",
+          "actor": 0,
+          "target": 1
+        },
+        {
+          "seq": 39,
+          "day": 1,
+          "phase": "public",
+          "type": "combatRound",
+          "audience": "public",
+          "text": "水 対 火",
+          "data": { "id": 1 }
+        }
+      ],
+      "actions": [
+        { "type": "duel", "player": 0, "target": 1 },
+        { "type": "loadout", "player": 0, "items": [] },
+        { "type": "elementRound", "player": 0, "element": "defense" }
+      ],
+      "revision": 3,
+      "nextItem": 13,
+      "nextCombat": 2,
+      "nextTrade": 1,
+      "combatHistory": [],
+      "duelQueue": [],
+      "trades": [],
+      "publicTurn": {
+        "order": [0, 1, 2, 3],
+        "index": 0,
+        "round": 1,
+        "acted": true,
+        "aiTradeAttempted": false,
+        "aiMockAttempted": false,
+        "tradeAttempts": {}
+      },
+      "combat": {
+        "id": 1,
+        "participants": [0, 1],
+        "kind": "public",
+        "hp": [11, 9],
+        "charge": [0, 0],
+        "previous": [null, null],
+        "brought": [[], []],
+        "rounds": [],
+        "done": false,
+        "resultAcknowledged": false,
+        "returnPhase": "public",
+        "illusionRound": -1,
+        "initiator": 0,
+        "elemental": {
+          "ready": [true, true],
+          "rounds": [
+            {
+              "sides": [
+                {
+                  "element": "defense",
+                  "affinity": 1,
+                  "levelBonus": 0,
+                  "potionBonus": 0,
+                  "calculated": 3,
+                  "dealt": 3
+                },
+                {
+                  "element": "attack",
+                  "affinity": -1,
+                  "levelBonus": 0,
+                  "potionBonus": 0,
+                  "calculated": 1,
+                  "dealt": 1
+                }
+              ],
+              "hp": [11, 9]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "continuedSHA256": "66de5b3199b35efdc07998fde6b8993956c7526675b7ff8e9e03ba26be8003c4"
+}

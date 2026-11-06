@@ -77,7 +77,7 @@ for (const width of [1440, 390]) {
     ).toHaveCount(1);
     await expect(page.getByText(/指定素材1個/)).toBeVisible();
     const saved = await page.evaluate(() =>
-      localStorage.getItem("majoken-save-rules-2.0.2"),
+      localStorage.getItem("majoken-save-rules-2.0.3"),
     );
     const spinner = page.locator(".grouped-items .quantity-spinner").first();
     const input = spinner.getByRole("spinbutton");
@@ -99,7 +99,7 @@ for (const width of [1440, 390]) {
     await expect(input).toHaveValue(String(max));
     expect(
       await page.evaluate(() =>
-        localStorage.getItem("majoken-save-rules-2.0.2"),
+        localStorage.getItem("majoken-save-rules-2.0.3"),
       ),
     ).toBe(saved);
     await page.screenshot({
@@ -125,7 +125,7 @@ for (const width of [1440, 390]) {
     await expect(request).toHaveValue("0");
     expect(
       await page.evaluate(() =>
-        localStorage.getItem("majoken-save-rules-2.0.2"),
+        localStorage.getItem("majoken-save-rules-2.0.3"),
       ),
     ).toBe(saved);
     expect(

@@ -13,7 +13,7 @@ for (const width of [1440, 390]) {
     await page.goto("/");
     await page.getByRole("button", { name: /ゲーム開始/ }).click();
     await page.getByRole("checkbox", { name: "開発者モード" }).check();
-    await page.getByLabel(/乱数シード/).fill("night-10");
+    await page.getByLabel(/乱数シード/).fill("night-13");
     await page.getByRole("button", { name: "研究開始", exact: true }).click();
     await settleScreens(page);
     for (let i = 0; i < 2; i++) {
@@ -69,7 +69,12 @@ for (const width of [1440, 390]) {
       combat.getByText("あなたの属性と薬は確定済みです。"),
     ).toBeVisible();
     await result.click();
-    await expect(combat.getByText(/水 · 与ダメージ/)).toBeVisible();
+    await expect(
+      combat
+        .locator(".combat-rounds tbody td")
+        .first()
+        .getByText(/水 · 与ダメージ/),
+    ).toBeVisible();
     for (let i = 1; i < 5 && (await choose.isVisible()); i++) {
       await combat.getByRole("button", { name: "水", exact: true }).click();
       await choose.click();
@@ -98,7 +103,7 @@ for (const width of [1440, 390]) {
     ).toHaveCount(0);
     await expect(page.locator(".phase-message")).toHaveCount(1);
     const saved = () =>
-      page.evaluate(() => localStorage.getItem("majoken-save-rules-2.0.2"));
+      page.evaluate(() => localStorage.getItem("majoken-save-rules-2.0.3"));
     await expect(dawn).toHaveCount(1);
     expect(
       await page.evaluate(
