@@ -301,9 +301,10 @@ label small {
   max-width: none;
 }
 .start-button {
-  width: 100%;
+  width: min(240px, 100%);
   margin-top: 15px;
-  justify-content: space-between;
+  justify-content: center;
+  text-align: center;
 }
 .center {
   text-align: center;
@@ -1458,7 +1459,8 @@ footer > span:first-child {
   margin-top: 12px;
 }
 .intro-rules > button {
-  width: 100%;
+  width: min(240px, 100%);
+  text-align: center;
 }
 .rule-guide {
   line-height: 1.65;
@@ -1502,4 +1504,21 @@ footer > span:first-child {
   .duel-actions {
     flex-direction: column;
   }
+}
+
+.delivery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+}
+.combat-fp span {
+  display: block;
+}
+input[type="number"]::-webkit-inner-spin-button {
+  opacity: 1;
+}
+
+.duel-fighter .stats {
+  flex-wrap: wrap;
 }
