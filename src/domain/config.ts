@@ -9,12 +9,13 @@ export const V20_REVIEW_RULES_VERSION = "browser-2.0-review";
 export const V20_RELEASE_RULES_VERSION = "browser-2.0";
 export const V20_PLAYTEST_RULES_VERSION = "browser-2.0.1";
 export const V20_PREVIOUS_RULES_VERSION = "browser-2.0.2";
-export const V20_RULES_VERSION = "browser-2.0.3";
+export const V20_NPC_RULES_VERSION = "browser-2.0.3";
+export const V20_RULES_VERSION = "browser-2.0.4";
 export const hasRandomElementAI = (s: { rulesVersion: string }) =>
-  s.rulesVersion === V20_RULES_VERSION;
-export const hasRevisedNightRules = (s: { rulesVersion: string }) =>
   s.rulesVersion === V20_RULES_VERSION ||
-  s.rulesVersion === V20_PREVIOUS_RULES_VERSION;
+  s.rulesVersion === V20_NPC_RULES_VERSION;
+export const hasRevisedNightRules = (s: { rulesVersion: string }) =>
+  hasRandomElementAI(s) || s.rulesVersion === V20_PREVIOUS_RULES_VERSION;
 export const hasPlaytestRules = (s: { rulesVersion: string }) =>
   hasRevisedNightRules(s) || s.rulesVersion === V20_PLAYTEST_RULES_VERSION;
 export const hasGoalDrivenRewards = (s: { rulesVersion: string }) =>
@@ -153,6 +154,7 @@ export const supportedRulesVersion = (version: string) =>
   version === CONFIG.rulesVersion ||
   version === LEGACY_RULES_VERSION ||
   version === V20_RULES_VERSION ||
+  version === V20_NPC_RULES_VERSION ||
   version === V20_PREVIOUS_RULES_VERSION ||
   version === V20_RELEASE_RULES_VERSION ||
   version === V20_PLAYTEST_RULES_VERSION ||

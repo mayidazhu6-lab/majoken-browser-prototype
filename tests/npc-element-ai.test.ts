@@ -153,7 +153,7 @@ it("reproduces a full new game and reloads new AI RNG state without repeating dr
 
 it("keeps old and new save slots and AI versions separate through load, continue, save and reload", () => {
   const oldKey = "majoken-save-rules-2.0.2",
-    newKey = "majoken-save-rules-2.0.3";
+    newKey = "majoken-save-rules-2.0.4";
   const old = JSON.stringify(fixture.save);
   const values = new Map([[oldKey, old]]);
   vi.stubGlobal("localStorage", {

@@ -1,0 +1,326 @@
+{
+  "setup": {
+    "name": "アリア",
+    "seed": "late-duel-0",
+    "magic": "barrier",
+    "stats": { "attack": 3, "defense": 3, "insight": 3 }
+  },
+  "rulesVersion": "browser-2.0.3",
+  "actionsBeforeWin": [
+    { "type": "gather", "player": 0 },
+    { "type": "endTurn", "player": 0 },
+    { "type": "challengeReply", "player": 0, "fight": true },
+    { "type": "loadout", "player": 0, "items": [] },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    { "type": "combatAck", "player": 0 },
+    { "type": "tradeReply", "player": 0, "id": 1, "accept": true },
+    { "type": "gather", "player": 0 },
+    { "type": "reserve", "player": 0, "items": [17], "stats": {} },
+    { "type": "endTurn", "player": 0 },
+    { "type": "challengeReply", "player": 0, "fight": true },
+    { "type": "loadout", "player": 0, "items": [] },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    { "type": "combatAck", "player": 0 },
+    { "type": "tradeReply", "player": 0, "id": 2, "accept": true },
+    { "type": "eventAck", "player": 0 },
+    { "type": "advance" },
+    { "type": "advance" },
+    { "type": "advance" },
+    { "type": "challengeReply", "player": 0, "fight": true },
+    { "type": "loadout", "player": 0, "items": [] },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    { "type": "combatAck", "player": 0 },
+    { "type": "tradeReply", "player": 0, "id": 3, "accept": true },
+    { "type": "gather", "player": 0 },
+    { "type": "endTurn", "player": 0 },
+    { "type": "challengeReply", "player": 0, "fight": true },
+    { "type": "loadout", "player": 0, "items": [] },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    { "type": "combatAck", "player": 0 },
+    { "type": "gather", "player": 0 },
+    { "type": "endTurn", "player": 0 },
+    { "type": "eventAck", "player": 0 },
+    { "type": "advance" },
+    { "type": "advance" },
+    { "type": "advance" },
+    { "type": "gather", "player": 0 },
+    { "type": "endTurn", "player": 0 },
+    { "type": "challengeReply", "player": 0, "fight": true },
+    { "type": "loadout", "player": 0, "items": [] },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    { "type": "combatAck", "player": 0 },
+    { "type": "gather", "player": 0 },
+    { "type": "endTurn", "player": 0 },
+    { "type": "challengeReply", "player": 0, "fight": true },
+    { "type": "loadout", "player": 0, "items": [] },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    { "type": "combatAck", "player": 0 },
+    { "type": "eventAck", "player": 0 },
+    { "type": "advance" },
+    { "type": "advance" },
+    { "type": "advance" },
+    { "type": "tradeReply", "player": 0, "id": 5, "accept": true },
+    { "type": "research", "player": 0, "stat": "attack" },
+    { "type": "endTurn", "player": 0 },
+    { "type": "challengeReply", "player": 0, "fight": true },
+    { "type": "loadout", "player": 0, "items": [] },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    { "type": "combatAck", "player": 0 },
+    { "type": "research", "player": 0, "stat": "defense" },
+    { "type": "endTurn", "player": 0 },
+    { "type": "challengeReply", "player": 0, "fight": true },
+    { "type": "loadout", "player": 0, "items": [] },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    {
+      "type": "elementRound",
+      "player": 0,
+      "element": "defense",
+      "bonus": true
+    },
+    { "type": "combatAck", "player": 0 },
+    { "type": "eventAck", "player": 0 },
+    { "type": "advance" },
+    { "type": "advance" },
+    { "type": "advance" },
+    { "type": "duel", "player": 0, "target": 1 },
+    { "type": "loadout", "player": 0, "items": [] },
+    { "type": "elementRound", "player": 0, "element": "defense" },
+    { "type": "elementRound", "player": 0, "element": "defense" },
+    { "type": "elementRound", "player": 0, "element": "defense" },
+    { "type": "elementRound", "player": 0, "element": "defense" }
+  ],
+  "beforeHash": "2102c657b63d5bcf3370824c230cbe133a9cb22197a8085a94da4ec61b2c1cef",
+  "finishingAction": {
+    "type": "elementRound",
+    "player": 0,
+    "element": "defense"
+  },
+  "afterWinHash": "df29fd97a8404f074c8f2e87111feaded9378dd577d916954065b6aa56aebbd9",
+  "afterAckHash": "8a52514874ed0b48cd0949b8576c2cae6c65183ff90757c125fef94b7bc5966b"
+}

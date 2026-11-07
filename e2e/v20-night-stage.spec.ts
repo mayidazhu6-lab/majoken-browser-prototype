@@ -6,7 +6,7 @@ import { serialize } from "../src/domain/persistence";
 import { NIGHT_RECIPES } from "../src/domain/night";
 import { materialIds } from "../src/domain/items";
 import type { Action } from "../src/domain/types";
-const key = "majoken-save-rules-2.0.3";
+const key = "majoken-save-rules-2.0.4";
 function nightFixture(brew: boolean) {
   for (let i = 0; i < 80; i++) {
     let s = createGame(

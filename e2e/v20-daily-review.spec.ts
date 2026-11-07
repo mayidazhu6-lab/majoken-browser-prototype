@@ -6,7 +6,7 @@ import { V20_RULES_VERSION } from "../src/domain/config";
 import { dailyReview } from "../src/ui/dailyReview";
 import { graduationProgress } from "../src/ui/graduationProgress";
 import { settleScreens } from "./helpers";
-const key = "majoken-save-rules-2.0.3";
+const key = "majoken-save-rules-2.0.4";
 function noDuelNight() {
   for (let seed = 0; seed < 30; seed++) {
     let s = createGame(
