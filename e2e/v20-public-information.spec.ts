@@ -40,7 +40,7 @@ function eventGame() {
 for (const width of [1440, 390]) {
   test(`public guidance, delivery and trade at ${width}px`, async ({
     page,
-  }) => {
+  }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 });
     await load(page, eventGame());
     const saved = () =>
@@ -62,7 +62,7 @@ for (const width of [1440, 390]) {
     );
     await noOverflow(page);
     await page.screenshot({
-      path: `/private/tmp/majoken-ui3-delivery-${width}.png`,
+      path: testInfo.outputPath(`delivery-${width}.png`),
       fullPage: true,
     });
     expect(await saved()).toBe(before);
@@ -114,7 +114,7 @@ for (const width of [1440, 390]) {
     ).toBeEnabled();
     await noOverflow(page);
     await page.screenshot({
-      path: `/private/tmp/majoken-ui3-trade-${width}.png`,
+      path: testInfo.outputPath(`trade-${width}.png`),
       fullPage: true,
     });
     // Changing presentation and validating the proposal never mutates saved state/RNG.
@@ -137,7 +137,9 @@ for (const width of [1440, 390]) {
     await settleScreens(page);
     expect(JSON.parse((await saved())!).state).toEqual(after);
   });
-  test(`combat relationship is visible at ${width}px`, async ({ page }) => {
+  test(`combat relationship is visible at ${width}px`, async ({
+    page,
+  }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 });
     await load(
       page,
@@ -156,7 +158,7 @@ for (const width of [1440, 390]) {
     await expect(affinity).toContainText("水 → 🔥 火");
     await noOverflow(page);
     await page.screenshot({
-      path: `/private/tmp/majoken-ui3-combat-${width}.png`,
+      path: testInfo.outputPath(`combat-${width}.png`),
       fullPage: true,
     });
   });
