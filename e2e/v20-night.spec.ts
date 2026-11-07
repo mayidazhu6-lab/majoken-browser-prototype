@@ -54,6 +54,7 @@ for (const width of [1440, 390]) {
     await expect(page.locator(".action-result")).toHaveCount(0);
     await reload();
     await expect(page.locator(".action-result")).toHaveCount(0);
+    await page.getByRole("button", { name: /秘匿行動を解決/ }).click();
     const combat = page.locator(".combat-panel");
     await expect(
       combat.getByRole("heading", { name: "秘匿決闘" }),

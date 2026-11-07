@@ -61,6 +61,7 @@ import {
 } from "./domain/ho";
 import { graduationProgress } from "./ui/graduationProgress";
 import { dailyReview } from "./ui/dailyReview";
+import { nightReadiness } from "./ui/nightReadiness";
 import { uiText } from "./ui/text";
 import { dispatch, currentPlayer } from "./domain/reducer";
 import { serialize } from "./domain/persistence";
@@ -782,13 +783,6 @@ function act(a: Action, retry = false) {
   }
   selected.value = [];
   battlePotion.value = undefined;
-  if (
-    a.type === "night" &&
-    modernNight.value &&
-    s.value.phase === "night" &&
-    me.value.night
-  )
-    act({ type: "advance" });
 }
 function actionError(a: Action) {
   if (!s.value) return "研究を開始してください";
@@ -936,7 +930,18 @@ function offer() {
     request: tradeRequest.value,
   });
 }
+const nightStatus = computed(() =>
+  s.value ? nightReadiness(s.value, !!store.pending) : undefined,
+);
+function resolveNight() {
+  if (!nightStatus.value?.canResolve) return;
+  act({ type: "advance" });
+}
 function next() {
+  if (s.value?.phase === "night" && modernNight.value) {
+    resolveNight();
+    return;
+  }
   act(
     s.value?.phase === "public" && s.value.publicTurn.round <= 2
       ? { type: "endTurn", player: 0 }
@@ -2484,6 +2489,10 @@ watch(
           >
             <h2>夜間行動と錬金</h2>
             <template v-if="!me.night">
+              <p class="night-step">
+                1.
+                夜間行動と錬金を選び、下のボタンで確定してください。確定後は変更できません。
+              </p>
               <div class="action-menu" role="group" aria-label="夜間行動">
                 <button
                   v-for="kind in NIGHT_ACTIONS"
@@ -2561,14 +2570,40 @@ watch(
                 夜間行動と錬金を確定
               </button>
               <p class="muted">
-                未確定のまま解決に進むと自動休息になり、作成予定は確定されません。
+                錬金を行わない場合も、夜間行動を選んで確定してください。
               </p>
             </template>
-            <p v-else>
-              {{ LABELS[me.night.kind] }}と錬金計画（{{
-                me.night.recipes?.length ?? 0
-              }}個）を確定しました。
-            </p>
+            <div
+              v-else
+              class="night-confirmation"
+              role="region"
+              aria-label="夜間行動の確定状況"
+            >
+              <h3>2. あなたの行動は確定済みです</h3>
+              <p>
+                {{ LABELS[me.night.kind] }}と錬金計画（{{
+                  me.night.recipes?.length ?? 0
+                }}個）を確定しました。変更はできません。
+              </p>
+              <ul>
+                <li v-for="p in nightStatus?.confirmations" :key="p.id">
+                  {{ p.name }}：{{ p.confirmed ? "確定済み" : "確定待ち" }}
+                </li>
+              </ul>
+              <p v-if="!nightStatus?.allConfirmed" role="status">
+                他の魔女の確定を待っています。行動内容は公開されません。
+              </p>
+              <template v-else>
+                <p>全員の行動が確定しました。夜間行動と錬金を解決します。</p>
+                <button
+                  class="primary"
+                  :disabled="!nightStatus?.canResolve"
+                  @click="resolveNight"
+                >
+                  秘匿行動を解決 →
+                </button>
+              </template>
+            </div>
           </section>
           <section v-if="modernReward?.winner === 0" class="panel night-reward">
             <h2>夜間の報酬を選ぶ</h2>
@@ -2944,7 +2979,8 @@ watch(
               !combat &&
               !s.challenge &&
               !actionScreen &&
-              !dawnSummary
+              !dawnSummary &&
+              !(s.phase === 'night' && modernNight)
             "
             class="panel progression"
           >
