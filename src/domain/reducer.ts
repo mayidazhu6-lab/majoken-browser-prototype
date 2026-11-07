@@ -1,3 +1,4 @@
+import { publicDuelReward } from "./publicDuelReward";
 import type {
   Action,
   Combat,
@@ -515,7 +516,7 @@ function finishCombat(s: GameState) {
           target: loser.id,
           audience: [w.id],
         });
-      if (c.kind === "public") fp(s, w, 1, "duel");
+      if (c.kind === "public") fp(s, w, publicDuelReward(s), "duel");
     }
   }
   if (hasNightRules(s) && c.kind === "secret") {

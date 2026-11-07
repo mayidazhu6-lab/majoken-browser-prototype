@@ -32,6 +32,7 @@ import {
   RESEARCH,
   isV20,
   V20_RULES_VERSION,
+  V20_NPC_RULES_VERSION,
   V20_PREVIOUS_RULES_VERSION,
   V20_RELEASE_RULES_VERSION,
   V20_PLAYTEST_RULES_VERSION,
@@ -59,6 +60,7 @@ import {
   goalDescription as describeGoal,
   dailyProgress as describeDailyProgress,
 } from "./domain/ho";
+import { publicDuelReward } from "./domain/publicDuelReward";
 import { graduationProgress } from "./ui/graduationProgress";
 import { dailyReview } from "./ui/dailyReview";
 import { nightReadiness } from "./ui/nightReadiness";
@@ -1018,6 +1020,12 @@ watch(
           旧v2.0の続きから
         </button>
         <button
+          v-if="store.npcRulesSaveAvailable"
+          @click="loadSave(undefined, V20_NPC_RULES_VERSION)"
+        >
+          旧v2.0.3の続きから
+        </button>
+        <button
           v-if="store.previousSaveAvailable"
           @click="loadSave(undefined, V20_PREVIOUS_RULES_VERSION)"
         >
@@ -1624,9 +1632,14 @@ watch(
               <p v-if="combat.kind === 'public'" class="combat-fp">
                 <span v-for="id in combat.participants" :key="id">
                   {{ s.players[id].name }}：名声（FP）
-                  {{ s.players[id].fp - Number(combat.winner === id) }} →
-                  {{ s.players[id].fp }} （{{
-                    combat.winner === id ? "+1" : "増減なし"
+                  {{
+                    s.players[id].fp -
+                    Number(combat.winner === id) * publicDuelReward(s)
+                  }}
+                  → {{ s.players[id].fp }} （{{
+                    combat.winner === id
+                      ? "+" + publicDuelReward(s)
+                      : "増減なし"
                   }}）
                 </span>
               </p>
@@ -2397,7 +2410,9 @@ watch(
                 </select></label
               >
               <p>
-                公開決闘：挑戦者1AP、被挑戦者0AP。勝者FP+1、能力移転なし。<br />模擬戦：イベント用。勝敗は達成条件に影響しません。
+                公開決闘：挑戦者1AP、被挑戦者0AP。勝者FP+{{
+                  publicDuelReward(s)
+                }}、能力移転なし。<br />模擬戦：イベント用。勝敗は達成条件に影響しません。
               </p>
               <div class="duel-actions">
                 <button
@@ -3507,7 +3522,7 @@ watch(
       <p>{{ combatReason(secretResult) }}</p>
       <p v-if="secretResult.winner !== null && secretResult.kind === 'public'">
         {{ s.players[secretResult.winner!].name }}の名声（FP）：{{
-          s.players[secretResult.winner!].fp - 1
+          s.players[secretResult.winner!].fp - publicDuelReward(s)
         }}
         → {{ s.players[secretResult.winner!].fp }}
       </p>
@@ -3525,7 +3540,7 @@ watch(
         {{
           secretResult.winner === null
             ? "引き分け：双方FP変動なし"
-            : `${s.players[secretResult.winner!].name} FP+1、敗者FP変動なし`
+            : `${s.players[secretResult.winner!].name} FP+${publicDuelReward(s)}、敗者FP変動なし`
         }}。能力移転はありません。確認して公開フェーズへ戻ります。
       </p>
       <template #actions>

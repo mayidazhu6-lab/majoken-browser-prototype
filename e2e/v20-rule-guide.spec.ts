@@ -36,7 +36,7 @@ for (const [device, width, height] of [
       expect(guideButtonBox.x).toBeCloseTo(startBox.x);
       expect(guideButtonBox.width).toBeCloseTo(startBox.width);
       await opener.click();
-      await expect(guide).toContainText("ルール v2.0.3");
+      await expect(guide).toContainText("ルール v2.0.4");
       await expect(guide.locator("details[open]")).toHaveCount(1);
       await guide.getByText("1日の流れ", { exact: true }).click();
       await expect(
@@ -68,7 +68,7 @@ for (const [device, width, height] of [
       const material = page.locator(".center-column select");
       await material.selectOption("dew");
       const before = await page.evaluate(() =>
-        localStorage.getItem("majoken-save-rules-2.0.3"),
+        localStorage.getItem("majoken-save-rules-2.0.4"),
       );
       await opener.click();
       await expect(guide).toBeVisible();
@@ -77,7 +77,7 @@ for (const [device, width, height] of [
       await expect(material).toHaveValue("dew");
       expect(
         await page.evaluate(() =>
-          localStorage.getItem("majoken-save-rules-2.0.3"),
+          localStorage.getItem("majoken-save-rules-2.0.4"),
         ),
       ).toBe(before);
     });

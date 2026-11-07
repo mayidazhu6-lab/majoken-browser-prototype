@@ -202,7 +202,7 @@ describe("v2.0 public milestone", () => {
     expect(store.error).toContain("ルール版");
     store.start(setup);
     const initial = store.state;
-    const oldSave = values.get("majoken-save-rules-2.0.3");
+    const oldSave = values.get("majoken-save-rules-2.0.4");
     reject = true;
     store.act({ type: "gather", player: 0 });
     const candidate = store.pending;
@@ -210,7 +210,7 @@ describe("v2.0 public milestone", () => {
     expect(store.state).toBe(initial);
     store.act({ type: "endTurn", player: 0 });
     expect(store.pending).toBe(candidate);
-    expect(values.get("majoken-save-rules-2.0.3")).toBe(oldSave);
+    expect(values.get("majoken-save-rules-2.0.4")).toBe(oldSave);
     reject = false;
     store.save();
     expect(store.state).toBe(candidate);
@@ -233,7 +233,7 @@ describe("v2.0 public milestone", () => {
     setActivePinia(createPinia());
     const store = useGameStore();
     store.start(setup);
-    const current = values.get("majoken-save-rules-2.0.3");
+    const current = values.get("majoken-save-rules-2.0.4");
     const released = createGame(setup, V20_RELEASE_RULES_VERSION);
     store.load(serialize(released));
     expect(store.state).toEqual(released);
@@ -250,7 +250,7 @@ describe("v2.0 public milestone", () => {
     expect(values.get("majoken-save-rules-2.0-final")).toBe(
       serialize(candidate),
     );
-    expect(values.get("majoken-save-rules-2.0.3")).toBe(current);
+    expect(values.get("majoken-save-rules-2.0.4")).toBe(current);
     store.load();
     expect(store.state?.rulesVersion).toBe(V20_RULES_VERSION);
   });
