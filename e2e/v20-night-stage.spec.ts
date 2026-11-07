@@ -179,7 +179,7 @@ test("ネムへの秘匿襲撃勝利が卒業課題に反映され、再開し�
   await page.goto("/");
   for (let reload = 0; reload < 2; reload++) {
     await page.getByRole("button", { name: "続きから", exact: true }).click();
-    await page.getByRole("button", { name: /📜/ }).click();
+    await page.getByRole("button", { name: "課題", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "課題", exact: true });
     await dialog.getByRole("button", { name: "卒業課題", exact: true }).click();
     await expect(dialog).toContainText("ネム");

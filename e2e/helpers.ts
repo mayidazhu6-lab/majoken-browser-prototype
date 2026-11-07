@@ -59,7 +59,7 @@ export async function settleScreens(page: Page) {
 }
 
 export async function expectGoalProgress(page: Page, text: string | RegExp) {
-  await page.getByRole("button", { name: /📜/ }).click();
+  await page.getByRole("button", { name: "課題", exact: true }).click();
   await (
     await import("@playwright/test")
   )

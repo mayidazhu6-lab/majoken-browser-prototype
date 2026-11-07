@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import GameIcon from "./GameIcon.vue";
 import type { Combat } from "../domain/types";
 import { CONFIG, LABELS, V20_LABELS } from "../domain/config";
 import { elementPotion } from "../domain/elementCombat";
@@ -32,8 +33,10 @@ withDefaults(
           <td v-for="side in sides" :key="side">
             <template v-for="effect in [round.sides[side]]" :key="side">
               <strong
-                >{{ V20_LABELS[effect.element] }} · 与ダメージ
-                {{ effect.dealt }}</strong
+                ><GameIcon :kind="effect.element" />{{
+                  V20_LABELS[effect.element]
+                }}
+                · 与ダメージ {{ effect.dealt }}</strong
               >
               <p>
                 基本2 ＋ Lv補正{{ effect.levelBonus }} ＋ 相性{{

@@ -24,6 +24,8 @@ import { legalStances } from "./domain/combat";
 import TurnStatus from "./components/TurnStatus.vue";
 import InstituteHealth from "./components/InstituteHealth.vue";
 import EventOverview from "./components/EventOverview.vue";
+import GameIcon from "./components/GameIcon.vue";
+import { schoolTheme } from "./ui/schoolTheme";
 import CombatAffinity from "./components/CombatAffinity.vue";
 import CombatRounds from "./components/CombatRounds.vue";
 import { useGameStore } from "./stores/game";
@@ -113,6 +115,13 @@ const setupMagics = Object.fromEntries(
 ) as Pick<typeof MAGICS, (typeof V20_MAGICS)[number]>;
 const store = useGameStore();
 const s = computed(() => store.state!);
+watch(
+  () => schoolTheme(s.value?.phase),
+  (theme) => {
+    document.documentElement.dataset.theme = theme;
+  },
+  { immediate: true, flush: "sync" },
+);
 const me = computed(() => s.value?.players[0]!);
 const setup = ref<Setup>({
   name: "アリア",
@@ -144,12 +153,12 @@ const graduation = ref(false);
 const actionScreen = ref("");
 const eventMockSelected = ref(false);
 const publicActions = {
-  gather: { label: "採集", cost: 1 },
-  research: { label: "研究", cost: 1 },
-  event: { label: "納品", cost: 0 },
-  shop: { label: "購買部", cost: 1 },
-  trade: { label: "魔女間取引", cost: 0 },
-  duel: { label: "決闘", cost: 1 },
+  gather: { label: "採集", cost: 1, icon: "herb" },
+  research: { label: "研究", cost: 1, icon: "book" },
+  event: { label: "納品", cost: 0, icon: "bag" },
+  shop: { label: "購買部", cost: 1, icon: "coin" },
+  trade: { label: "魔女間取引", cost: 0, icon: "spiral" },
+  duel: { label: "決闘", cost: 1, icon: "sword" },
 } as const;
 const menu = ref("");
 const menuOpener = ref<HTMLElement>();
@@ -169,6 +178,14 @@ function openRuleGuide(event: MouseEvent) {
 const menuTab = ref("materials");
 const deferredTrades = ref<string[]>([]);
 const NIGHT_ACTIONS: NightKind[] = ["raid", "curse", "guard", "rest", "scout"];
+const nightActionIcons: Record<NightKind, string> = {
+  raid: "sword",
+  curse: "fire",
+  guard: "shield",
+  rest: "moon",
+  scout: "eye",
+  brew: "potion",
+};
 const actionResult = ref<string[]>([]);
 const battleStep = ref("intro");
 const mockResult = ref<Combat>();
@@ -1200,7 +1217,7 @@ watch(
         </div>
         <div class="stat-inputs">
           <label v-for="k in STATS" :key="k"
-            >{{ LABELS[k]
+            ><GameIcon :kind="k" :legacy="!!s && !isV20(s)" />{{ LABELS[k]
             }}<input
               v-model.number="setup.stats[k]"
               type="number"
@@ -1267,7 +1284,11 @@ watch(
         :public-phase="s.phase === 'public'"
         :acted="s.publicTurn.acted"
         :own-turn="currentPlayer(s) === 0 && s.publicTurn.round <= 2"
-        :reason="s.phase === 'public' ? publicAPReason || interruptReason : ''"
+        :reason="
+          !combat && s.phase === 'public'
+            ? publicAPReason || interruptReason
+            : ''
+        "
       />
       <button
         v-if="
@@ -1392,7 +1413,10 @@ watch(
                 </div>
                 <div class="stats">
                   <span v-for="k in STATS" :key="k"
-                    >{{ LABELS[k] }} <b>{{ p.stats[k] }}</b
+                    ><GameIcon :kind="k" :legacy="!!s && !isV20(s)" />{{
+                      LABELS[k]
+                    }}
+                    <b>{{ p.stats[k] }}</b
                     ><small v-if="p.id === 0"
                       >Lv{{ level(p.stats[k]) }}</small
                     ></span
@@ -1414,12 +1438,14 @@ watch(
           </details>
           <nav v-if="!s.result" class="common-menu" aria-label="共通メニュー">
             <button @click="openMenu($event, 'inventory')">
-              🎒<br />持ち物
+              <GameIcon kind="bag" /><br />持ち物
             </button>
             <button @click="openMenu($event, 'attributes')">
-              ✦<br />能力値
+              <GameIcon kind="star" /><br />能力値
             </button>
-            <button @click="openMenu($event, 'goals')">📜<br />課題</button>
+            <button @click="openMenu($event, 'goals')">
+              <GameIcon kind="book" /><br />課題
+            </button>
           </nav>
           <details v-if="!actionScreen" class="panel level-guide">
             <summary>あなたの能力Lvと解禁効果</summary>
@@ -1555,7 +1581,7 @@ watch(
                   >
                   <div class="stats">
                     <span v-for="stat in STATS" :key="stat"
-                      >{{ LABELS[stat] }}
+                      ><GameIcon :kind="stat" />{{ LABELS[stat] }}
                       <b>{{
                         s.players[combat.participants[side]].stats[stat]
                       }}</b>
@@ -1581,9 +1607,11 @@ watch(
                 :key="item.id"
                 class="checkbox-row"
               >
-                <input v-model="brought" type="checkbox" :value="item.id" />{{
-                  itemName(item.kind)
-                }}
+                <input
+                  v-model="brought"
+                  type="checkbox"
+                  :value="item.id"
+                /><GameIcon :kind="item.kind" />{{ itemName(item.kind) }}
               </label>
               <button
                 class="primary"
@@ -1604,7 +1632,7 @@ watch(
               </button>
             </template>
             <template v-else-if="!combat.done">
-              <CombatAffinity elemental />
+              <CombatAffinity elemental :selected="selectedElement" />
               <p v-if="combat.kind === 'mock'">
                 模擬戦では上位薬を使用しません。
               </p>
@@ -1616,7 +1644,7 @@ watch(
                   :class="{ chosen: selectedElement === element }"
                   @click="selectedElement = element"
                 >
-                  {{ LABELS[element] }}
+                  <GameIcon :kind="element" />{{ LABELS[element] }}
                 </button>
               </div>
               <label v-if="elementalPotionChoices.length"
@@ -2000,9 +2028,10 @@ watch(
                 :key="kind"
                 class="material-count"
               >
-                {{ itemName(kind) }}：必要{{ needed }} / 使用可能{{
-                  inventory[kind]?.free ?? 0
+                <GameIcon :kind="kind" />{{ itemName(kind) }}：必要{{
+                  needed
                 }}
+                / 使用可能{{ inventory[kind]?.free ?? 0 }}
               </span>
             </p>
             <ResearchPreview
@@ -2105,7 +2134,9 @@ watch(
                 "
                 @click="act({ type: 'usePotion', player: 0, item: item.id })"
               >
-                {{ itemName(item.kind) }}を使う（0AP）
+                <GameIcon :kind="item.kind" />{{
+                  itemName(item.kind)
+                }}を使う（0AP）
               </button>
             </div>
             <p v-if="!actionScreen" class="action-steps">
@@ -2132,7 +2163,9 @@ watch(
                 "
                 @click="openAction(id)"
               >
-                <span>{{ action.label }}（{{ action.cost }}AP）</span>
+                <GameIcon :kind="action.icon" class="action-card-symbol" /><span
+                  >{{ action.label }}（{{ action.cost }}AP）</span
+                >
                 <small v-if="action.cost && publicAPReason" class="muted">
                   {{ id === "duel" ? "1APの挑戦は不可" : "詳細のみ" }}
                 </small>
@@ -2182,6 +2215,14 @@ watch(
                   </option>
                 </select></label
               >
+              <details v-if="actionScreen === 'gather'">
+                <summary>採集できる素材を見る</summary>
+                <div class="material-roster">
+                  <span v-for="kind in MATERIALS" :key="kind"
+                    ><GameIcon :kind="kind" />{{ itemName(kind) }}</span
+                  >
+                </div>
+              </details>
               <div v-if="actionScreen === 'gather'" class="action-card">
                 <div>
                   <h3>森で採集</h3>
@@ -2227,16 +2268,21 @@ watch(
                 class="action-card research-card"
               >
                 <div>
-                  <h3>{{ LABELS[k] }}を研究</h3>
+                  <h3>
+                    <GameIcon :kind="k" :legacy="!isV20(s)" />{{
+                      LABELS[k]
+                    }}を研究
+                  </h3>
                   <p v-if="researchCost(k)">
                     <span
                       v-for="[kind, needed] in researchCost(k)"
                       :key="kind"
                       class="material-count"
                     >
-                      {{ itemName(kind) }}：必要{{ needed }} / 使用可能{{
-                        inventory[kind]?.free ?? 0
+                      <GameIcon :kind="kind" />{{ itemName(kind) }}：必要{{
+                        needed
                       }}
+                      / 使用可能{{ inventory[kind]?.free ?? 0 }}
                     </span>
                   </p>
                   <p v-else>
@@ -2320,7 +2366,9 @@ watch(
               />
               <div v-if="event?.stats" class="stat-inputs">
                 <label v-for="k in STATS" :key="k"
-                  >{{ LABELS[k] }}（能力値{{ me.stats[k] }}／納品可能{{
+                  ><GameIcon :kind="k" :legacy="!isV20(s)" />{{
+                    LABELS[k]
+                  }}（能力値{{ me.stats[k] }}／納品可能{{
                     me.stats[k] - 1
                   }}点）<QuantitySpinner :label="LABELS[k] + 'の納品数'"
                     ><input
@@ -2376,6 +2424,7 @@ watch(
                 v-model="selected"
                 :items="available(me).filter((i) => MATERIALS.includes(i.kind))"
               />
+              <GameIcon :kind="shopKind" />
               <select v-model="shopKind">
                 <option v-for="m in MATERIALS" :key="m" :value="m">
                   {{ itemName(m) }}
@@ -2430,7 +2479,7 @@ watch(
                   class="trade-row"
                 >
                   <span
-                    >{{ itemName(kind)
+                    ><GameIcon :kind="kind" />{{ itemName(kind)
                     }}<small class="inventory-caption"
                       >所持 {{ inventory[kind]?.total ?? 0 }}個 · 提供可能
                       {{ inventory[kind]?.free ?? 0 }}個</small
@@ -2659,7 +2708,7 @@ watch(
                   :disabled="kind === 'raid' && me.lastRaid === s.day - 1"
                   @click="night = kind"
                 >
-                  {{ LABELS[kind] }}
+                  <GameIcon :kind="nightActionIcons[kind]" />{{ LABELS[kind] }}
                 </button>
               </div>
               <p class="night-effect">{{ nightEffect }}</p>
@@ -2694,13 +2743,14 @@ watch(
                 </select>
               </label>
               <p v-if="modernRecipe(nightRecipe)" class="recipe-preview">
+                <GameIcon :kind="nightRecipe" />
                 {{ NIGHT_RECIPE_EFFECTS[nightRecipe] }}
               </p>
               <details>
                 <summary>すべての薬の効果</summary>
                 <ul>
                   <li v-for="r in NIGHT_RECIPES" :key="r.id">
-                    <strong>{{ r.name }}</strong> —
+                    <strong><GameIcon :kind="r.id" />{{ r.name }}</strong> —
                     {{ NIGHT_RECIPE_EFFECTS[r.id] }}
                   </li>
                 </ul>
@@ -2712,7 +2762,7 @@ watch(
                 作成予定に追加
               </button>
               <p v-for="(id, i) in nightPlan" :key="i">
-                {{ itemName(id) }}
+                <GameIcon :kind="id" />{{ itemName(id) }}
                 <button @click="nightPlan.splice(i, 1)">削除</button>
               </p>
               <p v-if="actionError(nightDraft)" class="muted">
@@ -2792,7 +2842,7 @@ watch(
                 :disabled="!!store.pending"
                 @click="act({ type: 'nightReward', player: 0, item: item.id })"
               >
-                強奪：{{ itemName(item.kind) }}
+                <GameIcon :kind="item.kind" />強奪：{{ itemName(item.kind) }}
               </button>
               <template v-if="modernReward.canCommand">
                 <button
@@ -2840,7 +2890,7 @@ watch(
                   if (target === 0) target = 1;
                 "
               >
-                {{ LABELS[n] }}
+                <GameIcon :kind="nightActionIcons[n]" />{{ LABELS[n] }}
               </button>
             </div>
             <button v-if="actionScreen && !me.night" @click="cancelAction">
@@ -2892,14 +2942,20 @@ watch(
                   class="recipe-preview"
                   aria-label="選択した薬の詳細"
                 >
-                  <h3>{{ recipe(nightRecipe)!.name }}</h3>
+                  <h3>
+                    <GameIcon :kind="nightRecipe" />{{
+                      recipe(nightRecipe)!.name
+                    }}
+                  </h3>
                   <p>{{ potionDescription(nightRecipe) }}</p>
                   <p
                     v-for="kind in [...new Set(recipe(nightRecipe)!.materials)]"
                     :key="kind"
                     class="material-count"
                   >
-                    {{ itemName(kind) }}：1個作成に必要{{
+                    <GameIcon :kind="kind" />{{
+                      itemName(kind)
+                    }}：1個作成に必要{{
                       recipe(nightRecipe)!.materials.filter((m) => m === kind)
                         .length
                     }}個 / 現在の所持数{{ inventory[kind]?.total ?? 0 }}個
@@ -2923,7 +2979,7 @@ watch(
                       :key="m.kind"
                       :data-material="m.kind"
                     >
-                      <th>{{ itemName(m.kind) }}</th>
+                      <th><GameIcon :kind="m.kind" />{{ itemName(m.kind) }}</th>
                       <td>{{ m.owned }}</td>
                       <td>{{ m.planned }}</td>
                       <td>
@@ -2951,7 +3007,7 @@ watch(
                   作成予定に追加
                 </button>
                 <p v-for="(id, i) in nightPlan" :key="i">
-                  {{ itemName(id) }}
+                  <GameIcon :kind="id" />{{ itemName(id) }}
                   <button
                     :disabled="!!me.night"
                     @click="nightPlan.splice(i, 1)"
@@ -3544,7 +3600,10 @@ watch(
           )"
           :key="kind"
         >
-          <h3>{{ itemName(String(kind)) }} × {{ count.total }}</h3>
+          <h3>
+            <GameIcon :kind="String(kind)" />{{ itemName(String(kind)) }} ×
+            {{ count.total }}
+          </h3>
           <p v-if="count.free !== count.total">
             使用可能{{ count.free }} / 予約中{{ count.total - count.free }}
           </p>
@@ -3586,7 +3645,7 @@ watch(
                 })
               "
             >
-              {{ itemName(i.kind) }}を使う
+              <GameIcon :kind="i.kind" />{{ itemName(i.kind) }}を使う
             </button>
           </div>
         </details>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import GameIcon from "./GameIcon.vue";
 import { ref, onMounted, onBeforeUnmount } from "vue";
 const root = ref<HTMLElement>();
 let observer: ResizeObserver | undefined;
@@ -30,7 +31,9 @@ defineProps<{
 <template>
   <section ref="root" class="turn-hud" aria-label="現在の時間帯と行動点">
     <div class="hud-time">
-      <strong>第{{ day }}日 · {{ time }}</strong
+      <strong
+        ><GameIcon :kind="time === '夜' ? 'moon' : 'sun'" />第{{ day }}日 ·
+        {{ time }}</strong
       ><small>{{ phase }}</small>
     </div>
     <div class="hud-ap">

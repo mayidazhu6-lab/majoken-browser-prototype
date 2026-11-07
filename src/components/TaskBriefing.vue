@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import GameIcon from "./GameIcon.vue";
 defineProps<{
   graduation: boolean;
   day: number;
@@ -10,6 +11,7 @@ defineEmits<{ confirm: [] }>();
 <template>
   <section class="panel focus-screen briefing">
     <h2 tabindex="-1">
+      <GameIcon kind="book" />
       {{ graduation ? "あなたの卒業課題" : `${day}日目の今日の課題` }}
     </h2>
     <p v-if="graduation">8日間の間に以下を達成する事。</p>

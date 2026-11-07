@@ -153,9 +153,9 @@ for (const width of [1440, 390]) {
       "あと3回の失敗で研究所崩壊",
     );
     const affinity = page.getByRole("complementary", { name: "戦闘の相性" });
-    await expect(affinity).toContainText("火 → 🍃 風");
-    await expect(affinity).toContainText("風 → 💧 水");
-    await expect(affinity).toContainText("水 → 🔥 火");
+    await expect(affinity).toContainText("火 → 風");
+    await expect(affinity).toContainText("風 → 水");
+    await expect(affinity).toContainText("水 → 火");
     await noOverflow(page);
     await page.screenshot({
       path: testInfo.outputPath(`combat-${width}.png`),
