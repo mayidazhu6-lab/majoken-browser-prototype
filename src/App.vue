@@ -25,6 +25,7 @@ import TurnStatus from "./components/TurnStatus.vue";
 import InstituteHealth from "./components/InstituteHealth.vue";
 import EventOverview from "./components/EventOverview.vue";
 import GameIcon from "./components/GameIcon.vue";
+import { midpointNotice } from "./ui/midpointNotice";
 import { schoolTheme } from "./ui/schoolTheme";
 import CombatAffinity from "./components/CombatAffinity.vue";
 import CombatRounds from "./components/CombatRounds.vue";
@@ -196,6 +197,11 @@ const briefing = computed(
     !!s.value &&
     (graduation.value ||
       (s.value.phase === "public" && hoNoticeDay.value !== s.value.day)),
+);
+const morningMidpoint = computed(() =>
+  s.value && !graduation.value
+    ? midpointNotice(s.value, hoNoticeDay.value)
+    : undefined,
 );
 function cancelAction() {
   if (target.value === -1) target.value = 1;
@@ -749,6 +755,10 @@ function act(a: Action, retry = false) {
   }
   pendingAction = undefined;
   if (s.value !== previous) {
+    // A real day transition can establish the previous morning even when an old
+    // day-four save had no optional UI metadata. Loading a day-five save cannot.
+    if (previous.day === 4 && s.value.day === 5 && hoNoticeDay.value < 4)
+      hoNoticeDay.value = 4;
     if (s.value.combat?.id !== previous?.combat?.id)
       battleStep.value = s.value.combat?.done ? "end" : "intro";
     if (
@@ -1087,7 +1097,7 @@ watch(
       behavior: "instant",
     });
     document
-      .querySelector<HTMLElement>("main h2, .center-column h2")
+      .querySelector<HTMLElement>(".briefing h2, main h2, .center-column h2")
       ?.focus({ preventScroll: true });
   },
 );
@@ -1336,6 +1346,7 @@ watch(
       <TaskBriefing
         v-if="briefing"
         :graduation="graduation"
+        :midpoint="morningMidpoint"
         :day="s.day"
         :name="
           goalDescription(graduation ? me.longGoal : me.dailyGoal, graduation)
