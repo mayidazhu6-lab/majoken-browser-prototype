@@ -21,6 +21,9 @@ import {
   usable,
 } from "./domain/night";
 import { legalStances } from "./domain/combat";
+import TurnStatus from "./components/TurnStatus.vue";
+import InstituteHealth from "./components/InstituteHealth.vue";
+import EventOverview from "./components/EventOverview.vue";
 import CombatAffinity from "./components/CombatAffinity.vue";
 import CombatRounds from "./components/CombatRounds.vue";
 import { useGameStore } from "./stores/game";
@@ -139,6 +142,7 @@ const hoNoticeDay = ref(0);
 const creation = ref(false);
 const graduation = ref(false);
 const actionScreen = ref("");
+const eventMockSelected = ref(false);
 const publicActions = {
   gather: { label: "採集", cost: 1 },
   research: { label: "研究", cost: 1 },
@@ -165,20 +169,6 @@ function openRuleGuide(event: MouseEvent) {
 const menuTab = ref("materials");
 const deferredTrades = ref<string[]>([]);
 const NIGHT_ACTIONS: NightKind[] = ["raid", "curse", "guard", "rest", "scout"];
-const eventSymbols = [
-  "✦",
-  "❖",
-  "✿",
-  "⚔",
-  "◈",
-  "✧",
-  "⚗",
-  "♢",
-  "✶",
-  "⚔",
-  "☾",
-  "✴",
-];
 const actionResult = ref<string[]>([]);
 const battleStep = ref("intro");
 const mockResult = ref<Combat>();
@@ -191,6 +181,8 @@ const briefing = computed(
       (s.value.phase === "public" && hoNoticeDay.value !== s.value.day)),
 );
 function cancelAction() {
+  if (target.value === -1) target.value = 1;
+  eventMockSelected.value = false;
   actionScreen.value = "";
   selected.value = [];
   reserveStats.value = {};
@@ -205,6 +197,59 @@ function openAction(id: string) {
   else tab.value = id;
   if (id === "brew")
     nightRecipe.value = brewCandidates.value[0]?.id ?? RECIPES[0].id;
+}
+function eventActionReason(action: string) {
+  if (!s.value || s.value.phase !== "public" || s.value.event.resolved)
+    return "公開行動中に操作できます。";
+  if (store.pending) return "保存の再試行が必要です。";
+  if (combat.value || s.value.challenge)
+    return "先に決闘への対応を完了してください。";
+  if (currentPlayer(s.value) !== 0 || s.value.publicTurn.round > 2)
+    return "自分の午前・午後の手番で操作できます。";
+  if (me.value.pendingRecipe) return "先に報酬を選択してください。";
+  if (["gather", "research"].includes(action)) return publicAPReason.value;
+  if (
+    action === "mock" &&
+    !s.value.players.some(
+      (p) =>
+        p.id !== 0 &&
+        can({ type: "duel", player: 0, target: p.id, mock: true }),
+    )
+  )
+    return "現在は模擬戦を開始できません。";
+  return "";
+}
+function openEventAction(action: string) {
+  if (eventActionReason(action)) return;
+  openAction(action === "mock" ? "duel" : action);
+  if (action === "mock") {
+    eventMockSelected.value = true;
+    target.value = s.value.players.find(
+      (p) =>
+        p.id !== 0 &&
+        can({ type: "duel", player: 0, target: p.id, mock: true }),
+    )!.id;
+  }
+}
+function switchDuelMode(mock: boolean) {
+  if (actionScreen.value !== "duel") return;
+  eventMockSelected.value = mock;
+  target.value = -1;
+  selected.value = [];
+  brought.value = [];
+  battlePotion.value = undefined;
+  actionPotion.value = undefined;
+}
+function jumpToPublicActions() {
+  const choices = document.getElementById("public-action-choices");
+  const hudHeight =
+    document.querySelector(".turn-hud")?.getBoundingClientRect().height ?? 0;
+  if (!choices) return;
+  window.scrollTo({
+    top: window.scrollY + choices.getBoundingClientRect().top - hudHeight - 12,
+    behavior: "instant",
+  });
+  choices.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
 }
 function restoreView() {
   cancelAction();
@@ -1019,7 +1064,11 @@ watch(
     ].join(":"),
   async () => {
     await nextTick();
-    window.scrollTo({ top: 0, behavior: "instant" });
+    const anchor = document.querySelector<HTMLElement>(".turn-hud-anchor");
+    window.scrollTo({
+      top: anchor ? window.scrollY + anchor.getBoundingClientRect().top : 0,
+      behavior: "instant",
+    });
     document
       .querySelector<HTMLElement>("main h2, .center-column h2")
       ?.focus({ preventScroll: true });
@@ -1191,18 +1240,53 @@ watch(
             }}</span
           >
         </nav>
-        <div class="risk">
-          <span>研究所の危機</span>
-          <div>
-            <b v-for="i in 3" :key="i" :class="{ failed: i <= s.failed }">✦</b>
-          </div>
-          <small
-            >累積失敗 {{ s.failed }} / 3 · あと{{
-              Math.max(0, 3 - s.failed)
-            }}回の失敗で研究所崩壊</small
-          ><strong>残りAP {{ me.ap }} / 2 · 名声 {{ me.fp }}</strong>
-        </div>
       </div>
+      <div class="turn-hud-anchor" aria-hidden="true"></div>
+      <TurnStatus
+        :day="s.day"
+        :phase="
+          s.phase === 'ho' && hasRevisedNightRules(s)
+            ? '課題判定・夜明け'
+            : LABELS[s.phase]
+        "
+        :time="
+          s.phase === 'public' && s.publicTurn.round <= 2
+            ? s.publicTurn.round === 1
+              ? '午前'
+              : '午後'
+            : s.phase === 'dawn' || s.phase === 'ho'
+              ? '夜明け'
+              : s.phase === 'public'
+                ? '公開行動終了'
+                : s.phase === 'ended'
+                  ? '研究終了'
+                  : '夜'
+        "
+        :ap="me.ap"
+        :fp="me.fp"
+        :public-phase="s.phase === 'public'"
+        :acted="s.publicTurn.acted"
+        :own-turn="currentPlayer(s) === 0 && s.publicTurn.round <= 2"
+        :reason="s.phase === 'public' ? publicAPReason || interruptReason : ''"
+      />
+      <button
+        v-if="
+          s.phase === 'public' &&
+          !briefing &&
+          !actionResult.length &&
+          !combat &&
+          !s.challenge &&
+          !actionScreen &&
+          !s.event.resolved
+        "
+        type="button"
+        class="mobile-action-jump"
+        aria-controls="public-action-choices"
+        @click="jumpToPublicActions"
+      >
+        <strong>行動を選ぶ</strong><span>採集・研究など ↓</span>
+      </button>
+      <InstituteHealth :failed="s.failed" />
       <section
         v-if="
           !modernNight && s.event.resolved && s.event.acknowledged && !s.result
@@ -1255,10 +1339,38 @@ watch(
       <div
         v-else
         class="game-grid"
-        :class="{ 'battle-screen': !!combat, 'action-detail': !!actionScreen }"
+        :class="{
+          'battle-screen': !!combat,
+          'action-detail': !!actionScreen,
+          'public-home': s.phase === 'public' && !actionScreen && !combat,
+        }"
       >
         <aside v-if="!combat" class="left-column">
-          <section v-if="!actionScreen" class="panel">
+          <EventOverview
+            v-if="s.phase === 'public' && !actionScreen"
+            class="event-preview"
+            :state="s"
+            shortcuts
+            :reason-for="eventActionReason"
+            @navigate="openEventAction"
+          />
+          <section
+            v-if="s.phase === 'public' && !actionScreen"
+            class="panel task-glance"
+            aria-label="自分の今日の課題"
+          >
+            <span class="eyebrow">自分の今日の課題</span>
+            <h3>{{ goalDescription(me.dailyGoal, false).name }}</h3>
+            <p>{{ hoProgress?.status }}</p>
+            <details>
+              <summary>達成条件と進捗</summary>
+              <p>{{ goalDescription(me.dailyGoal, false).condition }}</p>
+              <p>{{ hoProgress?.detail }}</p>
+            </details>
+          </section>
+
+          <details v-if="!actionScreen" class="panel witches-overview">
+            <summary>研究室の魔女たち・公開情報</summary>
             <div class="section-heading">
               <h2>研究室の魔女たち</h2>
               <small>公開情報</small>
@@ -1299,7 +1411,7 @@ watch(
                 >
               </div>
             </article>
-          </section>
+          </details>
           <nav v-if="!s.result" class="common-menu" aria-label="共通メニュー">
             <button @click="openMenu($event, 'inventory')">
               🎒<br />持ち物
@@ -1957,7 +2069,7 @@ watch(
             class="panel actions-panel"
           >
             <div class="section-heading">
-              <h2>今日、何を研究する？</h2>
+              <h2 tabindex="-1">今、何をする？</h2>
               <span class="ap-badge">残りAP {{ me.ap }} / 2</span>
             </div>
             <div role="status">
@@ -1996,34 +2108,19 @@ watch(
                 {{ itemName(item.kind) }}を使う（0AP）
               </button>
             </div>
-            <p v-if="!actionScreen">
-              午前・午後それぞれで1AP行動を1回選び、納品・取引を済ませたら「手番終了」へ。何もしないでパスすることもできます。
+            <p v-if="!actionScreen" class="action-steps">
+              行動を選ぶ → 内容を確認 → 確定 → 手番終了
             </p>
-            <button
-              v-if="!actionScreen && event"
-              type="button"
-              class="event-preview"
-              :data-difficulty="event.difficulty"
-              @click="openAction('event')"
-            >
-              <span class="event-emblem" aria-hidden="true">{{
-                eventSymbols[event.id - 1]
-              }}</span>
-              <span class="eyebrow"
-                >今日の共通イベント · {{ event.difficulty }}</span
-              >
-              <strong>{{ event.name }}</strong>
-              <span
-                >{{ event.description
-                }}<template v-if="event.id === 11"
-                  >：{{ itemName(s.event.specified) }}</template
-                ></span
-              >
-              <small>条件・進捗と納品を見る →</small>
-            </button>
+            <details v-if="!actionScreen" class="public-help">
+              <summary>公開行動の進め方</summary>
+              <p>
+                午前・午後それぞれで1AP行動を1回選び、納品・取引を済ませたら「手番終了」へ。何もしないでパスすることもできます。
+              </p>
+            </details>
             <nav
               v-if="!actionScreen"
               class="action-menu public-action-menu"
+              id="public-action-choices"
               aria-label="公開行動"
             >
               <button
@@ -2046,12 +2143,20 @@ watch(
             </button>
             <p v-if="actionScreen" class="selection-summary" role="status">
               選択中：{{
-                publicActions[actionScreen as keyof typeof publicActions]?.label
+                eventMockSelected
+                  ? "イベント模擬戦"
+                  : actionScreen === "duel"
+                    ? "通常の公開決闘"
+                    : publicActions[actionScreen as keyof typeof publicActions]
+                        ?.label
               }}
               · 必要AP
               {{
-                publicActions[actionScreen as keyof typeof publicActions]?.cost
-              }}<template v-if="actionScreen === 'duel'"
+                eventMockSelected
+                  ? 0
+                  : publicActions[actionScreen as keyof typeof publicActions]
+                      ?.cost
+              }}<template v-if="actionScreen === 'duel' && !eventMockSelected"
                 >（公開決闘への挑戦時）</template
               >
             </p>
@@ -2197,122 +2302,17 @@ watch(
               </div></template
             >
             <template v-if="actionScreen && tab === 'event'">
-              <section v-if="event && progress" class="panel event-panel">
-                <div class="section-heading">
-                  <span class="eyebrow">今日の共通イベント</span
-                  ><span class="difficulty" :class="event.difficulty">{{
-                    event.difficulty
-                  }}</span>
-                </div>
-                <h2>{{ event.name }}</h2>
-                <p>
-                  {{ event.description
-                  }}<strong v-if="event.id === 11"
-                    >：{{ itemName(s.event.specified) }}</strong
-                  >
-                </p>
-                <p v-if="event.allowed">
-                  対象素材：{{ event.allowed.map(itemName).join("・") }}
-                </p>
-                <p v-if="event.id === 11">
-                  指定素材：{{ itemName(s.event.specified) }}
-                </p>
-                <p v-if="event.either">
-                  素材・能力のいずれかの条件で達成します。 先着ルート：{{
-                    s.event.route === "materials"
-                      ? "素材"
-                      : s.event.route === "stats"
-                        ? "能力"
-                        : "未確定"
-                  }}
-                </p>
-                <div class="event-metrics">
-                  <span v-if="event.materials"
-                    >素材
-                    <b>{{ progress.materials }} / {{ event.materials }}個</b
-                    >（不足{{
-                      Math.max(0, event.materials - progress.materials)
-                    }}個）</span
-                  ><span v-if="event.stats"
-                    >能力
-                    <b>{{ progress.stats }} / {{ event.stats }}点</b>（不足{{
-                      Math.max(0, event.stats - progress.stats)
-                    }}点）</span
-                  ><span v-if="event.potions"
-                    >薬
-                    <b>{{ progress.potions }} / {{ event.potions }}個</b
-                    >（不足{{
-                      Math.max(0, event.potions - progress.potions)
-                    }}個）</span
-                  ><span v-if="event.actions"
-                    >成立行動
-                    <b>{{ progress.actions }} / {{ event.count }}回</b>（不足{{
-                      Math.max(0, (event.count ?? 0) - progress.actions)
-                    }}回）</span
-                  ><span v-if="event.mock"
-                    >模擬戦
-                    <b>{{ s.event.mock.length ? "完了" : "未完了" }}</b></span
-                  >
-                </div>
-                <div class="progress-track">
-                  <i
-                    :style="{
-                      width: s.event.resolved
-                        ? s.event.success
-                          ? '100%'
-                          : '0%'
-                        : progress.success
-                          ? '100%'
-                          : `${Math.min(95, Math.max(progress.materials / (event.materials || 99), progress.stats / (event.stats || 99), progress.potions / (event.potions || 99), progress.actions / (event.count || 99)) * 100)}%`,
-                    }"
-                  ></i>
-                </div>
-                <p class="event-status">
-                  {{
-                    s.event.resolved
-                      ? s.event.success
-                        ? "✓ 共同研究、成功。"
-                        : "イベント失敗。予約品は返却されました。"
-                      : progress.success
-                        ? "✓ 条件充足。公開フェーズ終了時に確定します。"
-                        : "仲間と協力して、必要条件を満たしましょう。"
-                  }}
-                </p>
-                <p v-if="event.required" class="muted">
-                  必須：<span v-for="(n, k) in event.required" :key="k"
-                    >{{ itemName(String(k)) }} {{ progress.counts[k] ?? 0 }} /
-                    {{ n }}個（不足{{
-                      Math.max(0, n - (progress.counts[k] ?? 0))
-                    }}個）　</span
-                  >
-                </p>
-                <details v-if="s.event.reservations.length">
-                  <summary>全員の納品予約を確認</summary>
-                  <p v-for="(r, i) in s.event.reservations" :key="i">
-                    {{ s.players[r.player].name }}：{{
-                      r.items
-                        .map((id) =>
-                          itemName(
-                            s.players[r.player].inventory.find(
-                              (i) => i.id === id,
-                            )?.kind ?? "",
-                          ),
-                        )
-                        .join("・")
-                    }}
-                    <span v-for="(n, k) in r.stats" :key="k"
-                      >{{ LABELS[k] }} {{ n }}
-                    </span>
-                  </p>
-                </details>
-              </section>
+              <EventOverview :state="s" />
               <h3>この協力イベントに仮納品する（0AP）</h3>
               <p class="reservation-limit">
                 {{
                   `予約済み ${reservationUnits(s, me)}。超過分は結果確定時に返却します。`
                 }}
               </p>
-              <p>納品は0AP。成功時のみ消費し、失敗時は返却します。</p>
+              <details>
+                <summary>納品の消費・返却ルール</summary>
+                <p>納品は0AP。成功時のみ消費し、失敗時は返却します。</p>
+              </details>
               <GroupedItems
                 v-model="selected"
                 :items="donationCandidates"
@@ -2480,9 +2480,22 @@ watch(
                 所持品の内訳は非公開です。提案では品を予約せず、承諾時に確認します。片側0個の譲渡も可能です。
               </p></template
             >
-            <template v-if="actionScreen && tab === 'duel'"
-              ><label
+            <template v-if="actionScreen && tab === 'duel'">
+              <p
+                v-if="eventMockSelected"
+                class="event-mock-notice"
+                role="status"
+              >
+                イベント模擬戦を選択中（0AP）。相手を選び「イベント模擬戦」で確定してください。
+              </p>
+              <p v-else class="public-duel-notice" role="status">
+                通常の公開決闘を選択中（1AP）。イベント模擬戦の達成条件には数えません。
+              </p>
+              <label
                 >対戦相手<select v-model="target">
+                  <option :value="-1" disabled>
+                    対戦相手を選択してください
+                  </option>
                   <option
                     v-for="p in s.players.slice(1)"
                     :key="p.id"
@@ -2492,31 +2505,70 @@ watch(
                   </option>
                 </select></label
               >
-              <p>
+              <p v-if="eventMockSelected">
+                イベント模擬戦は0APで、通常の公開決闘とは別の操作です。
+              </p>
+              <p v-else>
                 公開決闘：挑戦者1AP、被挑戦者0AP。勝者FP+{{
                   publicDuelReward(s)
                 }}、能力移転なし。挑戦側・被挑戦側のどちらが勝っても同じFP報酬です。<br />模擬戦：イベント用。勝敗は達成条件に影響しません。
               </p>
-              <p class="muted" v-if="s.rulesVersion === V20_RULES_VERSION">
+              <p
+                class="muted"
+                v-if="
+                  !eventMockSelected && s.rulesVersion === V20_RULES_VERSION
+                "
+              >
                 公開決闘の勝利報酬：1〜4日目＋1FP／5〜8日目＋2FP。秘匿戦闘には適用しません。
               </p>
-              <p class="muted" v-else>
+              <p class="muted" v-else-if="!eventMockSelected">
                 このセーブの公開決闘勝利報酬は全日＋1FPです。秘匿戦闘には適用しません。
               </p>
               <div class="duel-actions">
                 <button
+                  v-if="!eventMockSelected"
                   :disabled="!can({ type: 'duel', player: 0, target })"
-                  @click="act({ type: 'duel', player: 0, target })"
+                  @click="
+                    !eventMockSelected &&
+                    act({ type: 'duel', player: 0, target })
+                  "
                 >
                   公開決闘 <small>1AP</small></button
                 ><button
+                  v-else
+                  class="primary"
                   :disabled="
                     !can({ type: 'duel', player: 0, target, mock: true })
                   "
-                  @click="act({ type: 'duel', player: 0, target, mock: true })"
+                  @click="
+                    eventMockSelected &&
+                    act({ type: 'duel', player: 0, target, mock: true })
+                  "
                 >
                   イベント模擬戦 <small>0AP</small>
                 </button>
+              </div>
+              <div class="duel-mode-switch">
+                <small
+                  >切り替えだけでは消費しません。確定時は通常決闘1AP／イベント模擬戦0APです。</small
+                >
+                <button
+                  type="button"
+                  v-if="eventMockSelected"
+                  @click="switchDuelMode(false)"
+                >
+                  通常の公開決闘に切り替える
+                </button>
+                <button
+                  type="button"
+                  v-else-if="event?.mock && !s.event.mock.length"
+                  @click="switchDuelMode(true)"
+                >
+                  イベント模擬戦に切り替える
+                </button>
+                <p v-if="target === -1" role="status">
+                  種別を切り替えました。対戦相手を選び直してから確定してください。
+                </p>
               </div></template
             >
           </section>

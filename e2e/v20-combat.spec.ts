@@ -16,6 +16,15 @@ for (const [seed, action, title] of [
     await page
       .getByRole("button", { name: "決闘（1AP）", exact: true })
       .click();
+    if (title === "公開模擬戦") {
+      await page
+        .getByRole("button", {
+          name: "イベント模擬戦に切り替える",
+          exact: true,
+        })
+        .click();
+      await page.getByRole("combobox", { name: "対戦相手" }).selectOption("1");
+    }
     await page.getByRole("button", { name: action }).click();
     const battle = page.locator(".combat-panel");
     await expect(battle.getByRole("heading", { name: title })).toBeVisible();
