@@ -42,8 +42,8 @@
 | 長期HO達成状況 | 完走時のplayers[].longGoal.achieved、result.graduates。 |
 | イベント成功/失敗 | type=eventResultのday、data.event、data.success。 |
 
-既存scripts/simulate.tsのfpHistoryはday/player/delta/source、playersは最終FPと長期HO達成、結果にはchiefsとイベント結果を含む。旧新比較には、同じAI版のbrowser-2.0.3とbrowser-2.0.4を明示して既存simulate(seed, rulesVersion)を使用できる。既存の試遊方針は人間1席の代行操作＋NPC3人であり、4席同一AI条件の比較自体は今回実施していない。
+既存scripts/simulate.tsのfpHistoryはday/player/delta/source、playersは最終FPと長期HO達成、chiefsは首席を含む。ただし現行のJSON/CSV出力にはイベントごとの成否一覧は含まれない。simulateの戻り値GameStateにはeventResultログがあるため、その既存ログを抽出すれば取得でき、新しいゲーム内ログは不要。今回、出力スクリプト自体は変更していない。旧新比較には、同じAI版のbrowser-2.0.3とbrowser-2.0.4を明示して既存simulate(seed, rulesVersion)を使用できる。既存の試遊方針は人間1席の代行操作＋NPC3人であり、4席同一AI条件の比較自体は今回実施していない。
 
-崩壊で4日目または8日目へ到達しなかった試行は「未到達」として扱い、欠けた終了FPを推測で補わない。今回、取得不能な追加情報は見つかっていない。
+崩壊で4日目または8日目へ到達しなかった試行は「未到達」として扱い、欠けた終了FPを推測で補わない。元のGameStateから取得不能な追加情報は見つかっていない。現行JSON/CSVだけで全指標が直接揃うわけではなく、イベント成否等は既存ログからの抽出が必要。
 
 mainへはマージせず、Pagesにも反映しない。
