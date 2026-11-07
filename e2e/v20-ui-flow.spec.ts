@@ -151,13 +151,10 @@ for (const width of [1440, 390]) {
     const a = await page
       .getByRole("button", { name: "公開決闘 1AP", exact: true })
       .boundingBox();
-    const b = await page
-      .getByRole("button", { name: "イベント模擬戦 0AP", exact: true })
-      .boundingBox();
-    expect(a && b).toBeTruthy();
-    expect(
-      Math.max(b!.x - a!.x - a!.width, b!.y - a!.y - a!.height),
-    ).toBeGreaterThanOrEqual(15);
+    await expect(
+      page.getByRole("button", { name: "イベント模擬戦 0AP", exact: true }),
+    ).toHaveCount(0);
+    expect(a).toBeTruthy();
     expect(a!.height).toBeGreaterThanOrEqual(44);
     expect(
       await page.evaluate(

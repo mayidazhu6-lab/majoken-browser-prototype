@@ -1923,3 +1923,35 @@ meter::-webkit-meter-optimum-value {
 .institute-health.danger meter::-webkit-meter-optimum-value {
   background: var(--pink);
 }
+
+/* PR #16 review: explicit duel modes and a visible mobile action entry. */
+.mobile-action-jump {
+  display: none;
+}
+.duel-mode-switch {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.duel-mode-switch p {
+  margin-bottom: 0;
+}
+@media (max-width: 760px) {
+  .mobile-action-jump {
+    display: flex;
+    width: 100%;
+    min-height: 44px;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 0 0 12px;
+    border-color: var(--mint);
+  }
+  .mobile-action-jump span {
+    font-size: 12px;
+  }
+}
+.duel-mode-switch small {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--muted);
+}

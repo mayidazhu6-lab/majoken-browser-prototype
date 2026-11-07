@@ -181,6 +181,7 @@ const briefing = computed(
       (s.value.phase === "public" && hoNoticeDay.value !== s.value.day)),
 );
 function cancelAction() {
+  if (target.value === -1) target.value = 1;
   eventMockSelected.value = false;
   actionScreen.value = "";
   selected.value = [];
@@ -229,6 +230,26 @@ function openEventAction(action: string) {
         can({ type: "duel", player: 0, target: p.id, mock: true }),
     )!.id;
   }
+}
+function switchDuelMode(mock: boolean) {
+  if (actionScreen.value !== "duel") return;
+  eventMockSelected.value = mock;
+  target.value = -1;
+  selected.value = [];
+  brought.value = [];
+  battlePotion.value = undefined;
+  actionPotion.value = undefined;
+}
+function jumpToPublicActions() {
+  const choices = document.getElementById("public-action-choices");
+  const hudHeight =
+    document.querySelector(".turn-hud")?.getBoundingClientRect().height ?? 0;
+  if (!choices) return;
+  window.scrollTo({
+    top: window.scrollY + choices.getBoundingClientRect().top - hudHeight - 12,
+    behavior: "instant",
+  });
+  choices.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
 }
 function restoreView() {
   cancelAction();
@@ -1248,6 +1269,23 @@ watch(
         :own-turn="currentPlayer(s) === 0 && s.publicTurn.round <= 2"
         :reason="s.phase === 'public' ? publicAPReason || interruptReason : ''"
       />
+      <button
+        v-if="
+          s.phase === 'public' &&
+          !briefing &&
+          !actionResult.length &&
+          !combat &&
+          !s.challenge &&
+          !actionScreen &&
+          !s.event.resolved
+        "
+        type="button"
+        class="mobile-action-jump"
+        aria-controls="public-action-choices"
+        @click="jumpToPublicActions"
+      >
+        <strong>行動を選ぶ</strong><span>採集・研究など ↓</span>
+      </button>
       <InstituteHealth :failed="s.failed" />
       <section
         v-if="
@@ -2082,6 +2120,7 @@ watch(
             <nav
               v-if="!actionScreen"
               class="action-menu public-action-menu"
+              id="public-action-choices"
               aria-label="公開行動"
             >
               <button
@@ -2106,8 +2145,10 @@ watch(
               選択中：{{
                 eventMockSelected
                   ? "イベント模擬戦"
-                  : publicActions[actionScreen as keyof typeof publicActions]
-                      ?.label
+                  : actionScreen === "duel"
+                    ? "通常の公開決闘"
+                    : publicActions[actionScreen as keyof typeof publicActions]
+                        ?.label
               }}
               · 必要AP
               {{
@@ -2447,8 +2488,14 @@ watch(
               >
                 イベント模擬戦を選択中（0AP）。相手を選び「イベント模擬戦」で確定してください。
               </p>
+              <p v-else class="public-duel-notice" role="status">
+                通常の公開決闘を選択中（1AP）。イベント模擬戦の達成条件には数えません。
+              </p>
               <label
                 >対戦相手<select v-model="target">
+                  <option :value="-1" disabled>
+                    対戦相手を選択してください
+                  </option>
                   <option
                     v-for="p in s.players.slice(1)"
                     :key="p.id"
@@ -2458,32 +2505,70 @@ watch(
                   </option>
                 </select></label
               >
-              <p>
+              <p v-if="eventMockSelected">
+                イベント模擬戦は0APで、通常の公開決闘とは別の操作です。
+              </p>
+              <p v-else>
                 公開決闘：挑戦者1AP、被挑戦者0AP。勝者FP+{{
                   publicDuelReward(s)
                 }}、能力移転なし。挑戦側・被挑戦側のどちらが勝っても同じFP報酬です。<br />模擬戦：イベント用。勝敗は達成条件に影響しません。
               </p>
-              <p class="muted" v-if="s.rulesVersion === V20_RULES_VERSION">
+              <p
+                class="muted"
+                v-if="
+                  !eventMockSelected && s.rulesVersion === V20_RULES_VERSION
+                "
+              >
                 公開決闘の勝利報酬：1〜4日目＋1FP／5〜8日目＋2FP。秘匿戦闘には適用しません。
               </p>
-              <p class="muted" v-else>
+              <p class="muted" v-else-if="!eventMockSelected">
                 このセーブの公開決闘勝利報酬は全日＋1FPです。秘匿戦闘には適用しません。
               </p>
               <div class="duel-actions">
                 <button
+                  v-if="!eventMockSelected"
                   :disabled="!can({ type: 'duel', player: 0, target })"
-                  @click="act({ type: 'duel', player: 0, target })"
+                  @click="
+                    !eventMockSelected &&
+                    act({ type: 'duel', player: 0, target })
+                  "
                 >
                   公開決闘 <small>1AP</small></button
                 ><button
-                  :class="{ primary: eventMockSelected }"
+                  v-else
+                  class="primary"
                   :disabled="
                     !can({ type: 'duel', player: 0, target, mock: true })
                   "
-                  @click="act({ type: 'duel', player: 0, target, mock: true })"
+                  @click="
+                    eventMockSelected &&
+                    act({ type: 'duel', player: 0, target, mock: true })
+                  "
                 >
                   イベント模擬戦 <small>0AP</small>
                 </button>
+              </div>
+              <div class="duel-mode-switch">
+                <small
+                  >切り替えだけでは消費しません。確定時は通常決闘1AP／イベント模擬戦0APです。</small
+                >
+                <button
+                  type="button"
+                  v-if="eventMockSelected"
+                  @click="switchDuelMode(false)"
+                >
+                  通常の公開決闘に切り替える
+                </button>
+                <button
+                  type="button"
+                  v-else-if="event?.mock && !s.event.mock.length"
+                  @click="switchDuelMode(true)"
+                >
+                  イベント模擬戦に切り替える
+                </button>
+                <p v-if="target === -1" role="status">
+                  種別を切り替えました。対戦相手を選び直してから確定してください。
+                </p>
               </div></template
             >
           </section>

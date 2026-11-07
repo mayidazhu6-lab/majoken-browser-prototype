@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createGame, currentPlayer } from "../src/domain/reducer";
+import { createGame, currentPlayer, dispatch } from "../src/domain/reducer";
 import { serialize } from "../src/domain/persistence";
 import type { GameState } from "../src/domain/types";
 import { settleScreens } from "./helpers";
@@ -59,6 +59,36 @@ for (const width of [1440, 390]) {
       path: testInfo.outputPath(`home-${width}.png`),
       fullPage: false,
     });
+    const jump = page.getByRole("button", {
+      name: "行動を選ぶ 採集・研究など ↓",
+      exact: true,
+    });
+    if (width === 390) {
+      await expect(jump).toBeInViewport();
+      expect((await hud.boundingBox())!.height).toBeLessThanOrEqual(80);
+      const unchanged = await saved(page);
+      await jump.click();
+      const gather = page.getByRole("button", {
+        name: "採集（1AP）",
+        exact: true,
+      });
+      await expect(gather).toBeInViewport();
+      await expect(gather).toBeFocused();
+      expect(await saved(page)).toBe(unchanged);
+      await page.screenshot({
+        path: testInfo.outputPath(`actions-${width}.png`),
+        fullPage: false,
+      });
+      await page.evaluate(() => {
+        const el = document.querySelector(".turn-hud-anchor")!;
+        window.scrollTo(0, window.scrollY + el.getBoundingClientRect().top);
+      });
+    } else {
+      await expect(jump).toBeHidden();
+      await expect(
+        page.getByRole("button", { name: "採集（1AP）", exact: true }),
+      ).toBeInViewport();
+    }
     const before = await saved(page);
     await overview
       .getByRole("button", { name: "納品へ（0AP）", exact: true })
@@ -127,6 +157,15 @@ for (const width of [1440, 390]) {
     );
     await expect(panel.locator(".event-mock-notice")).toBeVisible();
     await expect(
+      panel.getByRole("button", { name: "公開決闘 1AP", exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      panel.getByRole("button", {
+        name: "通常の公開決闘に切り替える",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
       panel.getByRole("button", { name: "イベント模擬戦 0AP", exact: true }),
     ).toHaveClass(/primary/);
     expect(await saved(page)).toBe(before);
@@ -176,6 +215,128 @@ for (const [id, expected, links] of [
       );
       await page.getByRole("button", { name: "キャンセルして戻る" }).click();
     }
+    await noOverflow(page);
+  });
+}
+
+for (const width of [1440, 390])
+  for (const mode of ["public", "mock"] as const) {
+    test(`review P2 explicit switches and confirm ${mode} ${width}px`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+      await load(page, eventGame(10));
+      const before = await saved(page);
+      await page
+        .locator(".event-preview")
+        .getByRole("button", { name: "模擬戦へ（0AP）", exact: true })
+        .click();
+      const panel = page.locator(".actions-panel");
+      const target = panel.getByRole("combobox", {
+        name: "対戦相手",
+        exact: true,
+      });
+      await target.selectOption("2");
+      await panel
+        .getByRole("button", {
+          name: "通常の公開決闘に切り替える",
+          exact: true,
+        })
+        .click();
+      await expect(panel.locator(".selection-summary")).toContainText(
+        "通常の公開決闘 · 必要AP 1",
+      );
+      await expect(target).toHaveValue("-1");
+      await expect(
+        panel.getByRole("button", { name: "公開決闘 1AP", exact: true }),
+      ).toBeDisabled();
+      await expect(
+        panel.getByRole("button", { name: "イベント模擬戦 0AP", exact: true }),
+      ).toHaveCount(0);
+      expect(await saved(page)).toBe(before);
+      await target.selectOption("3");
+      await panel
+        .getByRole("button", {
+          name: "イベント模擬戦に切り替える",
+          exact: true,
+        })
+        .click();
+      await expect(target).toHaveValue("-1");
+      await expect(
+        panel.getByRole("button", { name: "イベント模擬戦 0AP", exact: true }),
+      ).toBeDisabled();
+      await expect(
+        panel.getByRole("button", { name: "公開決闘 1AP", exact: true }),
+      ).toHaveCount(0);
+      expect(await saved(page)).toBe(before);
+      // Leaving an unselected target must not carry the sentinel into another action.
+      await page.getByRole("button", { name: "キャンセルして戻る" }).click();
+      await page
+        .getByRole("button", { name: "魔女間取引（0AP）", exact: true })
+        .click();
+      await expect(panel.locator(".trade-preview")).toContainText(
+        "提案内容の確認",
+      );
+      expect(await saved(page)).toBe(before);
+      await page.getByRole("button", { name: "キャンセルして戻る" }).click();
+      await page
+        .locator(".event-preview")
+        .getByRole("button", { name: "模擬戦へ（0AP）", exact: true })
+        .click();
+      if (mode === "public")
+        await panel
+          .getByRole("button", {
+            name: "通常の公開決闘に切り替える",
+            exact: true,
+          })
+          .click();
+      await target.selectOption("2");
+      expect(await saved(page)).toBe(before);
+      await noOverflow(page);
+      await panel.screenshot({
+        path: testInfo.outputPath(`mode-${mode}-${width}.png`),
+      });
+      const action = {
+        type: "duel",
+        player: 0,
+        target: 2,
+        ...(mode === "mock" ? { mock: true } : {}),
+      } as const;
+      const expected = dispatch(JSON.parse(before!).state, action);
+      await panel
+        .getByRole("button", {
+          name: mode === "mock" ? "イベント模擬戦 0AP" : "公開決闘 1AP",
+          exact: true,
+        })
+        .click();
+      const after = JSON.parse((await saved(page))!).state as GameState;
+      expect(after).toEqual(expected);
+      expect(after.players[0].ap).toBe(mode === "public" ? 1 : 2);
+      expect(after.publicTurn.acted).toBe(mode === "public");
+      expect(after.combat?.kind).toBe(mode);
+      expect(after.event.mock).toEqual([]);
+    });
+  }
+for (const [width, height] of [
+  [390, 740],
+  [320, 640],
+]) {
+  test(`review P3 action entry stays above fold ${width}x${height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await load(page, eventGame(10));
+    const before = await saved(page);
+    const jump = page.getByRole("button", {
+      name: "行動を選ぶ 採集・研究など ↓",
+      exact: true,
+    });
+    await expect(jump).toBeInViewport();
+    await jump.click();
+    await expect(
+      page.getByRole("button", { name: "採集（1AP）", exact: true }),
+    ).toBeInViewport();
+    expect(await saved(page)).toBe(before);
     await noOverflow(page);
   });
 }
