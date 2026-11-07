@@ -117,7 +117,7 @@ const setupMagics = Object.fromEntries(
 const store = useGameStore();
 const s = computed(() => store.state!);
 watch(
-  () => schoolTheme(s.value?.phase),
+  () => schoolTheme(s.value?.phase, s.value?.event),
   (theme) => {
     document.documentElement.dataset.theme = theme;
   },
@@ -872,6 +872,21 @@ function actionError(a: Action) {
 function can(a: Action) {
   return !actionError(a);
 }
+const researchErrors = computed(
+  () =>
+    Object.fromEntries(
+      STATS.map((stat) => [
+        stat,
+        actionError({
+          type: "research",
+          player: 0,
+          stat,
+          material: researchPayment.value[stat],
+          potion: actionPotion.value,
+        }),
+      ]),
+    ) as Record<Stat, string>,
+);
 function presentation() {
   return {
     version: 1,
@@ -1214,6 +1229,7 @@ watch(
             v-for="(m, id) in setupMagics"
             :key="id"
             :class="{ chosen: setup.magic === id }"
+            :aria-pressed="setup.magic === id"
             @click="setup.magic = id"
           >
             <strong>{{ m.name }}</strong
@@ -2335,14 +2351,9 @@ watch(
                   </select>
                 </label>
                 <button
-                  :disabled="
-                    !can({
-                      type: 'research',
-                      player: 0,
-                      stat: k,
-                      material: researchPayment[k],
-                      potion: actionPotion,
-                    })
+                  :disabled="!!researchErrors[k]"
+                  :aria-describedby="
+                    researchErrors[k] ? `research-reason-${k}` : undefined
                   "
                   @click="
                     act({
@@ -2356,6 +2367,13 @@ watch(
                 >
                   研究 <small>1AP</small>
                 </button>
+                <p
+                  v-if="researchErrors[k]"
+                  :id="`research-reason-${k}`"
+                  class="research-unavailable"
+                >
+                  実行不可：{{ publicAPReason || uiText(researchErrors[k]) }}
+                </p>
               </div></template
             >
             <template v-if="actionScreen && tab === 'event'">

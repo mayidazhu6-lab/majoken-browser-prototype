@@ -1920,9 +1920,6 @@ meter::-webkit-meter-optimum-value {
   background: var(--mint);
   border-radius: 8px;
 }
-.institute-health.danger meter::-webkit-meter-optimum-value {
-  background: var(--pink);
-}
 
 /* PR #16 review: explicit duel modes and a visible mobile action entry. */
 .mobile-action-jump {

@@ -6,14 +6,20 @@ import { MATERIALS, STATS } from "../src/domain/config";
 import { NIGHT_RECIPES } from "../src/domain/night";
 import { RECIPES } from "../src/domain/items";
 
-it.each(["public", "ho", "dawn", "ended", undefined])(
+it.each(["public", "ended", undefined])(
   "%s uses the daylight presentation",
   (phase) => expect(schoolTheme(phase)).toBe("day"),
 );
-it.each(["magic", "vote", "night", "duels", "rewards", "results"])(
-  "%s uses moonlight",
-  (phase) => expect(schoolTheme(phase)).toBe("night"),
-);
+it.each([
+  "magic",
+  "vote",
+  "night",
+  "duels",
+  "rewards",
+  "results",
+  "ho",
+  "dawn",
+])("%s uses moonlight", (phase) => expect(schoolTheme(phase)).toBe("night"));
 it("all six materials have distinct silhouettes", () => {
   expect(
     new Set(MATERIALS.map((kind) => shapes[iconDefinition(kind).shape])).size,
@@ -103,3 +109,20 @@ for (const [name, palette] of [
       ).toBeGreaterThanOrEqual(3);
   });
 }
+
+it.each(["magic", "night", "ended"])(
+  "%s keeps pending event results in daylight",
+  (phase) => {
+    expect(schoolTheme(phase, { resolved: true, acknowledged: false })).toBe(
+      "day",
+    );
+    expect(schoolTheme(phase, { resolved: true, acknowledged: true })).toBe(
+      phase === "ended" ? "day" : "night",
+    );
+  },
+);
+
+it("missing historical event acknowledgement remains pending", () => {
+  expect(schoolTheme("magic", { resolved: true })).toBe("day");
+  expect(schoolTheme("magic", { resolved: false })).toBe("night");
+});

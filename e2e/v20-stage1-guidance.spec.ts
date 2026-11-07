@@ -50,7 +50,9 @@ for (const width of [1440, 390]) {
     await expect(hud).toContainText("残りAP 2 / 2");
     await expect(hud.locator(".ap-tokens i:not(.spent)")).toHaveCount(2);
     const health = page.getByRole("region", { name: "研究所の残り耐久" });
-    await expect(health.getByRole("meter")).toHaveAttribute("value", "3");
+    await expect(health.locator(".health-gem")).toHaveCount(3);
+    await expect(health.locator(".health-gem.filled")).toHaveCount(3);
+    await expect(health).toContainText("3 / 3");
     const overview = page.locator(".event-preview");
     await expect(overview).toContainText("不足6個");
     await expect(overview).toContainText("月光草 0 / 1個");
