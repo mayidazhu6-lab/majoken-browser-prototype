@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import type { GameState } from "../src/domain/types";
 import { LABELS } from "../src/domain/config";
+import { uiText } from "../src/ui/text";
 import { recipe } from "../src/domain/items";
 export async function selectItems(
   root: Page | Locator,
@@ -14,9 +15,12 @@ export async function selectItems(
   }
   for (const [kind, n] of Object.entries(counts))
     await root
-      .getByLabel(`${LABELS[kind] ?? recipe(kind)?.name ?? kind}の数量`, {
-        exact: true,
-      })
+      .getByLabel(
+        `${uiText(LABELS[kind] ?? recipe(kind)?.name ?? kind)}の数量`,
+        {
+          exact: true,
+        },
+      )
       .fill(String(n));
 }
 

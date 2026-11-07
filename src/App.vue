@@ -21,6 +21,7 @@ import {
   usable,
 } from "./domain/night";
 import { legalStances } from "./domain/combat";
+import CombatAffinity from "./components/CombatAffinity.vue";
 import CombatRounds from "./components/CombatRounds.vue";
 import { useGameStore } from "./stores/game";
 import {
@@ -457,12 +458,12 @@ const interruptReason = computed(() => {
 const publicAPReason = computed(() => {
   const state = s.value;
   if (!state || state.phase !== "public") return "";
-  if (state.publicTurn.round > 2) return "公開行動の2巡は終了しました。";
+  if (state.publicTurn.round > 2) return "午前・午後の公開行動は終了しました。";
   if (currentPlayer(state) !== 0) return "他の魔女の手番です。";
   if (state.publicTurn.acted)
     return me.value.ap > 0
-      ? "今の巡では1AP行動を使用済みです。残りAPは次の巡に持ち越します。"
-      : "今の巡では1AP行動を使用済みです。残りAPはありません。";
+      ? "この時間帯では1AP行動を使用済みです。残りAPは午後に持ち越します。"
+      : "この時間帯では1AP行動を使用済みです。残りAPはありません。";
   if (me.value.ap < 1) return "AP不足のため、1AP行動はできません。";
   if (me.value.commands.length) return "先に行動制限・命令を処理してください。";
   return "";
@@ -904,6 +905,31 @@ async function upload(e: Event) {
   }
   (e.target as HTMLInputElement).value = "";
 }
+const tradePreview = computed(() => {
+  if (!s.value) return { reason: "研究を開始してください" };
+  if (
+    Object.values(tradeOffer.value).some(
+      (n) => !Number.isSafeInteger(n) || n < 0,
+    )
+  )
+    return { reason: "提供数は0以上の整数で指定してください" };
+  const ids: number[] = [];
+  const pool = available(me.value);
+  for (const [kind, count] of Object.entries(tradeOffer.value)) {
+    const items = pool.filter((item) => item.kind === kind);
+    if (count > items.length) return { reason: "提供品が不足しています" };
+    ids.push(...items.slice(0, count).map((item) => item.id));
+  }
+  return {
+    reason: actionError({
+      type: "trade",
+      player: 0,
+      target: target.value,
+      offer: ids,
+      request: tradeRequest.value,
+    }),
+  };
+});
 function offer() {
   if (
     Object.values(tradeOffer.value).some(
@@ -1170,7 +1196,10 @@ watch(
           <div>
             <b v-for="i in 3" :key="i" :class="{ failed: i <= s.failed }">✦</b>
           </div>
-          <small>{{ s.failed }} / 3 失敗（通算3回で全員敗北）</small
+          <small
+            >累積失敗 {{ s.failed }} / 3 · あと{{
+              Math.max(0, 3 - s.failed)
+            }}回の失敗で研究所崩壊</small
           ><strong>残りAP {{ me.ap }} / 2 · 名声 {{ me.fp }}</strong>
         </div>
       </div>
@@ -1365,98 +1394,6 @@ watch(
             </p>
             <button @click="store.state = undefined">新しい研究を始める</button>
           </section>
-          <section
-            v-if="event && progress && s.phase === 'public'"
-            class="panel event-panel"
-            v-show="actionScreen === 'event'"
-          >
-            <div class="section-heading">
-              <span class="eyebrow">今日の共通イベント</span
-              ><span class="difficulty" :class="event.difficulty">{{
-                event.difficulty
-              }}</span>
-            </div>
-            <h2>{{ event.name }}</h2>
-            <p>
-              {{ event.description
-              }}<strong v-if="event.id === 11"
-                >：{{ itemName(s.event.specified) }}</strong
-              >
-            </p>
-            <p v-if="event.either">
-              先着ルート：{{
-                s.event.route === "materials"
-                  ? "素材"
-                  : s.event.route === "stats"
-                    ? "能力"
-                    : "未確定"
-              }}
-            </p>
-            <div class="event-metrics">
-              <span v-if="event.materials"
-                >素材
-                <b>{{ progress.materials }} / {{ event.materials }}</b></span
-              ><span v-if="event.stats"
-                >能力 <b>{{ progress.stats }} / {{ event.stats }}</b></span
-              ><span v-if="event.potions"
-                >薬 <b>{{ progress.potions }} / {{ event.potions }}</b></span
-              ><span v-if="event.actions"
-                >成立行動
-                <b>{{ progress.actions }} / {{ event.count }}</b></span
-              ><span v-if="event.mock"
-                >模擬戦
-                <b>{{ s.event.mock.length ? "完了" : "未完了" }}</b></span
-              >
-            </div>
-            <div class="progress-track">
-              <i
-                :style="{
-                  width: s.event.resolved
-                    ? s.event.success
-                      ? '100%'
-                      : '0%'
-                    : progress.success
-                      ? '100%'
-                      : `${Math.min(95, Math.max(progress.materials / (event.materials || 99), progress.stats / (event.stats || 99), progress.potions / (event.potions || 99), progress.actions / (event.count || 99)) * 100)}%`,
-                }"
-              ></i>
-            </div>
-            <p class="event-status">
-              {{
-                s.event.resolved
-                  ? s.event.success
-                    ? "✓ 共同研究、成功。"
-                    : "イベント失敗。予約品は返却されました。"
-                  : progress.success
-                    ? "✓ 条件充足。公開フェーズ終了時に確定します。"
-                    : "仲間と協力して、必要条件を満たしましょう。"
-              }}
-            </p>
-            <p v-if="event.required" class="muted">
-              必須：<span v-for="(n, k) in event.required" :key="k"
-                >{{ itemName(String(k)) }} {{ progress.counts[k] ?? 0 }} /
-                {{ n }}　</span
-              >
-            </p>
-            <details v-if="s.event.reservations.length">
-              <summary>全員の納品予約を確認</summary>
-              <p v-for="(r, i) in s.event.reservations" :key="i">
-                {{ s.players[r.player].name }}：{{
-                  r.items
-                    .map((id) =>
-                      itemName(
-                        s.players[r.player].inventory.find((i) => i.id === id)
-                          ?.kind ?? "",
-                      ),
-                    )
-                    .join("・")
-                }}
-                <span v-for="(n, k) in r.stats" :key="k"
-                  >{{ LABELS[k] }} {{ n }}
-                </span>
-              </p>
-            </details>
-          </section>
           <section v-if="me.pendingRecipe && !combat" class="panel">
             <h2>10FP到達 · 特殊レシピを選択</h2>
             <button
@@ -1555,9 +1492,7 @@ watch(
               </button>
             </template>
             <template v-else-if="!combat.done">
-              <p>
-                火は風、風は水、水は火に有利です。双方のダメージを同時に反映します。
-              </p>
+              <CombatAffinity elemental />
               <p v-if="combat.kind === 'mock'">
                 模擬戦では上位薬を使用しません。
               </p>
@@ -1780,6 +1715,7 @@ watch(
                   持込を確定
                 </button>
               </details>
+              <CombatAffinity :elemental="false" />
               <div class="stance-options">
                 <button
                   v-for="v in ['attack', 'defend', 'charge'] as Stance[]"
@@ -1997,7 +1933,7 @@ watch(
             <h2>
               {{
                 s.publicTurn.round <= 2
-                  ? "公開行動・第" + s.publicTurn.round + "巡"
+                  ? "公開行動・" + (s.publicTurn.round === 1 ? "午前" : "午後")
                   : waitingForTrades
                     ? "取引の返答待ち"
                     : "公開行動完了"
@@ -2026,7 +1962,8 @@ watch(
             </div>
             <div role="status">
               <p v-if="s.publicTurn.round <= 2 && currentPlayer(s) === 0">
-                第{{ s.publicTurn.round }}巡 / 全2巡 · この巡の1AP行動：{{
+                {{ s.publicTurn.round === 1 ? "午前" : "午後" }} ·
+                この時間帯の1AP行動：{{
                   s.publicTurn.acted ? "使用済み" : "未使用"
                 }}
               </p>
@@ -2060,7 +1997,7 @@ watch(
               </button>
             </div>
             <p v-if="!actionScreen">
-              1AP行動を1回選び、納品・取引を済ませたら「手番終了」へ。何もしないでパスすることもできます。
+              午前・午後それぞれで1AP行動を1回選び、納品・取引を済ませたら「手番終了」へ。何もしないでパスすることもできます。
             </p>
             <button
               v-if="!actionScreen && event"
@@ -2107,7 +2044,20 @@ watch(
             <button v-if="actionScreen" @click="cancelAction">
               キャンセルして戻る
             </button>
-            <h3 v-if="actionScreen && actionScreen !== 'trade'">
+            <p v-if="actionScreen" class="selection-summary" role="status">
+              選択中：{{
+                publicActions[actionScreen as keyof typeof publicActions]?.label
+              }}
+              · 必要AP
+              {{
+                publicActions[actionScreen as keyof typeof publicActions]?.cost
+              }}<template v-if="actionScreen === 'duel'"
+                >（公開決闘への挑戦時）</template
+              >
+            </p>
+            <h3
+              v-if="actionScreen && !['trade', 'event'].includes(actionScreen)"
+            >
               {{
                 publicActions[actionScreen as keyof typeof publicActions]?.label
               }}
@@ -2246,18 +2196,133 @@ watch(
                 </button>
               </div></template
             >
-            <template v-if="actionScreen && tab === 'event'"
-              ><p class="reservation-limit">
+            <template v-if="actionScreen && tab === 'event'">
+              <section v-if="event && progress" class="panel event-panel">
+                <div class="section-heading">
+                  <span class="eyebrow">今日の共通イベント</span
+                  ><span class="difficulty" :class="event.difficulty">{{
+                    event.difficulty
+                  }}</span>
+                </div>
+                <h2>{{ event.name }}</h2>
+                <p>
+                  {{ event.description
+                  }}<strong v-if="event.id === 11"
+                    >：{{ itemName(s.event.specified) }}</strong
+                  >
+                </p>
+                <p v-if="event.allowed">
+                  対象素材：{{ event.allowed.map(itemName).join("・") }}
+                </p>
+                <p v-if="event.id === 11">
+                  指定素材：{{ itemName(s.event.specified) }}
+                </p>
+                <p v-if="event.either">
+                  素材・能力のいずれかの条件で達成します。 先着ルート：{{
+                    s.event.route === "materials"
+                      ? "素材"
+                      : s.event.route === "stats"
+                        ? "能力"
+                        : "未確定"
+                  }}
+                </p>
+                <div class="event-metrics">
+                  <span v-if="event.materials"
+                    >素材
+                    <b>{{ progress.materials }} / {{ event.materials }}個</b
+                    >（不足{{
+                      Math.max(0, event.materials - progress.materials)
+                    }}個）</span
+                  ><span v-if="event.stats"
+                    >能力
+                    <b>{{ progress.stats }} / {{ event.stats }}点</b>（不足{{
+                      Math.max(0, event.stats - progress.stats)
+                    }}点）</span
+                  ><span v-if="event.potions"
+                    >薬
+                    <b>{{ progress.potions }} / {{ event.potions }}個</b
+                    >（不足{{
+                      Math.max(0, event.potions - progress.potions)
+                    }}個）</span
+                  ><span v-if="event.actions"
+                    >成立行動
+                    <b>{{ progress.actions }} / {{ event.count }}回</b>（不足{{
+                      Math.max(0, (event.count ?? 0) - progress.actions)
+                    }}回）</span
+                  ><span v-if="event.mock"
+                    >模擬戦
+                    <b>{{ s.event.mock.length ? "完了" : "未完了" }}</b></span
+                  >
+                </div>
+                <div class="progress-track">
+                  <i
+                    :style="{
+                      width: s.event.resolved
+                        ? s.event.success
+                          ? '100%'
+                          : '0%'
+                        : progress.success
+                          ? '100%'
+                          : `${Math.min(95, Math.max(progress.materials / (event.materials || 99), progress.stats / (event.stats || 99), progress.potions / (event.potions || 99), progress.actions / (event.count || 99)) * 100)}%`,
+                    }"
+                  ></i>
+                </div>
+                <p class="event-status">
+                  {{
+                    s.event.resolved
+                      ? s.event.success
+                        ? "✓ 共同研究、成功。"
+                        : "イベント失敗。予約品は返却されました。"
+                      : progress.success
+                        ? "✓ 条件充足。公開フェーズ終了時に確定します。"
+                        : "仲間と協力して、必要条件を満たしましょう。"
+                  }}
+                </p>
+                <p v-if="event.required" class="muted">
+                  必須：<span v-for="(n, k) in event.required" :key="k"
+                    >{{ itemName(String(k)) }} {{ progress.counts[k] ?? 0 }} /
+                    {{ n }}個（不足{{
+                      Math.max(0, n - (progress.counts[k] ?? 0))
+                    }}個）　</span
+                  >
+                </p>
+                <details v-if="s.event.reservations.length">
+                  <summary>全員の納品予約を確認</summary>
+                  <p v-for="(r, i) in s.event.reservations" :key="i">
+                    {{ s.players[r.player].name }}：{{
+                      r.items
+                        .map((id) =>
+                          itemName(
+                            s.players[r.player].inventory.find(
+                              (i) => i.id === id,
+                            )?.kind ?? "",
+                          ),
+                        )
+                        .join("・")
+                    }}
+                    <span v-for="(n, k) in r.stats" :key="k"
+                      >{{ LABELS[k] }} {{ n }}
+                    </span>
+                  </p>
+                </details>
+              </section>
+              <h3>この協力イベントに仮納品する（0AP）</h3>
+              <p class="reservation-limit">
                 {{
                   `予約済み ${reservationUnits(s, me)}。超過分は結果確定時に返却します。`
                 }}
               </p>
               <p>納品は0AP。成功時のみ消費し、失敗時は返却します。</p>
-              <GroupedItems v-model="selected" :items="donationCandidates" />
+              <GroupedItems
+                v-model="selected"
+                :items="donationCandidates"
+                purpose="仮納品する数"
+              />
               <div v-if="event?.stats" class="stat-inputs">
                 <label v-for="k in STATS" :key="k"
-                  >{{ LABELS[k]
-                  }}<QuantitySpinner :label="LABELS[k] + 'の納品数'"
+                  >{{ LABELS[k] }}（能力値{{ me.stats[k] }}／納品可能{{
+                    me.stats[k] - 1
+                  }}点）<QuantitySpinner :label="LABELS[k] + 'の納品数'"
                     ><input
                       v-model.number="reserveStats[k]"
                       :aria-label="LABELS[k] + 'の納品数'"
@@ -2299,7 +2364,7 @@ watch(
                 </button>
               </div>
               <p v-if="reserveReason" class="operation-reason" role="status">
-                {{ reserveReason }}
+                {{ uiText(reserveReason) }}
               </p>
             </template>
             <template v-if="actionScreen && tab === 'shop'">
@@ -2350,9 +2415,11 @@ watch(
                 </select></label
               >
               <details>
-                <summary>提供と要求の個数を入力</summary>
+                <summary>自分が渡す数・相手から受け取る数を入力</summary>
                 <div class="trade-row">
-                  <span>品目</span><span>渡す</span><span>もらう</span>
+                  <span>品目・自分の所持数</span
+                  ><span>自分 → 相手<br />渡す数</span
+                  ><span>相手 → 自分<br />受け取る数</span>
                 </div>
                 <div
                   v-for="kind in [
@@ -2362,35 +2429,51 @@ watch(
                   :key="kind"
                   class="trade-row"
                 >
-                  <span>{{ itemName(kind) }}</span
-                  ><QuantitySpinner :label="itemName(kind) + ' 提供数'"
-                    ><input
-                      v-model.number="tradeOffer[kind]"
-                      type="number"
-                      inputmode="numeric"
-                      step="1"
-                      min="0"
-                      :max="inventory[kind]?.free ?? 0"
-                      :aria-label="`${itemName(kind)} 提供数`"
-                      placeholder="0" /></QuantitySpinner
-                  ><QuantitySpinner :label="itemName(kind) + ' 要求数'"
-                    ><input
-                      v-model.number="tradeRequest[kind]"
-                      type="number"
-                      inputmode="numeric"
-                      step="1"
-                      min="0"
-                      :aria-label="`${itemName(kind)} 要求数`"
-                      placeholder="0"
-                  /></QuantitySpinner>
+                  <span
+                    >{{ itemName(kind)
+                    }}<small class="inventory-caption"
+                      >所持 {{ inventory[kind]?.total ?? 0 }}個 · 提供可能
+                      {{ inventory[kind]?.free ?? 0 }}個</small
+                    ></span
+                  ><label class="trade-quantity"
+                    ><span>自分が渡す数</span
+                    ><QuantitySpinner :label="itemName(kind) + ' 提供数'"
+                      ><input
+                        v-model.number="tradeOffer[kind]"
+                        type="number"
+                        inputmode="numeric"
+                        step="1"
+                        min="0"
+                        :max="inventory[kind]?.free ?? 0"
+                        :aria-label="`${itemName(kind)} 提供数`"
+                        placeholder="0" /></QuantitySpinner></label
+                  ><label class="trade-quantity"
+                    ><span>相手から受け取る数</span
+                    ><QuantitySpinner :label="itemName(kind) + ' 要求数'"
+                      ><input
+                        v-model.number="tradeRequest[kind]"
+                        type="number"
+                        inputmode="numeric"
+                        step="1"
+                        min="0"
+                        :aria-label="`${itemName(kind)} 要求数`"
+                        placeholder="0" /></QuantitySpinner
+                  ></label>
                 </div>
               </details>
-              <button
-                :disabled="
-                  currentPlayer(s) !== 0 || !!store.pending || me.pendingRecipe
-                "
-                @click="offer"
-              >
+              <div class="selection-summary trade-preview" aria-live="polite">
+                <h4>提案内容の確認：あなた ↔ {{ s.players[target].name }}</h4>
+                <p>あなたが渡す：{{ describeTrade(tradeOffer) }}</p>
+                <p>
+                  {{ s.players[target].name }}から受け取る：{{
+                    describeTrade(tradeRequest)
+                  }}
+                </p>
+                <p v-if="tradePreview.reason" class="operation-reason">
+                  提案できない理由：{{ uiText(tradePreview.reason) }}
+                </p>
+              </div>
+              <button :disabled="!!tradePreview.reason" @click="offer">
                 固定条件で提案（0AP）
               </button>
               <p class="muted">
@@ -2412,7 +2495,13 @@ watch(
               <p>
                 公開決闘：挑戦者1AP、被挑戦者0AP。勝者FP+{{
                   publicDuelReward(s)
-                }}、能力移転なし。<br />模擬戦：イベント用。勝敗は達成条件に影響しません。
+                }}、能力移転なし。挑戦側・被挑戦側のどちらが勝っても同じFP報酬です。<br />模擬戦：イベント用。勝敗は達成条件に影響しません。
+              </p>
+              <p class="muted" v-if="s.rulesVersion === V20_RULES_VERSION">
+                公開決闘の勝利報酬：1〜4日目＋1FP／5〜8日目＋2FP。秘匿戦闘には適用しません。
+              </p>
+              <p class="muted" v-else>
+                このセーブの公開決闘勝利報酬は全日＋1FPです。秘匿戦闘には適用しません。
               </p>
               <div class="duel-actions">
                 <button
@@ -3150,9 +3239,9 @@ watch(
               取引提案：{{ s.players[t.from].name }} →
               {{ s.players[t.to].name }}
             </h3>
-            <p>提供：{{ describeTrade(t.offeredKinds ?? {}) }}</p>
+            <p>自分が渡す：{{ describeTrade(t.offeredKinds ?? {}) }}</p>
             <p>
-              要求：{{
+              相手から受け取る：{{
                 Object.entries(t.request)
                   .map(([k, n]) => `${itemName(k)} ×${n}`)
                   .join("・") || "なし"
@@ -3294,8 +3383,10 @@ watch(
       v-if="tradeNotice"
       :title="s.players[tradeNotice.from].name + 'からの取引提案'"
     >
-      <p>受け取る：{{ describeTrade(tradeNotice.offeredKinds ?? {}) }}</p>
-      <p>渡す：{{ describeTrade(tradeNotice.request) }}</p>
+      <p>
+        相手から受け取る：{{ describeTrade(tradeNotice.offeredKinds ?? {}) }}
+      </p>
+      <p>自分が渡す：{{ describeTrade(tradeNotice.request) }}</p>
       <template #actions>
         <button
           class="primary"

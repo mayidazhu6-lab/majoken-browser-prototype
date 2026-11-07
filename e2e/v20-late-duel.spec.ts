@@ -61,5 +61,16 @@ for (const [version, key, gain] of [
     await page.reload();
     await page.getByRole("button", { name: "続きから", exact: true }).click();
     expect(await saved()).toBe(afterAck);
+    await settleScreens(page);
+    await page.getByRole("button", { name: /決闘（1AP）/ }).click();
+    const panel = page.locator(".actions-panel");
+    await expect(panel).toContainText(`勝者FP+${gain}`);
+    await expect(panel).toContainText(
+      "挑戦側・被挑戦側のどちらが勝っても同じFP報酬",
+    );
+    await expect(panel).toContainText(
+      gain === 2 ? "1〜4日目＋1FP／5〜8日目＋2FP" : "全日＋1FP",
+    );
+    expect(await saved()).toBe(afterAck);
   });
 }

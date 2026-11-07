@@ -235,7 +235,9 @@ test("取引の入力を保ったまま持ち物と課題を確認できる", as
     .click();
   const target = page.getByRole("combobox", { name: "相手", exact: true });
   await target.selectOption("2");
-  await page.getByText("提供と要求の個数を入力", { exact: true }).click();
+  await page
+    .getByText("自分が渡す数・相手から受け取る数を入力", { exact: true })
+    .click();
   const request = page.getByRole("spinbutton", { name: "黒曜石 要求数" });
   await request.fill("2");
 

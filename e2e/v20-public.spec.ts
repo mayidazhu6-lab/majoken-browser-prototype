@@ -60,9 +60,9 @@ for (const [seed, expected] of [
 
     for (let round = 1; round <= 2; round++) {
       await settleScreens(page);
-      await expect(panel).toContainText(`第${round}巡 / 全2巡`);
+      await expect(panel).toContainText(round === 1 ? "午前" : "午後");
       await expect(panel).toContainText(`残りAP ${3 - round} / 2`);
-      await expect(panel).toContainText("この巡の1AP行動：未使用");
+      await expect(panel).toContainText("この時間帯の1AP行動：未使用");
       await actions
         .getByRole("button", { name: "採集（1AP）", exact: true })
         .click();
@@ -74,12 +74,12 @@ for (const [seed, expected] of [
           .getByRole("button", { name: "続きから", exact: true })
           .click();
         await settleScreens(page);
-        await expect(panel).toContainText("残りAPは次の巡に持ち越します。");
+        await expect(panel).toContainText("残りAPは午後に持ち越します。");
       } else {
         await expect(panel).toContainText("残りAPはありません。");
       }
       await expect(panel).toContainText(`残りAP ${2 - round} / 2`);
-      await expect(panel).toContainText("この巡の1AP行動：使用済み");
+      await expect(panel).toContainText("この時間帯の1AP行動：使用済み");
       await actions
         .getByRole("button", { name: /採集（1AP）.*詳細のみ/ })
         .click();
@@ -157,7 +157,7 @@ test("公開済みv2.0を旧ルールのまま再開し、修正版とは別に�
   await page.goto("/");
   await page.getByRole("button", { name: "続きから", exact: true }).click();
   await settleScreens(page);
-  await expect(page.locator(".persistent-turn")).toContainText("第2巡");
+  await expect(page.locator(".persistent-turn")).toContainText("午後");
   await page.getByRole("button", { name: /手番終了 \/ パス/ }).click();
   // The same seed in the tests above waits for a trade reply under 2.0.2.
   await expect(
