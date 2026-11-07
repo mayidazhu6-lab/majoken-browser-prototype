@@ -158,6 +158,10 @@ test("通算2失敗のE06を、残りのAIが1・2・1点を仮納品して救�
     }
     store.state = state;
   });
+  const health = page.getByRole("region", { name: "研究所の残り耐久" });
+  await expect(health.getByRole("meter")).toHaveAttribute("value", "1");
+  await expect(health).toHaveClass(/danger/);
+  await expect(health).toContainText("次に失敗すると崩壊");
   await page.getByRole("button", { name: /手番終了 \/ パス/ }).click();
   const result = page.getByRole("dialog", { name: "共通イベントの結果" });
   await expect(result).toContainText("封印陣の亀裂：成功");
