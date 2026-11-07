@@ -1,0 +1,371 @@
+/* Day and night share layout, dimensions, controls and icon meanings. */
+:root {
+  color-scheme: light;
+  --page: #efe9f5;
+  --panel: #fff9ef;
+  --surface: #f4edf6;
+  --surface-alt: #e8ddec;
+  --ink: #39263f;
+  --muted: #68566f;
+  --mint: #315f57;
+  --pink: #873b63;
+  --border: #b9a8be;
+  --primary: #70456f;
+  --on-primary: #fff9ef;
+  --primary-hover: #583456;
+  --gold: #89612b;
+  --selected-bg: #70456f;
+  --selected-ink: #fff9ef;
+  --success-soft: #e8f1e9;
+  --danger-soft: #f9e5ed;
+  --lighting: #e5d0dd;
+  --shadow: #39263f18;
+  --overlay: #20152b99;
+  --icon-obsidian: #463a4a;
+  --icon-crystal: #7b4da5;
+  --icon-herb: #3c6c4e;
+  --icon-sand: #816022;
+  --icon-water: #286a89;
+  --icon-dew: #77587d;
+  --icon-fire: #9b4138;
+  --icon-wind: #376c62;
+  --icon-potion: #74538e;
+  --icon-accent: var(--gold);
+  color: var(--ink);
+  background: var(--page);
+}
+:root[data-theme="night"] {
+  color-scheme: dark;
+  --page: #201b31;
+  --panel: #30283f;
+  --surface: #3c324c;
+  --surface-alt: #493c58;
+  --ink: #f5eff8;
+  --muted: #c7bad5;
+  --mint: #b8ddcf;
+  --pink: #e8adc8;
+  --border: #8e7b9e;
+  --primary: #c9ade8;
+  --on-primary: #2a1834;
+  --primary-hover: #dec7f6;
+  --gold: #dec18e;
+  --selected-bg: #c9ade8;
+  --selected-ink: #2a1834;
+  --success-soft: #273f3a;
+  --danger-soft: #4c2d43;
+  --lighting: #4c3e69;
+  --shadow: #08041455;
+  --overlay: #100b20cc;
+  --icon-obsidian: #d5c9df;
+  --icon-crystal: #d0b2ef;
+  --icon-herb: #a8d5a9;
+  --icon-sand: #e7c980;
+  --icon-water: #9ad8ec;
+  --icon-dew: #dbc4e3;
+  --icon-fire: #f1b09c;
+  --icon-wind: #a7d9cc;
+  --icon-potion: #d6b7ed;
+}
+body {
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 10% 0%, var(--lighting), transparent 60%),
+    var(--page);
+  background-attachment: fixed;
+}
+button,
+.button {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--border);
+}
+button:hover,
+.button:hover {
+  background: var(--surface-alt);
+  border-color: var(--primary);
+}
+button.primary {
+  color: var(--on-primary);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+button.primary:hover {
+  background: var(--primary-hover);
+}
+button:disabled {
+  opacity: 0.62;
+}
+input,
+select,
+label {
+  color: var(--ink);
+}
+input,
+select {
+  background: var(--panel);
+  border-color: var(--border);
+}
+input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.panel,
+.turn-hud,
+.institute-health,
+.event-overview {
+  border-radius: 14px;
+  box-shadow:
+    inset 0 0 0 3px var(--panel),
+    inset 0 0 0 4px var(--border),
+    0 7px 20px var(--shadow);
+}
+h1,
+h2,
+.brand {
+  color: var(--ink);
+}
+h1,
+h2 {
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+}
+h2 .game-icon {
+  color: var(--gold);
+}
+.eyebrow {
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+.brand-mark,
+.large-star {
+  color: var(--gold);
+}
+.game-icon {
+  display: inline-block;
+  width: 1.65em;
+  height: 1.65em;
+  flex: none;
+  vertical-align: middle;
+  margin-right: 0.3em;
+}
+button .game-icon {
+  margin-right: 0;
+}
+.stats .game-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 2px;
+}
+.common-menu .game-icon {
+  width: 24px;
+  height: 24px;
+}
+.hud-time .game-icon {
+  width: 19px;
+  height: 19px;
+}
+.grouped-items label > span {
+  min-width: 0;
+}
+.material-roster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.material-roster span {
+  display: inline-flex;
+  align-items: center;
+}
+.ap-tokens i {
+  border-color: var(--gold);
+  background: var(--gold);
+  box-shadow: inset 0 0 0 3px var(--panel);
+}
+.ap-tokens .spent {
+  background: transparent;
+  box-shadow: none;
+  opacity: 1;
+  border-color: var(--muted);
+}
+.institute-health meter {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.blocking-dialog,
+.focus-screen {
+  background: var(--panel);
+}
+.modal-backdrop {
+  background: var(--overlay);
+}
+.combat-affinity:has(.affinity-triangle) {
+  display: grid;
+  grid-template-columns: minmax(0, 260px) minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+.affinity-figure {
+  margin: 0;
+  width: 100%;
+  max-width: 300px;
+}
+.affinity-triangle {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.affinity-edge {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2.5;
+}
+.affinity-edge.outgoing {
+  stroke: var(--primary);
+  stroke-width: 5;
+}
+.affinity-edge.incoming {
+  stroke: var(--pink);
+  stroke-width: 4;
+  stroke-dasharray: 5 3;
+}
+.affinity-node rect {
+  fill: var(--surface);
+  stroke: var(--border);
+  stroke-width: 1.5;
+}
+.affinity-node[data-selected="true"] rect {
+  fill: var(--surface-alt);
+  stroke: var(--primary);
+  stroke-width: 3;
+}
+.affinity-node text {
+  fill: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+}
+.affinity-triangle .diagram-icon {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+}
+.affinity-figure figcaption {
+  font-size: 12px;
+  text-align: center;
+  color: var(--muted);
+}
+.affinity-bonuses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+.affinity-bonuses span {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--surface);
+  padding: 4px 9px;
+}
+.affinity-guide details {
+  margin-top: 10px;
+}
+.affinity-guide p {
+  margin: 8px 0 0;
+}
+@media (max-width: 600px) {
+  .combat-affinity:has(.affinity-triangle) {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .affinity-figure {
+    max-width: 260px;
+    margin: auto;
+  }
+  .game-icon {
+    width: 1.5em;
+    height: 1.5em;
+  }
+  .hud-time .game-icon {
+    width: 16px;
+    height: 16px;
+  }
+  .stats .game-icon {
+    width: 13px;
+    height: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root {
+  --control-border: #8b7292;
+}
+:root[data-theme="night"] {
+  --control-border: #ab92bb;
+}
+button,
+.button,
+input,
+select {
+  border-color: var(--control-border);
+}
+button.primary {
+  border-color: var(--primary);
+}
+button.primary .game-icon,
+.chosen .game-icon {
+  color: inherit !important;
+}
+.public-action-menu .action-card-symbol {
+  width: 28px;
+  height: 28px;
+  color: var(--gold);
+}
+/* Keep the AP/time HUD fixed; the taller battle scoreboard scrolls so it never covers the diagram or choices. */
+.battle-header {
+  position: static;
+}
+@media (max-width: 600px) {
+  .public-action-menu .action-card-symbol {
+    width: 22px;
+    height: 22px;
+  }
+}
+/* Switch colors atomically; an interpolated day/night button fill can briefly lose contrast. */
+button,
+.button {
+  transition: none;
+}
+.common-menu button {
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 4px;
+}
+.common-menu br {
+  display: none;
+}
+body {
+  isolation: isolate;
+}
+:root[data-theme="night"] body::before {
+  content: "";
+  position: fixed;
+  right: -130px;
+  bottom: -130px;
+  width: 400px;
+  height: 400px;
+  border: 1px solid var(--gold);
+  border-radius: 50%;
+  box-shadow:
+    inset 0 0 0 18px var(--page),
+    inset 0 0 0 19px var(--gold);
+  opacity: 0.07;
+  pointer-events: none;
+  z-index: -1;
+}
+.night-panel button.active .game-icon {
+  color: inherit !important;
+}

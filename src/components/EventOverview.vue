@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import GameIcon from "./GameIcon.vue";
 import { computed } from "vue";
 import type { GameState } from "../domain/types";
 import { EVENTS, eventProgress } from "../domain/events";
@@ -110,8 +111,8 @@ const links = computed(() => {
     <div class="required-materials" v-if="Object.keys(required).length">
       <strong>{{ event.id === 11 ? "指定素材" : "必須素材" }}</strong>
       <p v-for="(count, kind) in required" :key="kind">
-        {{ name(String(kind)) }} {{ progress.counts[kind] ?? 0 }} /
-        {{ count }}個（不足{{
+        <GameIcon :kind="String(kind)" />{{ name(String(kind)) }}
+        {{ progress.counts[kind] ?? 0 }} / {{ count }}個（不足{{
           Math.max(0, count - (progress.counts[kind] ?? 0))
         }}個）
       </p>

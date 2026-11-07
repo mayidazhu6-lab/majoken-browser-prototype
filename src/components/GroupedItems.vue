@@ -4,7 +4,8 @@ import QuantitySpinner from "./QuantitySpinner.vue";
 import type { Item } from "../domain/types";
 import { LABELS } from "../domain/config";
 import { uiText } from "../ui/text";
-import { isMaterial, recipe } from "../domain/items";
+import GameIcon from "./GameIcon.vue";
+import { recipe } from "../domain/items";
 const props = defineProps<{
   items: Item[];
   modelValue: number[];
@@ -37,7 +38,7 @@ function quantity(kind: string, input: HTMLInputElement) {
   <div class="grouped-items">
     <label v-for="g in groups" :key="g.kind"
       ><span
-        ><span aria-hidden="true">{{ isMaterial(g.kind) ? "❖" : "⚗" }}</span>
+        ><GameIcon :kind="g.kind" />
         {{ uiText(LABELS[g.kind] ?? recipe(g.kind)?.name ?? g.kind) }}</span
       >（選択可能{{ g.items.length }}個）
       <small

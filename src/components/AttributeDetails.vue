@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { level, nextLevel } from "../domain/config";
+import GameIcon from "./GameIcon.vue";
+import { level, nextLevel, isV20 } from "../domain/config";
 import type { Stat } from "../domain/types";
 import { attributeEffects, attributeGains } from "../ui/attributes";
 
@@ -32,7 +33,10 @@ const gains = computed(() =>
 
 <template>
   <section class="attribute-details" :data-stat="stat">
-    <h4>{{ label }} · 恒久能力値 {{ value }} / Lv{{ current }}</h4>
+    <h4>
+      <GameIcon :kind="stat" :legacy="!isV20({ rulesVersion })" />{{ label }} ·
+      恒久能力値 {{ value }} / Lv{{ current }}
+    </h4>
     <p>現在の効果</p>
     <ul>
       <li v-for="effect in effects" :key="effect">{{ effect }}</li>

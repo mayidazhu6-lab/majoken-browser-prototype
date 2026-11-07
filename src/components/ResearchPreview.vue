@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import GameIcon from "./GameIcon.vue";
+import { isV20 } from "../domain/config";
 import { computed } from "vue";
 import type { Stat } from "../domain/types";
 import { researchOutcome } from "../ui/attributes";
@@ -19,7 +21,12 @@ const preview = computed(() =>
 
 <template>
   <div class="research-preview" aria-live="polite">
-    <strong>研究が成立した場合</strong>
+    <strong
+      ><GameIcon
+        :kind="stat"
+        :legacy="!isV20({ rulesVersion })"
+      />研究が成立した場合</strong
+    >
     <p>
       恒久能力値 {{ value }} → {{ preview.after }}（＋{{ growth
       }}<template v-if="scholarship">、研鑽の薬 ＋1込み</template>）
