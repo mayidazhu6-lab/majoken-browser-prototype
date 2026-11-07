@@ -1551,3 +1551,75 @@ input[type="number"]::-webkit-inner-spin-button {
 .dawn-summary > button {
   margin-top: 20px;
 }
+
+/* Public-action guidance uses the existing card palette and spacing. */
+.selection-summary,
+.combat-affinity {
+  padding: 12px 16px;
+  margin: 16px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.affinity-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  margin: 10px 0;
+}
+.inventory-caption {
+  display: block;
+  line-height: 1.6;
+}
+.trade-row {
+  grid-template-columns: minmax(110px, 1.4fr) minmax(100px, 1fr) minmax(
+      100px,
+      1fr
+    );
+  font-size: 13px;
+  gap: 16px;
+}
+.trade-row > * {
+  min-width: 0;
+}
+.event-metrics {
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .trade-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .trade-row > :first-child {
+    grid-column: 1 / -1;
+  }
+  .trade-row .quantity-spinner {
+    max-width: 100%;
+  }
+  .selection-summary,
+  .combat-affinity {
+    padding: 12px;
+  }
+}
+.risk small,
+.risk strong {
+  display: block;
+}
+.risk small {
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+.trade-quantity > span {
+  display: none;
+}
+@media (max-width: 600px) {
+  .trade-quantity > span {
+    display: block;
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+}

@@ -3,8 +3,13 @@ import { computed } from "vue";
 import QuantitySpinner from "./QuantitySpinner.vue";
 import type { Item } from "../domain/types";
 import { LABELS } from "../domain/config";
-import { recipe } from "../domain/items";
-const props = defineProps<{ items: Item[]; modelValue: number[] }>();
+import { uiText } from "../ui/text";
+import { isMaterial, recipe } from "../domain/items";
+const props = defineProps<{
+  items: Item[];
+  modelValue: number[];
+  purpose?: string;
+}>();
 const emit = defineEmits<{ "update:modelValue": [number[]] }>();
 const groups = computed(() =>
   [...new Set(props.items.map((i) => i.kind))].map((kind) => ({
@@ -31,13 +36,19 @@ function quantity(kind: string, input: HTMLInputElement) {
 <template>
   <div class="grouped-items">
     <label v-for="g in groups" :key="g.kind"
-      >{{ LABELS[g.kind] ?? recipe(g.kind)?.name ?? g.kind }}（所持{{
-        g.items.length
-      }}個）
+      ><span
+        ><span aria-hidden="true">{{ isMaterial(g.kind) ? "❖" : "⚗" }}</span>
+        {{ uiText(LABELS[g.kind] ?? recipe(g.kind)?.name ?? g.kind) }}</span
+      >（選択可能{{ g.items.length }}個）
+      <small
+        >{{ purpose ?? "使用する数" }}：{{
+          modelValue.filter((id) => g.items.some((i) => i.id === id)).length
+        }}個</small
+      >
       <QuantitySpinner
-        :label="`${LABELS[g.kind] ?? recipe(g.kind)?.name ?? g.kind}の数量`"
+        :label="`${uiText(LABELS[g.kind] ?? recipe(g.kind)?.name ?? g.kind)}の数量`"
         ><input
-          :aria-label="`${LABELS[g.kind] ?? recipe(g.kind)?.name ?? g.kind}の数量`"
+          :aria-label="`${uiText(LABELS[g.kind] ?? recipe(g.kind)?.name ?? g.kind)}の数量`"
           type="number"
           inputmode="numeric"
           step="1"

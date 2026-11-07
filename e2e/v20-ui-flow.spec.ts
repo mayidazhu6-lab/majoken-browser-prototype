@@ -115,7 +115,9 @@ for (const width of [1440, 390]) {
     await page
       .getByRole("button", { name: "魔女間取引（0AP）", exact: true })
       .click();
-    await page.getByText("提供と要求の個数を入力", { exact: true }).click();
+    await page
+      .getByText("自分が渡す数・相手から受け取る数を入力", { exact: true })
+      .click();
     const request = page.getByRole("spinbutton", {
       name: "黒曜石 要求数",
       exact: true,
