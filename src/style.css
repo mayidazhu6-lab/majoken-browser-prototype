@@ -1623,3 +1623,303 @@ input[type="number"]::-webkit-inner-spin-button {
     margin-bottom: 6px;
   }
 }
+
+/* Stage 1: operation hierarchy; visual theme and illustration stay unchanged. */
+.turn-hud {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  padding: 12px 18px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 4px 12px #0004;
+}
+.hud-time,
+.hud-ap,
+.hud-personal {
+  display: grid;
+  gap: 2px;
+}
+.hud-time strong {
+  font-size: 17px;
+}
+.hud-ap {
+  grid-template-columns: auto auto;
+  align-items: center;
+  column-gap: 10px;
+}
+.hud-ap small {
+  grid-column: 1 / -1;
+}
+.turn-hud small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.hud-personal {
+  margin-left: auto;
+}
+.ap-tokens {
+  display: flex;
+  gap: 5px;
+}
+.ap-tokens i {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  border: 2px solid var(--mint);
+  background: var(--mint);
+}
+.ap-tokens .spent {
+  background: transparent;
+  border-style: dashed;
+  opacity: 0.55;
+}
+.hud-reason {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+}
+.institute-health.risk {
+  text-align: left;
+  margin: 0 0 18px auto;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-width: 420px;
+}
+.health-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.institute-health.risk b {
+  color: var(--mint);
+  font-size: 20px;
+  margin: 0;
+}
+.institute-health p {
+  margin: 4px 0;
+}
+.institute-health.danger {
+  border-color: var(--pink);
+}
+.institute-health.danger b {
+  color: var(--pink);
+}
+.institute-health.risk small {
+  max-width: none;
+}
+.institute-health summary,
+.event-help summary,
+.public-help summary {
+  font-size: 12px;
+  color: var(--muted);
+}
+meter {
+  display: block;
+  width: 100%;
+  height: 14px;
+  accent-color: var(--mint);
+}
+.public-home {
+  grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
+  padding-right: 0;
+}
+.public-home .left-column {
+  gap: 12px;
+}
+.public-home .witches-overview h2 {
+  display: none;
+}
+.witches-overview summary {
+  font-weight: 700;
+}
+.task-glance h3 {
+  margin: 6px 0;
+}
+.task-glance p {
+  margin: 6px 0;
+}
+.event-overview.event-preview,
+.event-overview {
+  display: block;
+  padding: 18px;
+  margin: 0 0 16px;
+  min-height: 0;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  overflow-wrap: anywhere;
+  isolation: auto;
+}
+.event-overview .section-heading {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.event-overview h2 {
+  font-size: 19px;
+  margin: 10px 0;
+}
+.event-overview .event-status {
+  margin: 6px 0 12px;
+}
+.event-overview .event-metrics {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 10px 0;
+}
+.event-overview .event-metric {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 8px;
+}
+.event-overview .event-metric meter {
+  grid-column: 1 / -1;
+}
+.event-overview .event-metric b {
+  font-size: 17px;
+}
+.event-overview .event-metrics p,
+.event-overview .required-materials p {
+  margin: 4px 0;
+}
+.event-overview .event-metrics small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+.event-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+.event-shortcuts button {
+  width: 100%;
+  min-height: 44px;
+}
+.event-shortcuts small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+.event-help {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+.event-help p {
+  font-size: 12px;
+}
+.action-steps {
+  color: var(--mint);
+}
+.public-help {
+  margin-bottom: 16px;
+}
+.battle-header {
+  top: calc(var(--turn-hud-height, 0px) + 8px);
+}
+@media (max-width: 760px) {
+  .turn-hud {
+    padding: 8px 10px;
+    gap: 4px 12px;
+    border-radius: 0 0 8px 8px;
+  }
+  .hud-time strong {
+    font-size: 14px;
+  }
+  .hud-time small {
+    display: none;
+  }
+  .hud-ap strong {
+    font-size: 13px;
+  }
+  .ap-tokens i {
+    width: 13px;
+    height: 13px;
+  }
+  .hud-ap {
+    column-gap: 6px;
+  }
+  .hud-personal strong {
+    font-size: 13px;
+  }
+  .hud-personal small {
+    display: none;
+  }
+  .hud-reason {
+    font-size: 11px;
+  }
+  .institute-health.risk {
+    max-width: none;
+    padding: 10px 12px;
+  }
+  .public-home {
+    gap: 12px;
+  }
+  .public-home > .left-column {
+    display: contents;
+  }
+  .public-home .common-menu {
+    order: 0;
+    width: 100%;
+    margin: 0;
+  }
+  .public-home .event-preview {
+    order: 1;
+    width: 100%;
+    margin: 0;
+  }
+  .public-home > .center-column {
+    order: 2;
+  }
+  .public-home .task-glance {
+    order: 3;
+    width: 100%;
+  }
+  .public-home .witches-overview {
+    order: 4;
+    width: 100%;
+  }
+  .public-home .level-guide {
+    order: 5;
+    width: 100%;
+  }
+  .public-home > .right-column {
+    order: 6;
+  }
+  .public-action-menu {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .public-action-menu button {
+    min-height: 64px;
+    padding: 10px 6px;
+    font-size: 13px;
+  }
+}
+.event-overview strong {
+  font-size: inherit;
+}
+meter::-webkit-meter-bar {
+  background: var(--border);
+  border: 0;
+  border-radius: 8px;
+}
+meter::-webkit-meter-optimum-value {
+  background: var(--mint);
+  border-radius: 8px;
+}
+.institute-health.danger meter::-webkit-meter-optimum-value {
+  background: var(--pink);
+}
