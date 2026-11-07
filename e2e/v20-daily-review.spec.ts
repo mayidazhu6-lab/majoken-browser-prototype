@@ -49,6 +49,7 @@ for (const width of [1440, 390]) {
     await page.getByRole("button", { name: "続きから", exact: true }).click();
     await page.getByRole("button", { name: "休息", exact: true }).click();
     await page.getByRole("button", { name: "夜間行動と錬金を確定" }).click();
+    await page.getByRole("button", { name: /秘匿行動を解決/ }).click();
     await expect(page.locator(".combat-panel")).toHaveCount(0);
     await expect(page.locator(".action-result")).toHaveCount(0);
     await expect(
