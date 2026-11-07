@@ -36,7 +36,9 @@ export async function settleScreens(page: Page) {
     if (await page.getByRole("dialog").isVisible()) return;
     const card = page.locator(".briefing, .action-result");
     if (await card.isVisible()) {
-      await card.getByRole("button", { name: "確認した", exact: true }).click();
+      await card
+        .getByRole("button", { name: /^(確認した|確認して進む)$/ })
+        .click();
       continue;
     }
     let moved = false;
