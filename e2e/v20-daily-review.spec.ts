@@ -155,9 +155,10 @@ test("通常薬は選択中の採集・研究・購買だけに表示する", as
   // This also visits delivery: use a material-delivery event, not a random event.
   await page.getByRole("checkbox", { name: "開発者モード" }).check();
   await page.getByLabel(/乱数シード/).fill("ui3-1");
-  await page.getByRole("checkbox", { name: "開発者モード" }).uncheck();
   await page.getByRole("button", { name: "研究開始", exact: true }).click();
   await settleScreens(page);
+  await page.getByRole("checkbox", { name: "開発者モード" }).uncheck();
+  await expect(page.locator(".event-preview")).toContainText("月光炉の暴走");
   await page.evaluate(async () => {
     const { useGameStore } = await new Function(
       "return import('/src/stores/game.ts')",
