@@ -161,6 +161,10 @@ const publicActions = {
   trade: { label: "魔女間取引", cost: 0, icon: "spiral" },
   duel: { label: "決闘", cost: 1, icon: "sword" },
 } as const;
+// Delivery remains action metadata, but its sole entry is the event card.
+const publicActionChoices = Object.fromEntries(
+  Object.entries(publicActions).filter(([id]) => id !== "event"),
+);
 const menu = ref("");
 const menuOpener = ref<HTMLElement>();
 function openMenu(
@@ -1333,7 +1337,16 @@ watch(
       >
         <strong>行動を選ぶ</strong><span>採集・研究など ↓</span>
       </button>
-      <InstituteHealth :failed="s.failed" />
+      <InstituteHealth
+        v-if="
+          !briefing &&
+          (actionResult.length ||
+            s.phase !== 'public' ||
+            actionScreen ||
+            combat)
+        "
+        :failed="s.failed"
+      />
       <section
         v-if="
           !modernNight && s.event.resolved && s.event.acknowledged && !s.result
@@ -1359,21 +1372,23 @@ watch(
           未回答の取引を確認（{{ incomingTrades.length }}件）
         </button>
       </div>
-      <TaskBriefing
-        v-if="briefing"
-        :graduation="graduation"
-        :midpoint="morningMidpoint"
-        :day="s.day"
-        :name="
-          goalDescription(graduation ? me.longGoal : me.dailyGoal, graduation)
-            .name
-        "
-        :condition="
-          goalDescription(graduation ? me.longGoal : me.dailyGoal, graduation)
-            .condition
-        "
-        @confirm="graduation ? (graduation = false) : (hoNoticeDay = s.day)"
-      />
+      <template v-if="briefing">
+        <TaskBriefing
+          :graduation="graduation"
+          :midpoint="morningMidpoint"
+          :day="s.day"
+          :name="
+            goalDescription(graduation ? me.longGoal : me.dailyGoal, graduation)
+              .name
+          "
+          :condition="
+            goalDescription(graduation ? me.longGoal : me.dailyGoal, graduation)
+              .condition
+          "
+          @confirm="graduation ? (graduation = false) : (hoNoticeDay = s.day)"
+        />
+        <InstituteHealth :failed="s.failed" class="briefing-health" />
+      </template>
       <section
         v-else-if="actionResult.length"
         class="panel focus-screen action-result"
@@ -1394,6 +1409,10 @@ watch(
         }"
       >
         <aside v-if="!combat" class="left-column">
+          <InstituteHealth
+            v-if="s.phase === 'public' && !actionScreen"
+            :failed="s.failed"
+          />
           <EventOverview
             v-if="s.phase === 'public' && !actionScreen"
             class="event-preview"
@@ -2182,7 +2201,7 @@ watch(
               aria-label="公開行動"
             >
               <button
-                v-for="(action, id) in publicActions"
+                v-for="(action, id) in publicActionChoices"
                 :key="id"
                 :class="{ active: tab === id }"
                 :aria-describedby="
@@ -2351,6 +2370,8 @@ watch(
                   </select>
                 </label>
                 <button
+                  class="research-execute"
+                  :class="{ primary: !researchErrors[k] }"
                   :disabled="!!researchErrors[k]"
                   :aria-describedby="
                     researchErrors[k] ? `research-reason-${k}` : undefined
@@ -2365,7 +2386,12 @@ watch(
                     })
                   "
                 >
-                  研究 <small>1AP</small>
+                  <GameIcon :kind="researchErrors[k] ? 'lock' : 'book'" />
+                  <span
+                    >{{
+                      researchErrors[k] ? "研究不可" : "研究する"
+                    }}（1AP）</span
+                  >
                 </button>
                 <p
                   v-if="researchErrors[k]"

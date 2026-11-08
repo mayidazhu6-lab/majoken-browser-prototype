@@ -152,6 +152,10 @@ for (const width of [1440, 390]) {
 test("通常薬は選択中の採集・研究・購買だけに表示する", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /ゲーム開始/ }).click();
+  // This also visits delivery: use a material-delivery event, not a random event.
+  await page.getByRole("checkbox", { name: "開発者モード" }).check();
+  await page.getByLabel(/乱数シード/).fill("ui3-1");
+  await page.getByRole("checkbox", { name: "開発者モード" }).uncheck();
   await page.getByRole("button", { name: "研究開始", exact: true }).click();
   await settleScreens(page);
   await page.evaluate(async () => {
@@ -193,7 +197,9 @@ test("通常薬は選択中の採集・研究・購買だけに表示する", as
       .getByRole("button", { name: "キャンセルして戻る", exact: true })
       .click();
   }
-  await page.getByRole("button", { name: "納品（0AP）", exact: true }).click();
+  await page
+    .getByRole("button", { name: "納品へ（0AP）", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: /の薬を使う（0AP）/ }),
   ).toHaveCount(0);

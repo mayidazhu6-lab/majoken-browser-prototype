@@ -10,7 +10,10 @@ defineProps<{
 defineEmits<{ confirm: [] }>();
 </script>
 <template>
-  <section class="panel focus-screen briefing">
+  <section
+    class="panel focus-screen briefing"
+    :class="{ 'graduation-briefing': graduation }"
+  >
     <section
       v-if="midpoint && !graduation"
       class="midpoint-notice"
@@ -48,8 +51,8 @@ defineEmits<{ confirm: [] }>();
       {{ graduation ? "あなたの卒業課題" : `${day}日目の今日の課題` }}
     </h2>
     <p v-if="graduation">8日間の間に以下を達成する事。</p>
-    <h3>{{ name }}</h3>
-    <p>達成条件：{{ condition }}</p>
+    <h3 class="task-name">{{ name }}</h3>
+    <p class="task-condition">達成条件：{{ condition }}</p>
     <p v-if="graduation">
       卒業課題を達成した魔女が卒業します。卒業者のうち名声（FP）が最も高い魔女が首席です。共通イベントに通算3回失敗すると全員敗北です。
     </p>

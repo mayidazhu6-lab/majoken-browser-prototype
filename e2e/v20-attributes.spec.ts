@@ -45,7 +45,9 @@ test("呪詛で研究素材が不足してもキャンセルで状態やAPを消
   await material.selectOption("obsidian");
   await expect(fire).toContainText("黒曜石：必要2 / 使用可能1");
   await expect(fire).toContainText("魔力結晶：必要1 / 使用可能1");
-  await expect(fire.getByRole("button", { name: "研究 1AP" })).toBeDisabled();
+  await expect(
+    fire.getByRole("button", { name: /研究(?:する|不可)（1AP）/ }),
+  ).toBeDisabled();
   await page.getByRole("button", { name: "キャンセルして戻る" }).click();
   expect(await save(page)).toBe(initialSave);
   await open.click();
@@ -117,7 +119,9 @@ test("能力納品で風Lvが下がっても解放済みレシピを維持し、
   await expect(card).toContainText("精霊水：必要1");
   await expect(card).toContainText("星の砂：必要1");
   await expect(card.getByRole("combobox")).toHaveCount(0);
-  await expect(card.getByRole("button", { name: "研究 1AP" })).toBeEnabled();
+  await expect(
+    card.getByRole("button", { name: /研究(?:する|不可)（1AP）/ }),
+  ).toBeEnabled();
   await card.screenshot({ path: testInfo.outputPath("research-mobile.png") });
 
   await page.evaluate(async () => {
@@ -134,7 +138,7 @@ test("能力納品で風Lvが下がっても解放済みレシピを維持し、
   await expect(card).toContainText(
     "最上位薬のレシピ解放（浄化の薬・透明の薬・剛力の薬）",
   );
-  await card.getByRole("button", { name: "研究 1AP" }).click();
+  await card.getByRole("button", { name: /研究(?:する|不可)（1AP）/ }).click();
   const player = JSON.parse((await save(page))!).state.players[0];
   expect(player.stats.insight).toBe(9);
   expect(player.recipes).toEqual(
