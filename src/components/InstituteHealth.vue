@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import GameIcon from "./GameIcon.vue";
 const props = defineProps<{ failed: number }>();
 const remaining = computed(() => Math.max(0, 3 - props.failed));
 </script>
@@ -12,12 +13,15 @@ const remaining = computed(() => Math.max(0, 3 - props.failed));
     <div class="health-heading">
       <strong>研究所の耐久</strong><b>{{ remaining }} / 3</b>
     </div>
-    <meter
-      min="0"
-      max="3"
-      :value="remaining"
-      :aria-label="`研究所の耐久 ${remaining} / 3`"
-    ></meter>
+    <div class="health-gems" aria-hidden="true">
+      <GameIcon
+        v-for="n in 3"
+        :key="n"
+        kind="diamond"
+        class="health-gem"
+        :class="{ filled: n <= remaining }"
+      />
+    </div>
     <p>
       {{
         remaining === 0

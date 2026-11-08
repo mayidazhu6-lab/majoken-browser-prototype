@@ -1,8 +1,19 @@
-/** Presentation only: no persisted theme or game-state mutation. */
-export function schoolTheme(phase?: string): "day" | "night" {
-  return ["magic", "vote", "night", "duels", "rewards", "results"].includes(
-    phase ?? "",
-  )
+/** Presentation only: result confirmation can outlive the phase that produced it. */
+export function schoolTheme(
+  phase?: string,
+  event?: { resolved: boolean; acknowledged?: boolean },
+): "day" | "night" {
+  if (event?.resolved && !event.acknowledged) return "day";
+  return [
+    "magic",
+    "vote",
+    "night",
+    "duels",
+    "rewards",
+    "results",
+    "ho",
+    "dawn",
+  ].includes(phase ?? "")
     ? "night"
     : "day";
 }
