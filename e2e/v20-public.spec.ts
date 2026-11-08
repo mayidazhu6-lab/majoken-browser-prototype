@@ -43,7 +43,6 @@ for (const [seed, expected] of [
     for (const label of [
       "採集（1AP）",
       "研究（1AP）",
-      "納品（0AP）",
       "購買部（1AP）",
       "魔女間取引（0AP）",
       "決闘（1AP）",
@@ -87,13 +86,20 @@ for (const [seed, expected] of [
         panel.getByRole("button", { name: "採集 1AP" }),
       ).toBeDisabled();
       await page.getByRole("button", { name: "キャンセルして戻る" }).click();
-      await actions
-        .getByRole("button", { name: "納品（0AP）", exact: true })
-        .click();
-      await expect(
-        panel.getByRole("button", { name: "自分の予約をすべて撤回（0AP）" }),
-      ).toBeEnabled();
-      await page.getByRole("button", { name: "キャンセルして戻る" }).click();
+      const delivery = page
+        .locator(".event-preview")
+        .getByRole("button", { name: "納品へ（0AP）", exact: true });
+      if (await delivery.count()) {
+        await delivery.click();
+        await expect(
+          panel.getByRole("button", { name: "自分の予約をすべて撤回（0AP）" }),
+        ).toBeEnabled();
+        await page.getByRole("button", { name: "キャンセルして戻る" }).click();
+      }
+      // Action-count events have no delivery operation on the event card.
+      await expect(actions.getByRole("button", { name: /納品/ })).toHaveCount(
+        0,
+      );
       await page.getByRole("button", { name: /手番終了 \/ パス/ }).click();
     }
     const result = page.getByRole("dialog", { name: "共通イベントの結果" });

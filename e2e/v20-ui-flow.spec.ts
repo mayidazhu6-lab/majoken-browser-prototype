@@ -31,7 +31,7 @@ for (const width of [1440, 390]) {
     await settleScreens(page);
     await page.getByRole("checkbox", { name: "開発者モード" }).uncheck();
     await page
-      .getByRole("button", { name: "納品（0AP）", exact: true })
+      .getByRole("button", { name: "納品へ（0AP）", exact: true })
       .click();
     const reserve = page.getByRole("button", {
       name: "仮納品する（0AP）",

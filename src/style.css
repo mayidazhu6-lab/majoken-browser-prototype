@@ -1952,3 +1952,67 @@ meter::-webkit-meter-optimum-value {
   margin-bottom: 10px;
   color: var(--muted);
 }
+
+/* Additional UI polish: keep the goal and public choices close to the HUD. */
+.graduation-briefing {
+  margin: 12px auto 24px;
+  width: min(100%, 820px);
+  padding: clamp(18px, 3vw, 32px);
+  overflow-wrap: anywhere;
+}
+.graduation-briefing .task-name {
+  color: var(--primary);
+  font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+  font-size: clamp(21px, 2.5vw, 28px);
+  line-height: 1.5;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--gold);
+}
+.graduation-briefing .task-condition {
+  font-size: 15px;
+  line-height: 1.9;
+}
+.briefing-health {
+  margin-top: 16px;
+}
+.public-home .institute-health {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 8px;
+  width: 100%;
+  margin: 0;
+  padding: 12px;
+}
+.public-home .health-heading {
+  gap: 8px;
+}
+.public-home .health-heading b {
+  font-size: 18px;
+  white-space: nowrap;
+}
+.public-home .health-gems {
+  margin: 0;
+  gap: 4px;
+  align-items: center;
+}
+.public-home .health-gems .health-gem {
+  width: 24px;
+  height: 24px;
+}
+.public-home .institute-health > p,
+.public-home .institute-health > details {
+  grid-column: 1 / -1;
+}
+.research-execute {
+  min-height: 44px;
+}
+.research-execute .game-icon {
+  width: 20px;
+  height: 20px;
+  color: inherit !important;
+}
+@media (max-width: 760px) {
+  .public-home .institute-health {
+    order: -1;
+  }
+}

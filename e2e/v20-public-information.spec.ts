@@ -51,7 +51,7 @@ for (const width of [1440, 390]) {
       "あと3回の失敗で研究所崩壊",
     );
     await page
-      .getByRole("button", { name: "納品（0AP）", exact: true })
+      .getByRole("button", { name: "納品へ（0AP）", exact: true })
       .click();
     const panel = page.locator(".actions-panel");
     await expect(panel.locator(".selection-summary")).toContainText("必要AP 0");
@@ -80,7 +80,7 @@ for (const width of [1440, 390]) {
     expect(reserved.players[0].ap).toBe(initial.players[0].ap);
     expect(reserved.event.reservations[0].items).toEqual([donated.id]);
     await page
-      .getByRole("button", { name: "納品（0AP）", exact: true })
+      .getByRole("button", { name: "納品へ（0AP）", exact: true })
       .click();
     await expect(panel.locator(".event-metrics")).toContainText("不足5個");
     await panel
@@ -88,7 +88,7 @@ for (const width of [1440, 390]) {
       .click();
     await settleScreens(page);
     await page
-      .getByRole("button", { name: "納品（0AP）", exact: true })
+      .getByRole("button", { name: "納品へ（0AP）", exact: true })
       .click();
     await expect(panel.locator(".event-metrics")).toContainText("不足6個");
     before = await saved();

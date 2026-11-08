@@ -119,7 +119,7 @@ for (const width of [1440, 390]) {
     ).toBeEnabled();
     await page.getByRole("button", { name: "研究（1AP） 詳細のみ" }).click();
     for (const button of await page
-      .getByRole("button", { name: "研究 1AP", exact: true })
+      .getByRole("button", { name: /研究(?:する|不可)（1AP）/, exact: true })
       .all())
       await expect(button).toBeDisabled();
     await page.evaluate(() => window.scrollTo(0, 600));

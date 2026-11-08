@@ -123,7 +123,7 @@ test("休息・研鑽の研究プレビューが支払いと成長に一致し�
   await expect(card).toContainText("黒曜石：必要1");
   await expect(card).not.toContainText("魔力結晶：必要");
   await card.screenshot({ path: testInfo.outputPath("research-desktop.png") });
-  await card.getByRole("button", { name: "研究 1AP" }).click();
+  await card.getByRole("button", { name: /研究(?:する|不可)（1AP）/ }).click();
   const result = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!).state.players[0],
     key,

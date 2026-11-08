@@ -1,5 +1,6 @@
 /** Shared vector silhouettes. IDs are presentation aliases, never item/rule IDs. */
 export const shapes = {
+  lock: "M9 14V9a7 7 0 0 1 14 0v5M6 14h20v15H6V14Zm10 5v5",
   obsidian:
     "M6 24 4 15 12 5 23 7 28 20 20 28 6 24ZM12 5l3 12-9 7m9-7 8-10m-8 10 5 11m-5-11 13 3",
   crystal:
