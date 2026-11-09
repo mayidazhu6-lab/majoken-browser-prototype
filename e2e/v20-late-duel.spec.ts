@@ -1,11 +1,16 @@
 import { expect, test } from "@playwright/test";
-import { V20_NPC_RULES_VERSION, V20_RULES_VERSION } from "../src/domain/config";
+import {
+  V20_NPC_RULES_VERSION,
+  V20_RULES_VERSION,
+  V21_RULES_VERSION,
+} from "../src/domain/config";
 import { replay, serialize } from "../src/domain/persistence";
 import type { Action, Setup } from "../src/domain/types";
 import fixture from "../tests/fixtures/v203-late-duel.json" with { type: "json" };
 import { settleScreens } from "./helpers";
 
 for (const [version, key, gain] of [
+  [V21_RULES_VERSION, "majoken-save-rules-2.1", 2],
   [V20_RULES_VERSION, "majoken-save-rules-2.0.4", 2],
   [V20_NPC_RULES_VERSION, "majoken-save-rules-2.0.3", 1],
 ] as const) {

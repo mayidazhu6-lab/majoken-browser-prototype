@@ -224,7 +224,7 @@ it("keeps old/new save slots separate, including resaving an old reward", () => 
   setActivePinia(createPinia());
   const store = useGameStore();
   store.start(setup);
-  const fresh = values.get("majoken-save-rules-2.0.4");
+  const fresh = values.get("majoken-save-rules-2.1");
   const old = replay(
     setup,
     fixture.actionsBeforeWin as Action[],
@@ -237,7 +237,7 @@ it("keeps old/new save slots separate, including resaving an old reward", () => 
   expect(hash(store.state)).toBe(fixture.afterWinHash);
   store.load(undefined, V20_NPC_RULES_VERSION);
   expect(hash(store.state)).toBe(fixture.afterWinHash);
-  expect(values.get("majoken-save-rules-2.0.4")).toBe(fresh);
+  expect(values.get("majoken-save-rules-2.1")).toBe(fresh);
   expect(JSON.stringify(ruleGuide(V20_RULES_VERSION))).toContain(
     "5〜8日目は＋2FP",
   );

@@ -6,6 +6,7 @@ import {
   STATS,
   V20_PREVIOUS_RULES_VERSION,
   V20_RULES_VERSION,
+  V21_RULES_VERSION,
 } from "../src/domain/config";
 import {
   chooseElement,
@@ -153,7 +154,7 @@ it("reproduces a full new game and reloads new AI RNG state without repeating dr
 
 it("keeps old and new save slots and AI versions separate through load, continue, save and reload", () => {
   const oldKey = "majoken-save-rules-2.0.2",
-    newKey = "majoken-save-rules-2.0.4";
+    newKey = "majoken-save-rules-2.1";
   const old = JSON.stringify(fixture.save);
   const values = new Map([[oldKey, old]]);
   vi.stubGlobal("localStorage", {
@@ -165,7 +166,7 @@ it("keeps old and new save slots and AI versions separate through load, continue
   store.load();
   expect(store.state?.rulesVersion).toBe(V20_PREVIOUS_RULES_VERSION);
   store.start(setup);
-  expect(store.state?.rulesVersion).toBe(V20_RULES_VERSION);
+  expect(store.state?.rulesVersion).toBe(V21_RULES_VERSION);
   expect(values.get(oldKey)).toBe(old);
   const fresh = values.get(newKey);
   store.load(undefined, V20_PREVIOUS_RULES_VERSION);
@@ -173,7 +174,7 @@ it("keeps old and new save slots and AI versions separate through load, continue
   const continued = serialize(store.state!);
   store.save();
   store.load();
-  expect(store.state?.rulesVersion).toBe(V20_RULES_VERSION);
+  expect(store.state?.rulesVersion).toBe(V21_RULES_VERSION);
   expect(values.get(newKey)).toBe(fresh);
   store.load(undefined, V20_PREVIOUS_RULES_VERSION);
   expect(serialize(store.state!)).toBe(continued);

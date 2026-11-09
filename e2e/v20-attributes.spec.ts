@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { settleScreens } from "./helpers";
 
-const saveKey = "majoken-save-rules-2.0.4";
+const saveKey = "majoken-save-rules-2.1";
 const save = (page: Page) =>
   page.evaluate((key) => localStorage.getItem(key), saveKey);
 

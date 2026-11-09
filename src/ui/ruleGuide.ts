@@ -1,8 +1,5 @@
-import {
-  hasPlaytestRules,
-  hasRevisedNightRules,
-  V20_RULES_VERSION,
-} from "../domain/config";
+import { publicDuelReward } from "../domain/publicDuelReward";
+import { hasPlaytestRules, hasRevisedNightRules } from "../domain/config";
 
 type GuideSection = {
   title: string;
@@ -90,7 +87,7 @@ export function ruleGuide(rulesVersion: string): GuideSection[] {
     {
       title: "名声ポイント（FP）",
       paragraphs: [
-        `今日の課題を達成すると＋1FP、通常の公開決闘に勝つと${rulesVersion === V20_RULES_VERSION ? "1〜4日目は＋1FP、5〜8日目は＋2FP" : "＋1FP"}です。共通イベントのFPは、カードごとの条件を満たした魔女に入ります。模擬戦や夜間決闘の勝利によるFP加算はありません。偵察のための戦闘に勝って情報を得ると、対象のFPが減ることがあります。`,
+        `今日の課題を達成すると＋1FP、通常の公開決闘に勝つと${publicDuelReward({ rulesVersion, day: 5 }) === 2 ? "1〜4日目は＋1FP、5〜8日目は＋2FP" : "＋1FP"}です。共通イベントのFPは、カードごとの条件を満たした魔女に入ります。模擬戦や夜間決闘の勝利によるFP加算はありません。偵察のための戦闘に勝って情報を得ると、対象のFPが減ることがあります。`,
         "卒業者は最終FPの多い順に並びます。同点なら「今日の課題」の達成日数を比べ、それも同じなら同順位です。第8日のFPを参照する卒業課題には、同日の課題報酬を足す前のFPを使います。順位には報酬を足した後のFPを使います。",
       ],
     },
