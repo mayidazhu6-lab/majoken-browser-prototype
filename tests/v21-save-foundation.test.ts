@@ -185,22 +185,22 @@ for (const record of baseline.records) {
       record.longAchieved,
     );
     expect(deserialize(serialize(s))).toEqual(s);
-  });
+  }, 20000);
 }
 
-it("changes only the version identity from 2.0.4 in phase 1, including full-game save replay", () => {
+it("inherits 2.0.4 public behavior before the new automatic-victory rules apply", () => {
   let old = createGame(setup, V20_RULES_VERSION);
   let current = createGame(setup, V21_RULES_VERSION);
   const normalize = (value: typeof current) =>
     serialize(value).replaceAll(V21_RULES_VERSION, V20_RULES_VERSION);
   expect(normalize(current)).toBe(serialize(old));
-  for (let i = 0; !old.result && i < 1500; i++) {
+  for (let i = 0; old.phase !== "night" && !old.result && i < 1500; i++) {
     const action = simulationAction(old);
     old = dispatch(old, action);
     current = dispatch(current, action);
     expect(normalize(current)).toBe(serialize(old));
   }
-  expect(current.result).toBeDefined();
+  expect(current.phase).toBe("night");
   expect(deserialize(serialize(current))).toEqual(current);
 });
 

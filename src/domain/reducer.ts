@@ -1,3 +1,4 @@
+import { recordAutomaticVictory } from "./duelHistory";
 import { publicDuelReward } from "./publicDuelReward";
 import type {
   Action,
@@ -702,6 +703,7 @@ function runNight(s: GameState) {
   ) {
     const battle = work.battles[work.battle];
     if (battle.automatic) {
+      recordAutomaticVictory(s, battle.participants);
       work.battle++;
       continue;
     }
@@ -992,7 +994,7 @@ function evaluateHO(s: GameState) {
           p.longGoal.achieved);
   });
   s.players.forEach((p, i) => {
-    const goal = goalDescription(p.dailyGoal, false, modern);
+    const goal = goalDescription(p.dailyGoal, false, modern, s.rulesVersion);
     log(
       s,
       "dailyHO",

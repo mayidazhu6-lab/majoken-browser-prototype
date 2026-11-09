@@ -1,3 +1,4 @@
+import { duelHistory } from "../domain/duelHistory";
 import type { GameState } from "../domain/types";
 import { LABELS, STATS, V20_LABELS, hasFinalGoalRules } from "../domain/config";
 
@@ -18,13 +19,10 @@ export function graduationProgress(s: GameState): string[] {
     );
   const count = (type: string, to?: number) =>
     entries(type, to).reduce((n, l) => n + (l.amount ?? 1), 0);
-  const battles = s.combatHistory.filter(
-    (c) => c.kind !== "mock" && c.participants.includes(0),
-  );
+  const battles = duelHistory(s).filter((c) => c.participants.includes(0));
   const wins = (to?: number) =>
     battles.filter(
-      (c) =>
-        c.winner === 0 && (to === undefined || c.participants.includes(to)),
+      (c) => c.winner === 0 && (to === undefined || c.opponents.includes(to)),
     ).length;
   const scouts = (to?: number) =>
     entries("scout", to).filter((l) => (l.amount ?? 0) > 0);
@@ -78,7 +76,7 @@ export function graduationProgress(s: GameState): string[] {
       ];
     case 13:
       return [
-        `あなたが対戦した相手 ${names.filter((q) => battles.some((c) => c.participants.includes(q.id))).length} / 3人（別条件：指定2人の公開決闘）`,
+        `あなたが対戦した相手 ${names.filter((q) => battles.some((c) => c.opponents.includes(q.id))).length} / 3人（別条件：指定2人の公開決闘）`,
       ];
     case 16:
       return [
@@ -120,7 +118,7 @@ export function graduationProgress(s: GameState): string[] {
       ];
     case 24:
       return [
-        `敗北した相手 ${new Set(battles.filter((c) => c.winner !== null && c.winner !== 0).map((c) => c.participants.find((id) => id !== 0))).size} / 2人`,
+        `敗北した相手 ${new Set(battles.filter((c) => c.winner !== null && c.winner !== 0).map((c) => c.opponents.find((id) => id !== 0))).size} / 2人`,
       ];
     case 25:
       return [

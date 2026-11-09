@@ -1,3 +1,6 @@
+import { duelHistory } from "./duelHistory";
+import v21Conditions from "./goals-v21-overrides.json" with { type: "json" };
+import { V21_RULES_VERSION } from "./config";
 import modernGoals from "./goals-v20.json" with { type: "json" };
 import goals from "./goals.json" with { type: "json" };
 import type { GameState, Goal, Player, Log } from "./types";
@@ -338,10 +341,8 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
     ls.filter((l) => l.type === type && (t === undefined || l.target === t));
   const n = (type: string, t?: number) =>
     ts(type, t).reduce((a, l) => a + (l.amount ?? 1), 0);
-  const battles = s.combatHistory.filter(
-    (c) => c.kind !== "mock" && c.participants.includes(p.id),
-  );
-  const vs = (t: number) => battles.filter((c) => c.participants.includes(t));
+  const battles = duelHistory(s).filter((c) => c.participants.includes(p.id));
+  const vs = (t: number) => battles.filter((c) => c.opponents.includes(t));
   const wins = (t: number) => vs(t).filter((c) => c.winner === p.id).length;
   const scouts = (t: number) =>
     ts("scout", t).filter((l) => (l.amount ?? 0) > 0);
@@ -502,7 +503,7 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
         new Set(
           battles
             .filter((c) => c.winner !== null && c.winner !== p.id)
-            .map((c) => c.participants.find((t) => t !== p.id)),
+            .map((c) => c.opponents.find((t) => t !== p.id)),
         ).size >= 2
       );
     case 25:
@@ -525,7 +526,12 @@ export function longAchieved(s: GameState, p: Player, g: Goal = p.longGoal) {
       throw Error(`未定義長期HO ${g.id}`);
   }
 }
-export function goalDescription(g: Goal, long: boolean, modern = false) {
+export function goalDescription(
+  g: Goal,
+  long: boolean,
+  modern = false,
+  rulesVersion?: string,
+) {
   const suffix = g.targets.length
     ? `（指定：${g.targets.map((n) => `席${n + 1}`).join("・")}）`
     : "";
@@ -533,7 +539,14 @@ export function goalDescription(g: Goal, long: boolean, modern = false) {
     const d = (long ? modernGoals.long : modernGoals.daily).find(
       (x) => x.id === g.id,
     )!;
-    return { ...d, condition: d.condition + suffix };
+    const overrides: Record<string, string> = long
+      ? v21Conditions.long
+      : v21Conditions.daily;
+    const condition =
+      rulesVersion === V21_RULES_VERSION
+        ? (overrides[g.id] ?? d.condition)
+        : d.condition;
+    return { ...d, condition: condition + suffix };
   }
   const d = (long ? LONG_GOALS : DAILY_GOALS).find((x) => x.id === g.id)!;
   return {
