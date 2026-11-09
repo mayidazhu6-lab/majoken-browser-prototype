@@ -106,7 +106,7 @@ for (const width of [1440, 390]) {
     ).toHaveCount(0);
     await expect(page.locator(".phase-message")).toHaveCount(0);
     const saved = () =>
-      page.evaluate(() => localStorage.getItem("majoken-save-rules-2.0.4"));
+      page.evaluate(() => localStorage.getItem("majoken-save-rules-2.1"));
     await expect(dawn).toHaveCount(1);
     expect(
       await page.evaluate(

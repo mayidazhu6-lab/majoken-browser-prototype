@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import { createGame, dispatch } from "../src/domain/reducer";
 import { simulationAction } from "../src/domain/simulation";
-import { V20_RULES_VERSION } from "../src/domain/config";
+import { V20_RULES_VERSION, V21_RULES_VERSION } from "../src/domain/config";
 import { deserialize, serialize } from "../src/domain/persistence";
 import { dailyAchieved, longAchieved } from "../src/domain/ho";
 import { graduationProgress } from "../src/ui/graduationProgress";
@@ -25,84 +25,89 @@ function progress(s: GameState, g: Goal) {
   return graduationProgress(view).join("\n");
 }
 
-it("records each Nemu secret win immediately, including defense, and keeps HO/UI counts through repeated save/load", () => {
-  let s = createGame(setup, V20_RULES_VERSION);
-  const snapshots: GameState[] = [];
-  for (let i = 0; i < 250 && !s.result; i++) {
-    let a: Action = simulationAction(s);
-    if (s.phase === "night" && !s.players[0].night)
-      a = {
-        type: "night",
-        player: 0,
-        choice: {
-          kind: s.players[0].lastRaid === s.day - 1 ? "guard" : "raid",
-          target: s.day <= 3 ? 2 : 1,
-          recipes: [],
-        },
-      };
-    if (a.type === "advance") a = { ...a, pauseAtDawn: true };
-    const previous = s;
-    s = dispatch(s, a);
+it.each([V20_RULES_VERSION, V21_RULES_VERSION])(
+  "records each Nemu secret win immediately, including defense, and keeps HO/UI counts through repeated save/load (%s)",
+  (rulesVersion) => {
+    let s = createGame(setup, rulesVersion);
+    const snapshots: GameState[] = [];
+    for (let i = 0; i < 250 && !s.result; i++) {
+      let a: Action = simulationAction(s);
+      if (s.phase === "night" && !s.players[0].night)
+        a = {
+          type: "night",
+          player: 0,
+          choice: {
+            kind: s.players[0].lastRaid === s.day - 1 ? "guard" : "raid",
+            target: s.day <= 3 ? 2 : 1,
+            recipes: [],
+          },
+        };
+      if (a.type === "advance") a = { ...a, pauseAtDawn: true };
+      const previous = s;
+      s = dispatch(s, a);
+      const wins = s.combatHistory.filter(
+        (c) => c.kind === "secret" && c.winner === 0,
+      );
+      const oldWins = previous.combatHistory.filter(
+        (c) => c.kind === "secret" && c.winner === 0,
+      );
+      if (wins.length === oldWins.length) continue;
+      const latest = wins.at(-1)!;
+      expect(
+        s.logs.filter(
+          (l) =>
+            l.type === "win" &&
+            l.actor === 0 &&
+            l.target === latest.participants.find((id) => id !== 0) &&
+            l.data?.kind === "secret",
+        ).length,
+      ).toBeGreaterThan(0);
+      const nemu = s.combatHistory.filter(
+        (c) =>
+          c.kind !== "mock" && c.winner === 0 && c.participants.includes(2),
+      ).length;
+      expect(progress(s, goal(5))).toContain(`指定相手への勝利 ${nemu}回`);
+      expect(longAchieved(s, s.players[0], goal(5))).toBe(nemu >= 2);
+      expect(longAchieved(s, s.players[0], goal(19))).toBe(
+        nemu >= 2 &&
+          s.logs.some(
+            (l) =>
+              l.type === "scout" &&
+              l.actor === 0 &&
+              l.target === 2 &&
+              (l.amount ?? 0) > 0,
+          ),
+      );
+      expect(longAchieved(s, s.players[0], goal(2))).toBe(
+        nemu >= 1 &&
+          s.logs.filter(
+            (l) => l.type === "trade" && l.actor === 0 && l.target === 2,
+          ).length >= 2,
+      );
+      expect(longAchieved(s, s.players[0], goal(11))).toBe(
+        nemu >= 1 &&
+          s.logs.some(
+            (l) => l.type === "curseHit" && l.actor === 0 && l.target === 2,
+          ),
+      );
+      const saved = serialize(s);
+      s = deserialize(saved);
+      expect(serialize(deserialize(serialize(s)))).toBe(saved);
+      expect(progress(s, goal(5))).toContain(`指定相手への勝利 ${nemu}回`);
+      snapshots.push(s);
+    }
     const wins = s.combatHistory.filter(
       (c) => c.kind === "secret" && c.winner === 0,
     );
-    const oldWins = previous.combatHistory.filter(
-      (c) => c.kind === "secret" && c.winner === 0,
-    );
-    if (wins.length === oldWins.length) continue;
-    const latest = wins.at(-1)!;
-    expect(
-      s.logs.filter(
-        (l) =>
-          l.type === "win" &&
-          l.actor === 0 &&
-          l.target === latest.participants.find((id) => id !== 0) &&
-          l.data?.kind === "secret",
-      ).length,
-    ).toBeGreaterThan(0);
-    const nemu = s.combatHistory.filter(
-      (c) => c.kind !== "mock" && c.winner === 0 && c.participants.includes(2),
-    ).length;
-    expect(progress(s, goal(5))).toContain(`指定相手への勝利 ${nemu}回`);
-    expect(longAchieved(s, s.players[0], goal(5))).toBe(nemu >= 2);
-    expect(longAchieved(s, s.players[0], goal(19))).toBe(
-      nemu >= 2 &&
-        s.logs.some(
-          (l) =>
-            l.type === "scout" &&
-            l.actor === 0 &&
-            l.target === 2 &&
-            (l.amount ?? 0) > 0,
-        ),
-    );
-    expect(longAchieved(s, s.players[0], goal(2))).toBe(
-      nemu >= 1 &&
-        s.logs.filter(
-          (l) => l.type === "trade" && l.actor === 0 && l.target === 2,
-        ).length >= 2,
-    );
-    expect(longAchieved(s, s.players[0], goal(11))).toBe(
-      nemu >= 1 &&
-        s.logs.some(
-          (l) => l.type === "curseHit" && l.actor === 0 && l.target === 2,
-        ),
-    );
-    const saved = serialize(s);
-    s = deserialize(saved);
-    expect(serialize(deserialize(serialize(s)))).toBe(saved);
-    expect(progress(s, goal(5))).toContain(`指定相手への勝利 ${nemu}回`);
-    snapshots.push(s);
-  }
-  const wins = s.combatHistory.filter(
-    (c) => c.kind === "secret" && c.winner === 0,
-  );
-  expect(wins.filter((c) => c.participants.includes(2))).toHaveLength(2);
-  expect(wins.filter((c) => c.participants.includes(1))).toHaveLength(2);
-  expect(wins.some((c) => c.initiator === 0)).toBe(true);
-  expect(wins.some((c) => c.initiator !== 0)).toBe(true);
-  expect(snapshots).toHaveLength(4);
-  expect(s.result?.reason).toBe("completed");
-}, 20000);
+    expect(wins.filter((c) => c.participants.includes(2))).toHaveLength(2);
+    expect(wins.filter((c) => c.participants.includes(1))).toHaveLength(2);
+    expect(wins.some((c) => c.initiator === 0)).toBe(true);
+    expect(wins.some((c) => c.initiator !== 0)).toBe(true);
+    expect(snapshots).toHaveLength(4);
+    expect(s.result?.reason).toBe("completed");
+  },
+  20000,
+);
 
 it("combines public and secret wins against the same target but excludes mock, draws, losses and another target", () => {
   const s = createGame(setup, V20_RULES_VERSION);

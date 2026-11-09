@@ -31,7 +31,7 @@ for (const width of [1440, 390]) {
     await expect(combat.locator(".duel-hp")).toHaveCount(2);
     await expect(combat.locator(".combat-fp span")).toHaveCount(2);
     const saved = () =>
-      page.evaluate(() => localStorage.getItem("majoken-save-rules-2.0.4"));
+      page.evaluate(() => localStorage.getItem("majoken-save-rules-2.1"));
     const before = await saved();
     const state = JSON.parse(before!).state;
     const c = state.combat;

@@ -11,7 +11,10 @@ export const V20_PLAYTEST_RULES_VERSION = "browser-2.0.1";
 export const V20_PREVIOUS_RULES_VERSION = "browser-2.0.2";
 export const V20_NPC_RULES_VERSION = "browser-2.0.3";
 export const V20_RULES_VERSION = "browser-2.0.4";
+// Phase 1 inherits 2.0.4 behavior; later v2.1 rules are implemented separately.
+export const V21_RULES_VERSION = "browser-2.1";
 export const hasRandomElementAI = (s: { rulesVersion: string }) =>
+  s.rulesVersion === V21_RULES_VERSION ||
   s.rulesVersion === V20_RULES_VERSION ||
   s.rulesVersion === V20_NPC_RULES_VERSION;
 export const hasRevisedNightRules = (s: { rulesVersion: string }) =>
@@ -153,6 +156,7 @@ export function levelEffect(stat: Stat, lv: number) {
 export const supportedRulesVersion = (version: string) =>
   version === CONFIG.rulesVersion ||
   version === LEGACY_RULES_VERSION ||
+  version === V21_RULES_VERSION ||
   version === V20_RULES_VERSION ||
   version === V20_NPC_RULES_VERSION ||
   version === V20_PREVIOUS_RULES_VERSION ||

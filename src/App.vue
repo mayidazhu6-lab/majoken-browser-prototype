@@ -39,6 +39,7 @@ import {
   RESEARCH,
   isV20,
   V20_RULES_VERSION,
+  V21_RULES_VERSION,
   V20_NPC_RULES_VERSION,
   V20_PREVIOUS_RULES_VERSION,
   V20_RELEASE_RULES_VERSION,
@@ -1132,13 +1133,19 @@ watch(
         ></a
       >
       <div class="top-actions">
-        <span class="version">v2.0 開発版 · 夜間処理</span
+        <span class="version">v2.1 開発版 · 段階実装中</span
         ><button @click="loadSave()">続きから</button>
         <button
           v-if="store.releasedSaveAvailable"
           @click="loadSave(undefined, V20_RELEASE_RULES_VERSION)"
         >
           旧v2.0の続きから
+        </button>
+        <button
+          v-if="store.v204RulesSaveAvailable"
+          @click="loadSave(undefined, V20_RULES_VERSION)"
+        >
+          旧v2.0.4の続きから
         </button>
         <button
           v-if="store.npcRulesSaveAvailable"
@@ -2620,7 +2627,9 @@ watch(
               <p
                 class="muted"
                 v-if="
-                  !eventMockSelected && s.rulesVersion === V20_RULES_VERSION
+                  !eventMockSelected &&
+                  publicDuelReward({ rulesVersion: s.rulesVersion, day: 5 }) ===
+                    2
                 "
               >
                 公開決闘の勝利報酬：1〜4日目＋1FP／5〜8日目＋2FP。秘匿戦闘には適用しません。
@@ -3583,7 +3592,7 @@ watch(
     </BlockingDialog>
     <RuleGuide
       v-if="ruleGuideOpener"
-      :rules-version="s?.rulesVersion ?? V20_RULES_VERSION"
+      :rules-version="s?.rulesVersion ?? V21_RULES_VERSION"
       :opener="ruleGuideOpener"
       @close="ruleGuideOpener = undefined"
     />
@@ -3914,7 +3923,7 @@ watch(
     <footer>
       <span>✧ 魔女たちの共同研究</span
       ><span
-        >ローカル試遊版 · ルール {{ s?.rulesVersion ?? V20_RULES_VERSION }} ·
+        >ローカル試遊版 · ルール {{ s?.rulesVersion ?? V21_RULES_VERSION }} ·
         公開前の検証用</span
       >
     </footer>

@@ -7,11 +7,13 @@ import {
   V20_PREVIOUS_RULES_VERSION,
   V20_RELEASE_RULES_VERSION,
   V20_RULES_VERSION,
+  V21_RULES_VERSION,
   V20_NPC_RULES_VERSION,
 } from "../domain/config";
 import { deserialize, serialize } from "../domain/persistence";
 
-const KEY = "majoken-save-rules-2.0.4";
+const KEY = "majoken-save-rules-2.1";
+const V204_KEY = "majoken-save-rules-2.0.4";
 const NPC_KEY = "majoken-save-rules-2.0.3";
 const PREVIOUS_KEY = "majoken-save-rules-2.0.2";
 const PLAYTEST_KEY = "majoken-save-rules-2.0.1";
@@ -28,7 +30,8 @@ const LEGACY_KEYS = [
 ];
 
 function saveKey(rulesVersion: string) {
-  if (rulesVersion === V20_RULES_VERSION) return KEY;
+  if (rulesVersion === V21_RULES_VERSION) return KEY;
+  if (rulesVersion === V20_RULES_VERSION) return V204_KEY;
   if (rulesVersion === V20_NPC_RULES_VERSION) return NPC_KEY;
   if (rulesVersion === V20_PREVIOUS_RULES_VERSION) return PREVIOUS_KEY;
   if (rulesVersion === V20_PLAYTEST_RULES_VERSION) return PLAYTEST_KEY;
@@ -48,6 +51,7 @@ export const useGameStore = defineStore("game", () => {
   const pending = shallowRef<GameState>();
   const error = ref("");
   const notice = ref("");
+  const v204RulesSaveAvailable = ref(hasSave(V204_KEY));
   const npcRulesSaveAvailable = ref(hasSave(NPC_KEY));
   const previousSaveAvailable = ref(hasSave(PREVIOUS_KEY));
   const releasedSaveAvailable = ref(hasSave(RELEASE_KEY));
@@ -57,6 +61,7 @@ export const useGameStore = defineStore("game", () => {
     try {
       const key = saveKey(candidate.rulesVersion)!;
       localStorage.setItem(key, serialize(candidate));
+      if (key === V204_KEY) v204RulesSaveAvailable.value = true;
       if (key === NPC_KEY) npcRulesSaveAvailable.value = true;
       if (key === PREVIOUS_KEY) previousSaveAvailable.value = true;
       if (key === PLAYTEST_KEY) playtestSaveAvailable.value = true;
@@ -85,7 +90,7 @@ export const useGameStore = defineStore("game", () => {
   function start(setup: Setup) {
     if (pending.value) return;
     try {
-      commit(createGame(JSON.parse(JSON.stringify(setup)), V20_RULES_VERSION));
+      commit(createGame(JSON.parse(JSON.stringify(setup)), V21_RULES_VERSION));
     } catch (e) {
       error.value = (e as Error).message;
     }
@@ -104,7 +109,7 @@ export const useGameStore = defineStore("game", () => {
       if (json === undefined) {
         for (const slot of key
           ? [key]
-          : [KEY, NPC_KEY, PREVIOUS_KEY, PLAYTEST_KEY, RELEASE_KEY]) {
+          : [KEY, V204_KEY, NPC_KEY, PREVIOUS_KEY, PLAYTEST_KEY, RELEASE_KEY]) {
           const saved = localStorage.getItem(slot);
           if (saved !== null) {
             key = slot;
@@ -138,6 +143,7 @@ export const useGameStore = defineStore("game", () => {
     pending,
     error,
     notice,
+    v204RulesSaveAvailable,
     npcRulesSaveAvailable,
     previousSaveAvailable,
     releasedSaveAvailable,

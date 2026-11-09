@@ -140,7 +140,7 @@ test("公開済みv2.0を旧ルールのまま再開し、修正版とは別に�
   page,
 }) => {
   const oldKey = "majoken-save-rules-2.0-final";
-  const newKey = "majoken-save-rules-2.0.4";
+  const newKey = "majoken-save-rules-2.1";
   const original = createGame(
     {
       name: "アリア",

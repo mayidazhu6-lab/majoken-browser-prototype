@@ -1,0 +1,70 @@
+{
+  "baselineHead": "e6c99f1d63087b8ed908f57d4baa65c43aa6e7ae",
+  "setup": {
+    "name": "互換性確認",
+    "seed": "win-audit-1",
+    "magic": "barrier",
+    "stats": {
+      "attack": 3,
+      "defense": 3,
+      "insight": 3
+    }
+  },
+  "records": [
+    {
+      "rulesVersion": "browser-2.0",
+      "steps": 251,
+      "chainHash": "1bf4c473958df55d58321ae0dfb951749971400f605b13d0d9ad3c967aec3b6a",
+      "finalHash": "58ac521ae5d48a3b97684874dcd91c2490fe1d64a2d99b8f5eda073962a6d1f5",
+      "rng": 490041235,
+      "draws": 162,
+      "fp": [31, 6, 7, 4],
+      "longAchieved": [false, false, false, false],
+      "phases": ["public", "magic", "vote", "night", "ho", "dawn", "ended"]
+    },
+    {
+      "rulesVersion": "browser-2.0.1",
+      "steps": 251,
+      "chainHash": "bb45d513843edd75502e5a091f4132288cc27eed33b9c809b5e9fe83282fa1cd",
+      "finalHash": "7ee865c92471aaa767b33942cee1f36121ea5aa132b7b44defcd3a556c74de27",
+      "rng": 490041235,
+      "draws": 162,
+      "fp": [31, 6, 7, 4],
+      "longAchieved": [false, false, false, false],
+      "phases": ["public", "magic", "vote", "night", "ho", "dawn", "ended"]
+    },
+    {
+      "rulesVersion": "browser-2.0.2",
+      "steps": 264,
+      "chainHash": "05424d9918c416497b05802926a1a8ce01943163541c1da1d241040ffe284007",
+      "finalHash": "6415195e9326b394aff5c9bf865c884a3e94129567f30793d938edf1e7e6d4b8",
+      "rng": 426100038,
+      "draws": 169,
+      "fp": [33, 5, 5, 3],
+      "longAchieved": [false, false, false, false],
+      "phases": ["public", "magic", "night", "ho", "ended"]
+    },
+    {
+      "rulesVersion": "browser-2.0.3",
+      "steps": 132,
+      "chainHash": "648ade1d32fda14be2c59a50799671894d13437fadd94e4fb8330ebeacd07b52",
+      "finalHash": "46e5b5f808400ea6e3b246d7cd97aff1361dc3434a0247b4a2d8a99c8a2f17ec",
+      "rng": 267912444,
+      "draws": 455,
+      "fp": [7, 12, 13, 13],
+      "longAchieved": [true, true, true, true],
+      "phases": ["public", "magic", "night", "ho", "ended"]
+    },
+    {
+      "rulesVersion": "browser-2.0.4",
+      "steps": 132,
+      "chainHash": "79211f8607d852ae7eb9ea83dcfc704afa2585adfc505623a80b0e76aa7038c1",
+      "finalHash": "72c1a43f7068e0c7ead78c10ed913998bb2d49193a85a4ac407287effd5c6161",
+      "rng": 267912444,
+      "draws": 455,
+      "fp": [7, 14, 17, 15],
+      "longAchieved": [true, true, true, true],
+      "phases": ["public", "magic", "night", "ho", "ended"]
+    }
+  ]
+}
