@@ -12,6 +12,7 @@ import type {
 } from "./types";
 import {
   CONFIG,
+  V21_RULES_VERSION,
   isV20,
   hasElementCombat,
   hasNightRules,
@@ -979,7 +980,7 @@ function nightResults(s: GameState) {
 }
 function evaluateHO(s: GameState) {
   const daily = s.players.map((p) => dailyAchieved(s, p));
-  if (hasNightRules(s) && s.day === 8)
+  if (hasNightRules(s) && s.day === 8 && s.rulesVersion !== V21_RULES_VERSION)
     s.finalComparison = s.players.map((p) => p.fp);
   const modern = hasFinalGoalRules(s);
   const longs = modern ? [] : s.players.map((p) => longAchieved(s, p));
@@ -1008,7 +1009,15 @@ function evaluateHO(s: GameState) {
     if (daily[i]) fp(s, p, 1, "ho");
   });
   if (s.day === 8) {
-    if (modern)
+    if (s.rulesVersion === V21_RULES_VERSION) {
+      // Every daily reward is committed before any final goal is evaluated.
+      s.finalComparison = [];
+      for (const p of s.players) s.finalComparison[p.id] = p.fp;
+      const achieved = s.players.map((p) => longAchieved(s, p));
+      s.players.forEach((p, i) => {
+        p.longGoal.achieved = achieved[i];
+      });
+    } else if (modern)
       for (const p of s.players) p.longGoal.achieved = longAchieved(s, p);
     end(s, "completed");
   } else s.phase = "dawn";
