@@ -4,6 +4,7 @@ import {
   LABELS,
   level,
   V20_RESEARCH,
+  V21_RULES_VERSION,
 } from "./config";
 import { pick } from "./rng";
 import { fp, log } from "./core";
@@ -193,12 +194,22 @@ export function registerNight(s: GameState) {
           log(
             s,
             "automaticBattle",
-            hasRevisedNightRules(s)
+            s.rulesVersion === V21_RULES_VERSION
               ? actor === id
-                ? "休息中の相手への襲撃に成功"
-                : "休息中に襲撃を受け、休息は失敗"
-              : "休息中の襲撃は自動決着",
-            { actor, audience: [actor] },
+                ? `休息中の相手への襲撃成功：${s.players[target].name}に自動勝利（ラウンドなし）`
+                : `${s.players[id].name}から襲撃され、相手の自動勝利。休息は失敗`
+              : hasRevisedNightRules(s)
+                ? actor === id
+                  ? "休息中の相手への襲撃に成功"
+                  : "休息中に襲撃を受け、休息は失敗"
+                : "休息中の襲撃は自動決着",
+            {
+              actor,
+              audience: [actor],
+              ...(s.rulesVersion === V21_RULES_VERSION
+                ? { target: actor === id ? target : id }
+                : {}),
+            },
           );
     } else if (kind === "scout" && opposite.kind === "guard") {
       battles.push({ participants: [id, target], raids: [], scout: id });

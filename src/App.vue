@@ -93,6 +93,7 @@ function goalDescription(
     goal,
     long,
     !!store.state && hasFinalGoalRules(store.state),
+    store.state?.rulesVersion,
   );
   return {
     ...description,
@@ -362,6 +363,17 @@ const visibleLogs = computed(
         (l) => l.kind !== "trade" && (l.type !== "trade" || l.actor === 0),
       )
       .reverse() ?? [],
+);
+// Reuse the existing private log audience; this panel never resolves an action.
+const automaticNotifications = computed(() =>
+  s.value?.rulesVersion === V21_RULES_VERSION
+    ? visibleLogs.value.filter(
+        (l) =>
+          l.day === s.value!.day &&
+          l.type === "automaticBattle" &&
+          l.actor === 0,
+      )
+    : [],
 );
 const publicHistory = computed(
   () =>
@@ -2874,6 +2886,25 @@ watch(
                 </button>
               </template>
             </div>
+          </section>
+          <section
+            v-if="
+              automaticNotifications.length &&
+              !combat &&
+              ['duels', 'rewards', 'ho'].includes(s.phase)
+            "
+            class="panel"
+            aria-label="自動決着の結果"
+          >
+            <h2>襲撃の自動決着</h2>
+            <ul>
+              <li v-for="entry in automaticNotifications" :key="entry.seq">
+                {{ uiText(entry.text) }}
+              </li>
+            </ul>
+            <p class="muted">
+              当事者だけへの結果です。ラウンドは行っていません。
+            </p>
           </section>
           <section v-if="modernReward?.winner === 0" class="panel night-reward">
             <h2>夜間の報酬を選ぶ</h2>
