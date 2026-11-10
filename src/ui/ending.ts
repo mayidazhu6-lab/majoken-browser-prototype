@@ -122,3 +122,46 @@ export function endingSummary(s: GameState) {
     })),
   };
 }
+
+/** Frozen display data, also usable without a GameState or a replay. */
+export function endingPresentation(s: GameState) {
+  if (!s.result || s.phase !== "ended") throw Error("終了結果が未確定です");
+  const summary = endingSummary(s);
+  return {
+    day: s.day,
+    collapsed: s.result.reason === "collapse",
+    hasChief: s.result.chiefs.length > 0,
+    rows: endingRows(s),
+    summary: {
+      ...summary,
+      taskName: endingGoal(s, s.players[0].dailyGoal, false).name,
+      night: summary.night.map((l) => ({ seq: l.seq, text: l.text })),
+      players: summary.players.map((p) => ({
+        ...p,
+        breakdown: p.breakdown
+          ? {
+              ...p.breakdown,
+              entries: p.breakdown.entries.map((e) => ({
+                ...e,
+                text: fpReason(s, e),
+              })),
+            }
+          : undefined,
+      })),
+    },
+    details: s.players.map((p) => ({
+      player: p.id,
+      long: endingGoal(s, p.longGoal, true),
+      daily: p.dailyHistory.map((h) => ({
+        ...h,
+        ...endingGoal(
+          s,
+          { id: h.id, targets: [], achieved: h.achieved },
+          false,
+        ),
+      })),
+      unjudgedDay: !p.dailyHistory.some((h) => h.day === s.day),
+    })),
+  };
+}
+export type EndingPresentation = ReturnType<typeof endingPresentation>;
