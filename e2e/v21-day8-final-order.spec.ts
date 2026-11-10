@@ -31,7 +31,9 @@ for (const width of [1440, 390])
         return original.call(this, k, v);
       };
     });
-    await page.getByRole("button", { name: /課題を判定して夜明けへ/ }).click();
+    await page
+      .getByRole("button", { name: /課題を判定して第8日のまとめへ/ })
+      .click();
     const failure = page.getByRole("dialog", {
       name: "保存に失敗しました",
       exact: true,
@@ -56,7 +58,7 @@ for (const width of [1440, 390])
       await page.reload();
       await page.getByRole("button", { name: "続きから", exact: true }).click();
       await expect(
-        page.locator("p.eyebrow").filter({ hasText: "研究終了" }),
+        page.getByRole("heading", { name: "第8日のまとめ", exact: true }),
       ).toBeVisible();
       await page
         .getByRole("button", { name: "遊び方・ルール説明", exact: true })
