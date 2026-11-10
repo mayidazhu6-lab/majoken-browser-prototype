@@ -1,4 +1,5 @@
-import type { GameState, Log, Player } from "./types";
+import { recordDay8Fp } from "./day8Fp";
+import type { FpChangeContext, GameState, Log, Player } from "./types";
 import { CONFIG, isV20 } from "./config";
 import { RECIPES } from "./items";
 import { pick } from "./rng";
@@ -18,7 +19,13 @@ export function log(
     ...fields,
   });
 }
-export function fp(s: GameState, p: Player, amount: number, source: string) {
+export function fp(
+  s: GameState,
+  p: Player,
+  amount: number,
+  source: string,
+  context: FpChangeContext = {},
+) {
   const gain = Math.max(0, p.fp + amount) - p.fp;
   p.fp += gain;
   p.peakFp = Math.max(p.peakFp, p.fp);
@@ -28,6 +35,7 @@ export function fp(s: GameState, p: Player, amount: number, source: string) {
     kind: source,
     audience: ["scout", "ho"].includes(source) ? [p.id] : "public",
   });
+  recordDay8Fp(s, p, gain, source, context);
   if (isV20(s)) return;
   for (const t of CONFIG.thresholds) {
     if (p.peakFp < t || p.unlocks.includes(t)) continue;

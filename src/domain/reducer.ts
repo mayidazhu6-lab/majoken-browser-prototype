@@ -1,3 +1,4 @@
+import { beginDay8Fp, finishDay8Fp } from "./day8Fp";
 import { recordAutomaticVictory } from "./duelHistory";
 import { publicDuelReward } from "./publicDuelReward";
 import type {
@@ -518,7 +519,8 @@ function finishCombat(s: GameState) {
           target: loser.id,
           audience: [w.id],
         });
-      if (c.kind === "public") fp(s, w, publicDuelReward(s), "duel");
+      if (c.kind === "public")
+        fp(s, w, publicDuelReward(s), "duel", { relatedPlayers: [loser.id] });
     }
   }
   if (hasNightRules(s) && c.kind === "secret") {
@@ -1023,6 +1025,7 @@ function evaluateHO(s: GameState) {
   } else s.phase = "dawn";
 }
 function end(s: GameState, reason: "completed" | "collapse") {
+  finishDay8Fp(s);
   const graduates =
     reason === "completed"
       ? s.players.filter((p) => p.longGoal.achieved).map((p) => p.id)
@@ -1070,6 +1073,7 @@ function nextDay(s: GameState) {
   for (const p of s.players)
     if (p.temporaryRecipe?.day === s.day) p.temporaryRecipe = undefined;
   s.day++;
+  beginDay8Fp(s);
   if (hasNightRules(s)) s.nightWork = undefined;
   s.phase = "public";
   s.barriers = [];

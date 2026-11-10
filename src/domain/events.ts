@@ -424,7 +424,7 @@ export function resolveEvent(s: GameState) {
           : e.actions
             ? contributors.has(p.id)
             : donated > 0;
-      if (reward) fp(s, p, e.fp, "event");
+      if (reward) fp(s, p, e.fp, "event", { eventId: e.id });
       if (s.event.mock.includes(p.id))
         for (let n = 0; n < 2; n++)
           addItem(s, p, pick(s, MATERIALS, "模擬戦報酬"));

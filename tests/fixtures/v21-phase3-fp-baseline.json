@@ -1,0 +1,270 @@
+{
+  "baselineHead": "b9324fbb06a5f943e938c39c4af49df5e5454e4a",
+  "records": [
+    {
+      "setup": {
+        "name": "FP基準確認",
+        "seed": "witches-2026",
+        "magic": "barrier",
+        "stats": {
+          "attack": 3,
+          "defense": 3,
+          "insight": 3
+        }
+      },
+      "steps": 84,
+      "chainHash": "82fc8d7132c91575788e3e2aaf32252e7a68615878e963faa7ef3652e4c0a25e",
+      "rng": 549376905,
+      "draws": 348,
+      "fp": [6, 5, 10, 11],
+      "long": [false, true, true, true],
+      "result": {
+        "reason": "completed",
+        "graduates": [1, 2, 3],
+        "chiefs": [3],
+        "ranking": [
+          {
+            "player": 0,
+            "rank": null,
+            "fp": 6,
+            "daily": 0,
+            "graduated": false
+          },
+          {
+            "player": 1,
+            "rank": 3,
+            "fp": 5,
+            "daily": 3,
+            "graduated": true
+          },
+          {
+            "player": 2,
+            "rank": 2,
+            "fp": 10,
+            "daily": 4,
+            "graduated": true
+          },
+          {
+            "player": 3,
+            "rank": 1,
+            "fp": 11,
+            "daily": 5,
+            "graduated": true
+          }
+        ]
+      }
+    },
+    {
+      "setup": {
+        "name": "FP基準確認",
+        "seed": "moon-42",
+        "magic": "barrier",
+        "stats": {
+          "attack": 3,
+          "defense": 3,
+          "insight": 3
+        }
+      },
+      "steps": 121,
+      "chainHash": "483469238b737fae8fbf2ecdcc848b6c0452e3061ad676ffbfcca2f914d10df3",
+      "rng": 3273757044,
+      "draws": 343,
+      "fp": [5, 9, 12, 19],
+      "long": [false, true, true, true],
+      "result": {
+        "reason": "completed",
+        "graduates": [1, 2, 3],
+        "chiefs": [3],
+        "ranking": [
+          {
+            "player": 0,
+            "rank": null,
+            "fp": 5,
+            "daily": 1,
+            "graduated": false
+          },
+          {
+            "player": 1,
+            "rank": 3,
+            "fp": 9,
+            "daily": 4,
+            "graduated": true
+          },
+          {
+            "player": 2,
+            "rank": 2,
+            "fp": 12,
+            "daily": 5,
+            "graduated": true
+          },
+          {
+            "player": 3,
+            "rank": 1,
+            "fp": 19,
+            "daily": 7,
+            "graduated": true
+          }
+        ]
+      }
+    },
+    {
+      "setup": {
+        "name": "FP基準確認",
+        "seed": "lab-77",
+        "magic": "barrier",
+        "stats": {
+          "attack": 3,
+          "defense": 3,
+          "insight": 3
+        }
+      },
+      "steps": 93,
+      "chainHash": "21e4337fd3b3eab8507ee606fc589061d90314a4bba43be7d25d0d9750b6bfb8",
+      "rng": 2487624660,
+      "draws": 319,
+      "fp": [8, 12, 6, 5],
+      "long": [false, true, true, true],
+      "result": {
+        "reason": "completed",
+        "graduates": [1, 2, 3],
+        "chiefs": [1],
+        "ranking": [
+          {
+            "player": 0,
+            "rank": null,
+            "fp": 8,
+            "daily": 2,
+            "graduated": false
+          },
+          {
+            "player": 1,
+            "rank": 1,
+            "fp": 12,
+            "daily": 4,
+            "graduated": true
+          },
+          {
+            "player": 2,
+            "rank": 2,
+            "fp": 6,
+            "daily": 3,
+            "graduated": true
+          },
+          {
+            "player": 3,
+            "rank": 3,
+            "fp": 5,
+            "daily": 3,
+            "graduated": true
+          }
+        ]
+      }
+    },
+    {
+      "setup": {
+        "name": "FP基準確認",
+        "seed": "review-1",
+        "magic": "barrier",
+        "stats": {
+          "attack": 3,
+          "defense": 3,
+          "insight": 3
+        }
+      },
+      "steps": 74,
+      "chainHash": "60ae32a726ee990673487fd94a4a02c4f3f6b9be01d2e4b9d4ec44e6921c27bb",
+      "rng": 1716434583,
+      "draws": 360,
+      "fp": [7, 9, 9, 10],
+      "long": [false, false, true, false],
+      "result": {
+        "reason": "completed",
+        "graduates": [2],
+        "chiefs": [2],
+        "ranking": [
+          {
+            "player": 0,
+            "rank": null,
+            "fp": 7,
+            "daily": 3,
+            "graduated": false
+          },
+          {
+            "player": 1,
+            "rank": null,
+            "fp": 9,
+            "daily": 4,
+            "graduated": false
+          },
+          {
+            "player": 2,
+            "rank": 1,
+            "fp": 9,
+            "daily": 4,
+            "graduated": true
+          },
+          {
+            "player": 3,
+            "rank": null,
+            "fp": 10,
+            "daily": 7,
+            "graduated": false
+          }
+        ]
+      }
+    },
+    {
+      "setup": {
+        "name": "FP基準確認",
+        "seed": "win-audit-1",
+        "magic": "barrier",
+        "stats": {
+          "attack": 3,
+          "defense": 3,
+          "insight": 3
+        }
+      },
+      "steps": 132,
+      "chainHash": "ea34c63b10c35a91f387dfd3d4acb2361e7e1291c55c435cba0579a193ddc6ac",
+      "rng": 267912444,
+      "draws": 455,
+      "fp": [7, 14, 17, 15],
+      "long": [true, true, true, true],
+      "result": {
+        "reason": "completed",
+        "graduates": [0, 1, 2, 3],
+        "chiefs": [2],
+        "ranking": [
+          {
+            "player": 0,
+            "rank": 4,
+            "fp": 7,
+            "daily": 2,
+            "graduated": true
+          },
+          {
+            "player": 1,
+            "rank": 3,
+            "fp": 14,
+            "daily": 5,
+            "graduated": true
+          },
+          {
+            "player": 2,
+            "rank": 1,
+            "fp": 17,
+            "daily": 3,
+            "graduated": true
+          },
+          {
+            "player": 3,
+            "rank": 2,
+            "fp": 15,
+            "daily": 5,
+            "graduated": true
+          }
+        ]
+      }
+    }
+  ]
+}

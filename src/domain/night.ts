@@ -331,6 +331,7 @@ export function giveNightReward(
 export function finishNight(s: GameState) {
   const { battles, valid } = s.nightWork!;
   const deductions = new Map<number, number>();
+  const scouts = new Map<number, number[]>();
   for (const id of s.publicTurn.order) {
     const p = s.players[id];
     const { kind, target } = p.night!;
@@ -368,11 +369,14 @@ export function finishNight(s: GameState) {
         amount: 1,
         audience: [id],
       });
-      if (battle)
+      if (battle) {
         deductions.set(target, Math.min(3, (deductions.get(target) ?? 0) + 1));
+        scouts.set(target, [...(scouts.get(target) ?? []), id]);
+      }
     }
   }
-  for (const [id, count] of deductions) fp(s, s.players[id], -count, "scout");
+  for (const [id, count] of deductions)
+    fp(s, s.players[id], -count, "scout", { relatedPlayers: scouts.get(id) });
   s.phase = "ho";
 }
 
