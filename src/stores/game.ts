@@ -1,3 +1,5 @@
+import { captureResult } from "../records/lastResult";
+import { useResultsStore } from "./results";
 import { defineStore } from "pinia";
 import { shallowRef, ref } from "vue";
 import type { Action, GameState, Setup } from "../domain/types";
@@ -57,7 +59,8 @@ export const useGameStore = defineStore("game", () => {
   const releasedSaveAvailable = ref(hasSave(RELEASE_KEY));
   const playtestSaveAvailable = ref(hasSave(PLAYTEST_KEY));
 
-  function commit(candidate: GameState) {
+  let pendingFinished = false;
+  function commit(candidate: GameState, finished = false) {
     try {
       const key = saveKey(candidate.rulesVersion)!;
       localStorage.setItem(key, serialize(candidate));
@@ -69,19 +72,30 @@ export const useGameStore = defineStore("game", () => {
       state.value = candidate;
       pending.value = undefined;
       error.value = "";
-      return true;
+      pendingFinished = false;
     } catch {
+      pendingFinished = finished;
       pending.value = candidate;
       error.value =
         "自動保存できませんでした。進行を停止しました。保存を再試行してください。";
       return false;
     }
+    if (finished) {
+      try {
+        useResultsStore().capture(captureResult(candidate));
+      } catch {
+        useResultsStore().error =
+          "終了結果を記録できませんでした。ゲーム保存と確定済み結果は保持されています。";
+      }
+    }
+    return true;
   }
 
   function act(a: Action) {
     if (!state.value || pending.value) return;
     try {
-      commit(dispatch(state.value, JSON.parse(JSON.stringify(a))));
+      const candidate = dispatch(state.value, JSON.parse(JSON.stringify(a)));
+      commit(candidate, !state.value.result && !!candidate.result);
     } catch (e) {
       error.value = (e as Error).message;
     }
@@ -98,7 +112,8 @@ export const useGameStore = defineStore("game", () => {
 
   function save() {
     const candidate = pending.value ?? state.value;
-    if (candidate && commit(candidate)) notice.value = "保存しました";
+    if (candidate && commit(candidate, !!pending.value && pendingFinished))
+      notice.value = "保存しました";
   }
 
   function load(json?: string, rulesVersion?: string) {

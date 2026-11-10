@@ -6,20 +6,28 @@ import { nightRecipe } from "../domain/night";
 import { elementPotion } from "../domain/elementCombat";
 import { recipe } from "../domain/items";
 import {
-  endingGoal,
-  endingRows,
-  endingSummary,
-  endingView,
-  fpReason,
+  endingPresentation,
+  type EndingPresentation,
   type EndingView,
 } from "../ui/ending";
 import { uiText } from "../ui/text";
-const props = defineProps<{ state: GameState; view: EndingView }>();
-const emit = defineEmits<{ navigate: [view: EndingView]; restart: [] }>();
-const view = computed(() => endingView(props.state, props.view));
-const collapsed = computed(() => props.state.result?.reason === "collapse");
-const summary = computed(() => endingSummary(props.state));
-const rows = computed(() => endingRows(props.state));
+const props = defineProps<{
+  state?: GameState;
+  record?: EndingPresentation;
+  view: EndingView;
+  readonly?: boolean;
+}>();
+const emit = defineEmits<{
+  navigate: [view: EndingView];
+  restart: [];
+  exit: [];
+}>();
+const data = computed(() => props.record ?? endingPresentation(props.state!));
+const view = computed(() => (data.value.collapsed ? "results" : props.view));
+const collapsed = computed(() => data.value.collapsed);
+const summary = computed(() => data.value.summary);
+const rows = computed(() => data.value.rows);
+const detail = (id: number) => data.value.details.find((d) => d.player === id)!;
 const open = ref(false);
 const heading = ref<HTMLElement>();
 watch(view, async () => {
@@ -37,8 +45,6 @@ const itemName = (kind: string) =>
       recipe(kind)?.name ??
       kind,
   );
-const historyGoal = (id: number, achieved: boolean) =>
-  endingGoal(props.state, { id, achieved, targets: [] }, false);
 </script>
 
 <template>
@@ -62,7 +68,7 @@ const historyGoal = (id: number, achieved: boolean) =>
           }}
         </h2>
         <p v-if="summary.task">
-          {{ endingGoal(state, state.players[0].dailyGoal, false).name }}
+          {{ summary.taskName }}
         </p>
         <p>
           日次HO報酬：{{
@@ -111,7 +117,7 @@ const historyGoal = (id: number, achieved: boolean) =>
               </p>
               <ol v-if="p.breakdown.entries.length">
                 <li v-for="e in p.breakdown.entries" :key="e.order">
-                  {{ fpReason(state, e) }}：{{ signed(e.amount) }}FP
+                  {{ e.text }}：{{ signed(e.amount) }}FP
                 </li>
               </ol>
               <p v-else>増減なし</p>
@@ -131,7 +137,7 @@ const historyGoal = (id: number, achieved: boolean) =>
         共通イベントに通算3回失敗し、研究所は崩壊しました。
       </p>
       <p v-else>8日間の研究、おつかれさま。全員の結末を発表します。</p>
-      <p v-if="!collapsed && !state.result?.chiefs.length">首席なし</p>
+      <p v-if="!collapsed && !data.hasChief">首席なし</p>
       <div class="ending-cards" aria-label="全員の最終結果">
         <article
           v-for="r in rows"
@@ -150,12 +156,10 @@ const historyGoal = (id: number, achieved: boolean) =>
           <p
             v-if="
               collapsed &&
-              !state.players[r.player].dailyHistory.some(
-                (h) => h.day === state.day,
-              )
+              !detail(r.player).daily.some((h) => h.day === data.day)
             "
           >
-            第{{ state.day }}日の日次HO：未判定・報酬なし
+            第{{ data.day }}日の日次HO：未判定・報酬なし
           </p>
         </article>
       </div>
@@ -175,48 +179,38 @@ const historyGoal = (id: number, achieved: boolean) =>
       >
         <article v-for="r in rows" :key="r.player" class="review-section">
           <h2>{{ r.name }}のHO</h2>
-          <h3>
-            {{
-              endingGoal(state, state.players[r.player].longGoal, true).name
-            }}：{{ r.status }}
-          </h3>
-          <p>
-            {{
-              endingGoal(state, state.players[r.player].longGoal, true)
-                .condition
-            }}
-          </p>
+          <h3>{{ detail(r.player).long.name }}：{{ r.status }}</h3>
+          <p>{{ detail(r.player).long.condition }}</p>
           <h3>日次HO履歴</h3>
-          <p v-if="!state.players[r.player].dailyHistory.length">
-            判定済みの記録なし
-          </p>
+          <p v-if="!detail(r.player).daily.length">判定済みの記録なし</p>
           <ol v-else>
-            <li v-for="h in state.players[r.player].dailyHistory" :key="h.day">
-              第{{ h.day }}日：{{ historyGoal(h.id, h.achieved).name }} ·
+            <li v-for="h in detail(r.player).daily" :key="h.day">
+              第{{ h.day }}日：{{ h.name }} ·
               {{ h.achieved ? "成功" : "失敗" }}
-              <p>{{ historyGoal(h.id, h.achieved).condition }}</p>
+              <p>{{ h.condition }}</p>
             </li>
           </ol>
           <p
             v-if="
               collapsed &&
-              !state.players[r.player].dailyHistory.some(
-                (h) => h.day === state.day,
-              )
+              !detail(r.player).daily.some((h) => h.day === data.day)
             "
           >
-            第{{ state.day }}日：未判定・報酬なし
+            第{{ data.day }}日：未判定・報酬なし
           </p>
         </article>
       </section>
       <div class="ending-actions">
         <button
-          v-if="!collapsed && state.day === 8"
+          v-if="!collapsed && data.day === 8"
           @click="emit('navigate', 'summary')"
         >
           第8日のまとめを見る
         </button>
-        <button @click="emit('restart')">新しい研究を始める</button>
+        <button v-if="!readonly" @click="emit('restart')">
+          新しい研究を始める
+        </button>
+        <button v-else @click="emit('exit')">タイトルへ戻る</button>
       </div>
     </section>
   </main>

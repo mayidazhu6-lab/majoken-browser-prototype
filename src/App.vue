@@ -31,6 +31,8 @@ import { midpointNotice } from "./ui/midpointNotice";
 import { schoolTheme } from "./ui/schoolTheme";
 import CombatAffinity from "./components/CombatAffinity.vue";
 import CombatRounds from "./components/CombatRounds.vue";
+import { useResultsStore } from "./stores/results";
+import type { LastResult } from "./records/lastResult";
 import { useGameStore } from "./stores/game";
 import {
   CONFIG,
@@ -119,6 +121,23 @@ const setupMagics = Object.fromEntries(
   V20_MAGICS.map((id) => [id, MAGICS[id]]),
 ) as Pick<typeof MAGICS, (typeof V20_MAGICS)[number]>;
 const store = useGameStore();
+const results = useResultsStore();
+const recordsMenu = ref(false);
+const viewedResult = ref<LastResult>();
+const archiveView = ref<EndingView>("results");
+function openRecords() {
+  results.refresh();
+  recordsMenu.value = !recordsMenu.value;
+}
+function openLastResult() {
+  if (results.saved) {
+    viewedResult.value = results.saved;
+    archiveView.value = "results";
+  }
+}
+function closeLastResult() {
+  viewedResult.value = undefined;
+}
 const s = computed(() => store.state!);
 watch(
   () => schoolTheme(s.value?.phase, s.value?.event),
@@ -1156,7 +1175,7 @@ watch(
           >魔女たちの共同研究<small>THE WITCHES' JOINT RESEARCH</small></span
         ></a
       >
-      <div class="top-actions">
+      <div v-if="!viewedResult" class="top-actions">
         <span class="version">v2.1 開発版 · 段階実装中</span
         ><button @click="loadSave()">続きから</button>
         <button
@@ -1204,13 +1223,38 @@ watch(
         /></label>
       </div>
     </header>
-    <div v-if="store.error && !store.pending" role="alert" class="alert error">
+    <div
+      v-if="store.error && !store.pending && !viewedResult"
+      role="alert"
+      class="alert error"
+    >
       {{ uiText(store.error) }}<button @click="store.error = ''">閉じる</button>
     </div>
-    <div v-if="store.notice" role="status" class="alert">
+    <div v-if="store.notice && !viewedResult" role="status" class="alert">
       {{ store.notice }}<button @click="store.notice = ''">閉じる</button>
     </div>
-    <main v-if="!s" class="setup-layout">
+    <section v-if="results.error" class="alert error" role="alert">
+      {{ results.error }}
+      <button v-if="results.pending" @click="results.retry()">
+        終了結果の保存を再試行
+      </button>
+    </section>
+    <template v-if="viewedResult">
+      <p class="panel" role="status">
+        前回の結果（閲覧専用） · ルール {{ viewedResult.rulesVersion }}
+      </p>
+      <EndingScreens
+        :record="viewedResult.presentation"
+        :view="archiveView"
+        readonly
+        @navigate="archiveView = $event"
+        @exit="closeLastResult"
+      />
+      <button v-if="archiveView === 'summary'" @click="closeLastResult">
+        タイトルへ戻る
+      </button>
+    </template>
+    <main v-else-if="!s" class="setup-layout">
       <section v-if="!creation" class="intro">
         <p class="eyebrow">8日間 / 4人の魔女 / ひとつの研究所</p>
         <div class="sigil" aria-hidden="true">✦<span>☽</span></div>
@@ -1230,6 +1274,15 @@ watch(
             遊び方・ルール説明
           </button>
         </div>
+        <button :aria-expanded="recordsMenu" @click="openRecords">記録</button>
+        <section v-if="recordsMenu" class="panel" aria-label="研究の記録">
+          <h2>記録</h2>
+          <p v-if="results.readError" role="alert">{{ results.readError }}</p>
+          <p v-else-if="!results.saved">まだ研究の記録はありません</p>
+          <button :disabled="!results.saved" @click="openLastResult">
+            前回の結果
+          </button>
+        </section>
         <div class="intro-notes">
           <span>01　共同研究を成功させる</span
           ><span>02　卒業課題で卒業を目指す</span
@@ -3573,7 +3626,9 @@ watch(
     </BlockingDialog>
     <RuleGuide
       v-if="ruleGuideOpener"
-      :rules-version="s?.rulesVersion ?? V21_RULES_VERSION"
+      :rules-version="
+        viewedResult?.rulesVersion ?? s?.rulesVersion ?? V21_RULES_VERSION
+      "
       :opener="ruleGuideOpener"
       @close="ruleGuideOpener = undefined"
     />
@@ -3904,8 +3959,9 @@ watch(
     <footer>
       <span>✧ 魔女たちの共同研究</span
       ><span
-        >ローカル試遊版 · ルール {{ s?.rulesVersion ?? V21_RULES_VERSION }} ·
-        公開前の検証用</span
+        >ローカル試遊版 · ルール
+        {{ viewedResult?.rulesVersion ?? s?.rulesVersion ?? V21_RULES_VERSION }}
+        · 公開前の検証用</span
       >
     </footer>
   </div>
