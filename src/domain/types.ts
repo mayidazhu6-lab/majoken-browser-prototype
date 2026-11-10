@@ -223,6 +223,25 @@ export interface NightBattle {
   automatic?: boolean;
   winner?: number | null;
 }
+/** Confirmed FP changes only; codes are independent of display text. */
+export interface FpChangeContext {
+  relatedPlayers?: number[];
+  eventId?: number;
+}
+export interface Day8FpChange extends FpChangeContext {
+  order: number;
+  day: 8;
+  player: number;
+  amount: number;
+  reason: string;
+  fpAfter: number;
+}
+export interface Day8FpRecord {
+  day: 8;
+  start: { player: number; fp: number }[];
+  entries: Day8FpChange[];
+  final?: { player: number; fp: number }[];
+}
 export interface GameState {
   version: 2;
   rulesVersion: string;
@@ -264,6 +283,7 @@ export interface GameState {
     inventoryBefore?: Record<string, number>[];
   };
   finalComparison?: number[];
+  day8Fp?: Day8FpRecord;
   trades: Trade[];
   result?: Result;
   publicTurn: {

@@ -1,3 +1,4 @@
+import { day8FpBreakdown } from "../src/domain/day8Fp";
 import { expect, test } from "@playwright/test";
 import { day8Fixture } from "../tests/fixtures/v21Day8";
 import { deserialize, serialize } from "../src/domain/persistence";
@@ -44,7 +45,13 @@ for (const width of [1440, 390])
       .click();
     await expect(failure).toHaveCount(0);
     const saved = await page.evaluate((key) => localStorage.getItem(key), key);
-    expect(deserialize(saved!)).toEqual(after);
+    const confirmed = deserialize(saved!);
+    expect(confirmed).toEqual(after);
+    const breakdown = day8FpBreakdown(confirmed)!;
+    expect(breakdown).toEqual(day8FpBreakdown(after));
+    expect(breakdown.players).toHaveLength(4);
+    for (const p of breakdown.players)
+      expect(p.end - p.start).toBe(p.entries.reduce((n, e) => n + e.amount, 0));
     for (let i = 0; i < 2; i++) {
       await page.reload();
       await page.getByRole("button", { name: "続きから", exact: true }).click();
