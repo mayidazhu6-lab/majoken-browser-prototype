@@ -2,6 +2,8 @@
 import { computed, ref, watch, nextTick } from "vue";
 import { combatReason, revealedActions } from "./ui/combatPresentation";
 import { plannedMaterials, potionDescription } from "./ui/alchemy";
+import EndingScreens from "./components/EndingScreens.vue";
+import type { EndingView } from "./ui/ending";
 import TaskBriefing from "./components/TaskBriefing.vue";
 import BlockingDialog from "./components/BlockingDialog.vue";
 import RuleGuide from "./components/RuleGuide.vue";
@@ -153,6 +155,7 @@ const debug = ref(false),
 const hoNoticeDay = ref(0);
 const creation = ref(false);
 const graduation = ref(false);
+const endView = ref<EndingView>("summary");
 const actionScreen = ref("");
 const eventMockSelected = ref(false);
 const publicActions = {
@@ -281,6 +284,7 @@ function jumpToPublicActions() {
   choices.querySelector<HTMLElement>("button")?.focus({ preventScroll: true });
 }
 function restoreView() {
+  endView.value = "summary";
   cancelAction();
   menu.value = "";
   actionResult.value = [];
@@ -909,6 +913,9 @@ function presentation() {
     version: 1,
     key: JSON.stringify([s.value?.setup, s.value?.actions]),
     graduation: graduation.value,
+    ...(s.value?.result?.reason === "completed" && s.value.day === 8
+      ? { endView: endView.value }
+      : {}),
     day: hoNoticeDay.value,
     actionResult: actionResult.value,
     battleStep: battleStep.value,
@@ -928,9 +935,11 @@ function restorePresentation(json?: string) {
       view.key !== JSON.stringify([s.value?.setup, s.value?.actions])
     )
       return;
-    graduation.value = view.graduation === true;
+    endView.value = view.endView === "results" ? "results" : "summary";
+    graduation.value = !s.value.result && view.graduation === true;
     hoNoticeDay.value = Number.isInteger(view.day) ? view.day : 0;
     actionResult.value =
+      !s.value.result &&
       s.value.actions.at(-1)?.type !== "night" &&
       Array.isArray(view.actionResult)
         ? view.actionResult.filter((x: unknown) => typeof x === "string")
@@ -954,6 +963,7 @@ watch(
   [
     () => s.value,
     graduation,
+    endView,
     hoNoticeDay,
     actionResult,
     battleStep,
@@ -1093,9 +1103,11 @@ const nextLabel = computed(
       duels: "秘匿決闘を進める",
       results: "夜結果を確定",
       ho:
-        s.value && hasRevisedNightRules(s.value)
-          ? "課題を判定して夜明けへ"
-          : "今日の課題を判定",
+        s.value?.rulesVersion === V21_RULES_VERSION && s.value.day === 8
+          ? "課題を判定して第8日のまとめへ"
+          : s.value && hasRevisedNightRules(s.value)
+            ? "課題を判定して夜明けへ"
+            : "今日の課題を判定",
       dawn: "次の日へ",
       ended: "終了",
       rewards: "報酬選択",
@@ -1285,6 +1297,15 @@ watch(
         <p class="center muted">あなた1人＋AI3人・時間制限なし</p>
       </section>
     </main>
+    <template v-else-if="s.result">
+      <EndingScreens
+        v-if="!eventResult && !store.pending"
+        :state="s"
+        :view="endView"
+        @navigate="endView = $event"
+        @restart="store.state = undefined"
+      />
+    </template>
     <template v-else-if="me">
       <div class="session-bar">
         <div>
@@ -1526,77 +1547,6 @@ watch(
           </details>
         </aside>
         <main class="center-column">
-          <section v-if="s.result" class="panel final-results">
-            <p class="eyebrow">研究終了</p>
-            <h2>
-              {{
-                s.result.reason === "collapse"
-                  ? "研究所は崩壊しました"
-                  : "8日間の研究、おつかれさま。"
-              }}
-            </h2>
-            <p>
-              {{
-                s.result.reason === "collapse"
-                  ? "協力イベントが3回失敗したため、全員敗北です。"
-                  : s.result.chiefs.length
-                    ? `首席：${s.result.chiefs.map((id) => s.players[id].name).join("・")}`
-                    : "卒業者なし：卒業課題達成者がいません。"
-              }}
-            </p>
-            <p
-              v-if="
-                s.result.reason === 'collapse' && !s.result.graduates.length
-              "
-            >
-              卒業者なし
-            </p>
-            <div class="results-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>魔女</th>
-                    <th>卒業</th>
-                    <th>今日の課題</th>
-                    <th>FP順位</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="r in s.result.ranking" :key="r.player">
-                    <td>{{ s.players[r.player].name }}</td>
-                    <td>{{ r.graduated ? "卒業" : "未卒業" }}</td>
-                    <td>{{ r.daily }}回</td>
-                    <td>
-                      {{ r.rank === null ? "順位なし" : `${r.rank}位` }} /
-                      {{ r.fp }}FP
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <details v-for="p in s.players" :key="p.id">
-              <summary>{{ p.name }}の課題と判定根拠</summary>
-              <h3>
-                {{ goalDescription(p.longGoal, true).name }}：{{
-                  p.longGoal.achieved ? "達成" : "未達成"
-                }}
-              </h3>
-              <p>{{ goalDescription(p.longGoal, true).condition }}</p>
-              <p v-for="h in p.dailyHistory" :key="h.day">
-                第{{ h.day }}日：{{
-                  goalDescription(
-                    { id: h.id, targets: [], achieved: h.achieved },
-                    false,
-                  ).name
-                }}
-                {{ h.achieved ? "✓" : "—" }}
-              </p>
-            </details>
-            <p class="muted">
-              卒業者を最終FPで順位付けします。同点の場合は日次課題の達成数を比較し、両方同じなら同率です。
-            </p>
-            <button @click="store.state = undefined">新しい研究を始める</button>
-          </section>
           <section v-if="me.pendingRecipe && !combat" class="panel">
             <h2>10FP到達 · 特殊レシピを選択</h2>
             <button
@@ -3634,7 +3584,7 @@ watch(
       </template>
     </BlockingDialog>
     <BlockingDialog
-      v-if="menu && me && !store.pending"
+      v-if="menu && me && !s.result && !store.pending"
       :title="
         menu === 'attributes'
           ? '能力値'
