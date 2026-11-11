@@ -7,6 +7,7 @@ import { elementPotion } from "../domain/elementCombat";
 import { recipe } from "../domain/items";
 import {
   endingPresentation,
+  endingOutcome,
   type EndingPresentation,
   type EndingView,
 } from "../ui/ending";
@@ -14,6 +15,7 @@ import { uiText } from "../ui/text";
 const props = defineProps<{
   state?: GameState;
   record?: EndingPresentation;
+  rulesVersion?: string;
   view: EndingView;
   readonly?: boolean;
 }>();
@@ -147,7 +149,15 @@ const itemName = (kind: string) =>
           :data-result-player="r.player"
         >
           <h2>{{ r.name }}</h2>
-          <p class="outcome">{{ r.outcome }}</p>
+          <p class="outcome">
+            {{
+              endingOutcome(
+                data,
+                r,
+                props.state?.rulesVersion ?? props.rulesVersion,
+              )
+            }}
+          </p>
           <p>
             {{ r.rankText }} · <strong>{{ r.fp }}FP</strong>
           </p>

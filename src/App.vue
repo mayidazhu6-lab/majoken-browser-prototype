@@ -1245,6 +1245,7 @@ watch(
       </p>
       <EndingScreens
         :record="viewedResult.presentation"
+        :rules-version="viewedResult.rulesVersion"
         :view="archiveView"
         readonly
         @navigate="archiveView = $event"
