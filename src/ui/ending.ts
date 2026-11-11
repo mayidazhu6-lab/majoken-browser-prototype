@@ -1,4 +1,4 @@
-import { hasFinalGoalRules } from "../domain/config";
+import { hasFinalGoalRules, V21_RULES_VERSION } from "../domain/config";
 import { day8FpBreakdown } from "../domain/day8Fp";
 import { EVENTS } from "../domain/events";
 import { goalDescription } from "../domain/ho";
@@ -165,3 +165,17 @@ export function endingPresentation(s: GameState) {
   };
 }
 export type EndingPresentation = ReturnType<typeof endingPresentation>;
+
+/** Render-only wording: preserve frozen snapshots and their validation unchanged. */
+export function endingOutcome(
+  data: Pick<EndingPresentation, "collapsed" | "rows">,
+  row: EndingPresentation["rows"][number],
+  rulesVersion?: string,
+) {
+  return rulesVersion === V21_RULES_VERSION &&
+    !data.collapsed &&
+    row.outcome === "首席" &&
+    data.rows.filter((r) => r.outcome === "首席").length > 1
+    ? "共同首席"
+    : row.outcome;
+}

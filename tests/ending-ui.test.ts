@@ -4,6 +4,8 @@ import { log, fp } from "../src/domain/core";
 import { beginDay8Fp, finishDay8Fp } from "../src/domain/day8Fp";
 import {
   endingRows,
+  endingPresentation,
+  endingOutcome,
   endingView,
   endingSummary,
   endingGoal,
@@ -144,4 +146,43 @@ it("goal descriptions use the saved rules version without applying new HO condit
   expect(endingGoal(s, s.players[0].longGoal, true).condition).not.toContain(
     "自動勝利",
   );
+});
+
+it.each([0, 1, 2, 3, 4])(
+  "renders %i confirmed v2.1 chiefs without changing the frozen presentation",
+  (count) => {
+    const s = ended();
+    s.result!.chiefs = s.players.slice(0, count).map((p) => p.id);
+    const data = endingPresentation(s),
+      raw = JSON.stringify(data);
+    for (const row of data.rows)
+      expect(endingOutcome(data, row, s.rulesVersion)).toBe(
+        s.result!.chiefs.includes(row.player)
+          ? count > 1
+            ? "共同首席"
+            : "首席"
+          : row.outcome,
+      );
+    expect(JSON.stringify(data)).toBe(raw);
+  },
+);
+it("keeps old-rule wording and collapse outcomes unchanged", () => {
+  const s = ended();
+  const data = endingPresentation(s);
+  for (const version of [
+    "browser-2.0",
+    "browser-2.0.1",
+    "browser-2.0.2",
+    "browser-2.0.3",
+    "browser-2.0.4",
+    undefined,
+  ])
+    expect(data.rows.map((r) => endingOutcome(data, r, version))).toEqual(
+      data.rows.map((r) => r.outcome),
+    );
+  s.result!.reason = "collapse";
+  const collapse = endingPresentation(s);
+  expect(
+    collapse.rows.map((r) => endingOutcome(collapse, r, s.rulesVersion)),
+  ).toEqual(Array(4).fill("研究所崩壊"));
 });
