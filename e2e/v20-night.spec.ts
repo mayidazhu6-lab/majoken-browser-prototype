@@ -65,10 +65,7 @@ for (const width of [1440, 390]) {
     await combat.getByRole("button", { name: "水", exact: true }).click();
     await choose.click();
     await reload();
-    await expect(
-      combat.getByText("あなたの属性と薬は確定済みです。"),
-    ).toBeVisible();
-    await result.click();
+    await expect(result).toHaveCount(0);
     await expect(
       combat
         .locator(".combat-rounds tbody td")
@@ -78,7 +75,6 @@ for (const width of [1440, 390]) {
     for (let i = 1; i < 5 && (await choose.isVisible()); i++) {
       await combat.getByRole("button", { name: "水", exact: true }).click();
       await choose.click();
-      await result.click();
     }
     await combat.getByRole("button", { name: "確認した" }).click();
     const reward = page.locator(".night-reward");
