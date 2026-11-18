@@ -77,7 +77,10 @@ for (const width of [1440, 390, 320])
     if (!baseline) {
       const card = await page.locator(".graduation-briefing").boundingBox();
       const hud = await page.locator(".turn-hud").boundingBox();
-      expect(card!.y - hud!.y - hud!.height).toBeLessThan(32);
+      const health = await page.locator(".institute-health").boundingBox();
+      expect(health!.y).toBeGreaterThanOrEqual(hud!.y + hud!.height);
+      expect(card!.y - health!.y - health!.height).toBeLessThan(32);
+      expect(card!.y).toBeGreaterThanOrEqual(health!.y + health!.height);
       await expect(
         page.locator(".graduation-briefing .task-name"),
       ).toBeVisible();
@@ -107,10 +110,10 @@ for (const width of [1440, 390, 320])
       const grid = await page.locator(".public-home").boundingBox(),
         hud = await page.locator(".turn-hud").boundingBox();
       if (width === 1440) {
-        expect(grid!.y - hud!.y - hud!.height).toBeLessThan(32);
-        const health = await page.locator(".institute-health").boundingBox(),
-          actions = await page.locator(".center-column").boundingBox();
-        expect(Math.abs(health!.y - actions!.y)).toBeLessThan(20);
+        const health = await page.locator(".institute-health").boundingBox();
+        expect(health!.y).toBeGreaterThanOrEqual(hud!.y + hud!.height);
+        expect(health!.y + health!.height).toBeLessThanOrEqual(grid!.y);
+        expect(Math.abs(health!.x - hud!.x)).toBeLessThan(2);
       }
     }
     await page

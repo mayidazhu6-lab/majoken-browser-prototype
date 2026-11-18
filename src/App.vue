@@ -899,6 +899,23 @@ function act(a: Action, retry = false) {
   selected.value = [];
   battlePotion.value = undefined;
 }
+// Keep the original two saved engine actions in order. Only a confirmed secret
+// input is resolved here; an unconfirmed next round never advances automatically.
+watch(
+  [() => s.value?.combat?.elemental?.pending, () => !!store.pending],
+  ([choice, saving]) => {
+    if (
+      choice &&
+      !saving &&
+      s.value?.rulesVersion === V21_RULES_VERSION &&
+      s.value.combat?.kind === "secret" &&
+      myCombat.value
+    )
+      act({ type: "elementReply", player: 0 });
+  },
+  { flush: "post" },
+);
+
 function actionError(a: Action) {
   if (!s.value) return "研究を開始してください";
   if (store.pending) return "保存の再試行が必要です";
@@ -1414,6 +1431,7 @@ watch(
             : ''
         "
       />
+      <InstituteHealth :failed="s.failed" class="progress-health" />
       <button
         v-if="
           s.phase === 'public' &&
@@ -1431,16 +1449,6 @@ watch(
       >
         <strong>行動を選ぶ</strong><span>採集・研究など ↓</span>
       </button>
-      <InstituteHealth
-        v-if="
-          !briefing &&
-          (actionResult.length ||
-            s.phase !== 'public' ||
-            actionScreen ||
-            combat)
-        "
-        :failed="s.failed"
-      />
       <section
         v-if="
           !modernNight && s.event.resolved && s.event.acknowledged && !s.result
@@ -1481,7 +1489,6 @@ watch(
           "
           @confirm="graduation ? (graduation = false) : (hoNoticeDay = s.day)"
         />
-        <InstituteHealth :failed="s.failed" class="briefing-health" />
       </template>
       <section
         v-else-if="actionResult.length"
@@ -1503,10 +1510,6 @@ watch(
         }"
       >
         <aside v-if="!combat" class="left-column">
-          <InstituteHealth
-            v-if="s.phase === 'public' && !actionScreen"
-            :failed="s.failed"
-          />
           <EventOverview
             v-if="s.phase === 'public' && !actionScreen"
             class="event-preview"
@@ -1695,6 +1698,7 @@ watch(
               <button
                 class="primary"
                 :disabled="!!store.pending"
+                v-if="s.rulesVersion !== V21_RULES_VERSION"
                 @click="act({ type: 'elementReply', player: 0 })"
               >
                 ラウンド結果を見る

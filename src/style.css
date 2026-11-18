@@ -1972,8 +1972,9 @@ meter::-webkit-meter-optimum-value {
   font-size: 15px;
   line-height: 1.9;
 }
-.briefing-health {
-  margin-top: 16px;
+.institute-health.progress-health {
+  width: min(100%, 420px);
+  margin: 0 auto 18px 0;
 }
 .public-home .institute-health {
   display: grid;
